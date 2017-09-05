@@ -149,7 +149,7 @@ class mediamosa_profile {
     }
     else {
       // Default MySQL.
-      $required_extensions[] = 'mysql';
+      #$required_extensions[] = 'mysql';
       $required_extensions[] = 'mysqli';
     }
 
