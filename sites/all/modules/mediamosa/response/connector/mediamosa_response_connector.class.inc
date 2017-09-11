@@ -24,6 +24,7 @@ class mediamosa_response_connector extends mediamosa_response {
    */
   public static function static_do_restcall($uri, $method = 'GET', array $params = array()) {
 
+      // echo 'reached';
     // Just to save time.
     $app_access = &drupal_static(__CLASS__ . '::' . __FUNCTION__, array());
 
@@ -62,6 +63,7 @@ class mediamosa_response_connector extends mediamosa_response {
     // Create response object.
     $mediamosa_reponse = new mediamosa_response_connector();
 
+    // echo '<br>finished this method';
     // Do REST call.
     return $mediamosa_reponse->do_restcall($uri, $method, $params);
   }
@@ -107,6 +109,7 @@ class mediamosa_response_connector extends mediamosa_response {
    */
   public function do_restcall($uri, $method = 'GET', array $params = array()) {
 
+      //echo '<br> at do_restcall';
     // Store uri here.
     $this->request_uri = $uri;
     $this->request_method = $method;
@@ -157,9 +160,11 @@ class mediamosa_response_connector extends mediamosa_response {
       $this->process_call();
     }
     catch (mediamosa_exception $e) {
+        //echo '<br> proceed...';
       $e->mediamosa_exception_rest_response($this);
     }
     catch (PDOException $e) {
+        //echo '<br> proceed...';
       mediamosa_debug::error_log('PDOException caught; ' . $e->getMessage() . ', trace; ' . $e->getTraceAsString(), $e->getFile(), $e->getLine());
       $this->set_result(self::ERROR, mediamosa_error::HTTP_INTERNAL_SERVER_ERROR, 'PDOException caught; ' . $e->getMessage() . ",\ntrace; " . $e->getTraceAsString() . ",\nQuery string; " . $e->query_string . ",\nArgs; " . print_r($e->args, TRUE));
       try {
@@ -170,6 +175,7 @@ class mediamosa_response_connector extends mediamosa_response {
       }
     }
     catch (Exception $e) {
+        //echo '<br> proceed...';
       // Store as error.
       $this->set_result(self::ERROR, $e->getCode(), $e->getMessage());
       try {
@@ -179,6 +185,7 @@ class mediamosa_response_connector extends mediamosa_response {
         // ignore.
       }
     }
+
 
     // Generate output PHP array.
     $output = $this->generate_array();

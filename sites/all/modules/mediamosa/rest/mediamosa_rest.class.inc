@@ -351,6 +351,7 @@ class mediamosa_rest {
     // Get the mediamosa object.
     $mediamosa = mediamosa::get();
 
+
     if (!isset($uri)) {
       $uri = $mediamosa->get_request_uri();
     }
@@ -406,6 +407,7 @@ class mediamosa_rest {
    * @throws mediamosa_exception_program_error()
    */
   final public function process_call(array $rest_call) {
+      //echo '<br>Reached mediamosa_rest_class.inc...';
     // Get the mediamosa object.
     $mediamosa = mediamosa::get();
 
@@ -423,7 +425,6 @@ class mediamosa_rest {
       $mediamosa->mediamosa_rest_call = $mediamosa->mediamosa_rest_call->get_object_rest_call($rest_call);
     }
 
-    // Process the REST call.
     $response_type = $mediamosa->mediamosa_rest_call->process_call();
 
     // If offset was specified, then include it in the header.

@@ -104,9 +104,11 @@ class mediamosa_job_scheduler {
    */
   public static function trigger() {
     // Now trigger the jobscheduler.
+    // Tony: Users can have a differnt url than job1.mediamosa.local. This function says I just want the mediamosa_jobscheduler_uri, no matter what it is called.
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
 
     if (isset($mediamosa_jobscheduler_uri)) {
+      // We convert the internal call to an url and append /internal/cron/jobscheduler
       $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/internal/cron/jobscheduler';
 
       // Log it.

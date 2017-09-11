@@ -16,12 +16,14 @@ class mediamosa_app {
    *   The application array.
    */
   public static function get_by_appid($app_id) {
+
     static $apps = array();
 
     // Any cache?
     if (!empty($apps[$app_id])) {
       return $apps[$app_id];
     }
+
 
     // Store in cache.
     $apps[$app_id] = mediamosa_db::db_select(mediamosa_app_db::TABLE_NAME, 'app')

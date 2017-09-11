@@ -112,6 +112,7 @@ class mediamosa_response extends mediamosa {
    *   Returns optional override on the response type (XML/JSON etc).
    */
   protected function process_call() {
+      //echo '<br>Reached process_call in mediamosa_response.class.inc';
     return $this->mediamosa_rest->process_call($this->rest_call);
   }
 

@@ -1,0 +1,70 @@
+<?php
+
+function form_menu() {
+  $items = array();
+  $items['form/form'] = array(
+    'title' => t('My form'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('form_my_form'),
+    'access arguments' => array('access content'),
+    'description' => t('My form'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Returns the render array for the form.
+ */
+function form_my_form($form, &$form_state) {
+    $form['name'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Name'),
+    '#collapsible' => TRUE,
+    '#collapsed' => FALSE,
+  );
+  $form['name']['first'] = array(
+    '#type' => 'textfield',
+    '#title' => t('First name'),
+    '#required' => TRUE,
+    '#default_value' => "First name",
+    '#description' => "Please enter your first name.",
+    '#size' => 20,
+    '#maxlength' => 20,
+  );
+  $form['name']['last'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Last name'),
+    '#required' => TRUE,
+  );
+  $form['year_of_birth'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Year of birth'),
+    '#description' => 'Format is "YYYY"',
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+  );
+  return $form;
+}
+/**
+ * Validates the form.
+ */
+function form_my_form_validate($form, &$form_state) {
+	$year_of_birth = $form_state['values']['year_of_birth'];
+	if ($year_of_birth && ($year_of_birth < 1900 || $year_of_birth > 2000)) {
+		form_set_error('year_of_birth', t('Enter a year between 1900 and 2000.'));
+	}
+}
+
+/**
+ * Add a submit handler/function to the form.
+ *
+ * This will add a completion message to the screen when the
+ * form successfully processes
+ */
+function form_my_form_submit($form, &$form_state) {
+	drupal_set_message(t('The form has been submitted.'));
+}
+

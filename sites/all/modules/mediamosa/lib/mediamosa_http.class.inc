@@ -337,6 +337,7 @@ class mediamosa_http {
     }
 
     // Include the internal password so we gain access.
+    // Tony: Just add a variable to headers with the internal password!
     if ($options['do_internal']) {
       $options['headers'][mediamosa_settings::X_MEDIAMOSA_INTERNAL_PASS] = mediamosa::get_internal_password();
     }
@@ -347,6 +348,8 @@ class mediamosa_http {
     // user-agent is used to ensure that multiple testing sessions running at the
     // same time won't interfere with each other as they would if the database
     // prefix were stored statically in a file or database variable.
+
+    // Tony: Presumably something to do with unit tests
     $test_info = &$GLOBALS['drupal_test_info'];
     if (!empty($test_info['test_run_id'])) {
       $options['headers']['User-Agent'] = drupal_generate_test_ua($test_info['test_run_id']);
