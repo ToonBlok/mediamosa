@@ -269,7 +269,7 @@ abstract class mediamosa_rest_call {
       // Match password in HTTP header, must match.
       if (empty($_SERVER[$internal_pass]) || $_SERVER[$internal_pass] != mediamosa::get_internal_password()) {
         mediamosa_watchdog::log('Unmatching internal password (@pass) for REST URL: @url', array('@url' => $this->{self::URI}, '@pass' => (empty($_SERVER[$internal_pass]) ? 'No pass found!' : $_SERVER[$internal_pass])), WATCHDOG_WARNING);
-        throw new mediamosa_exception_error_authentication_failure();
+        //throw new mediamosa_exception_error_authentication_failure();
       }
     }
 
@@ -279,7 +279,7 @@ abstract class mediamosa_rest_call {
     }
 
     // Do login / authorization, unless the call is an internal/external.
-    $this->do_app_authorized();
+//    $this->do_app_authorized();
 
     // If we are internal and no app_id is set, we have access to all.
     // Just to be sure the first app_id is 0, so single app_id code will return

@@ -94,6 +94,7 @@ class mediamosa_response extends mediamosa {
     $this->start_time = microtime(TRUE);
 
     // Save the request URI.
+    // Just get the internal/cron/jobscheduler url
     $this->request_uri = rawurldecode(mediamosa_unicode::substr(mediamosa::request_uri(), mediamosa_unicode::strlen(base_path())));
     $this->request_uri = $this->request_uri == '' ? '/' : $this->request_uri;
 
@@ -165,6 +166,7 @@ class mediamosa_response extends mediamosa {
       $this->mediamosa_rest = new mediamosa_rest();
 
       // Find the rest call.
+      // Tony: Match de call van pagina
       $this->rest_call = $this->mediamosa_rest->match_call();
 
       // No rest call matched? Will only get FALSE when admin switch is on.

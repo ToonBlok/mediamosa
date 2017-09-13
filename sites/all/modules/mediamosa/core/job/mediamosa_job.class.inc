@@ -975,6 +975,9 @@ class mediamosa_job {
    * @param string $mediafile_dest
    *
    */
+
+  // Toon: De front end wilt soms weten wanneer de transcode klaar is, dat doet hij door een notify url mee te geven.
+  // Bij upload geef je aan ik wil een notify zodra hij klaar is
   public static function notify_transcoding($old_status, $new_status, $job_id) {
     if ($old_status == $new_status) {
       return;

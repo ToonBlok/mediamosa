@@ -481,7 +481,7 @@ function mediamosa_block_info() {
 
 /**
  * Implements hook_theme().
- */
+ /
 function mediamosa_theme() {
   return array(
     'mediamosa_version' => array(

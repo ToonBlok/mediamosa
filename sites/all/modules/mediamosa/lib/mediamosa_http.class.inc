@@ -355,6 +355,8 @@ class mediamosa_http {
       $options['headers']['User-Agent'] = drupal_generate_test_ua($test_info['test_run_id']);
     }
 
+
+
     // Init curl.
     $curl_handle = curl_init($url);
 

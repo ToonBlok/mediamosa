@@ -235,6 +235,7 @@ class mediamosa_rest {
     );
 
     // Find all REST calls of enabled modules.
+    // Tony: Get all REST calls, merge them with the docs of those REST calls then sort them alphabetically
     $rest_calls = module_invoke_all('mediamosa_register_rest_call');
     $rest_calls_doc = module_invoke_all('mediamosa_register_rest_call_doc');
     $rest_calls = array_merge_recursive($rest_calls, $rest_calls_doc);
