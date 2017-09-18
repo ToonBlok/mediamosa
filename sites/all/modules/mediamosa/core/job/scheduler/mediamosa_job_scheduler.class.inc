@@ -149,6 +149,7 @@ class mediamosa_job_scheduler {
     }
 
     // Toon: Lock achieved, continue.
+    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
     for ($x = 0; $x < 6; $x++) {
       $start_at = microtime(TRUE);
 
@@ -291,7 +292,8 @@ class mediamosa_job_scheduler {
       $fields = mediamosa_db::db_update_enrich($fields);
 
       // Update.
-      // Toon: Update de mediamosa_job kopie met de waardes van de originele job in de server_job tabel met de waarde van de job in de slot
+      // Toon: mediamosa_job en mediamosa_server_job both contain the same job, however the row in
+      // mediamosa_server_job table is more up-to-date and the row in mediamosa_job has to be updated.
       mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
         ->fields($fields)
         ->condition(mediamosa_job_db::ID, (string) $response_data->items->item[$i]->job_id)
@@ -307,8 +309,7 @@ class mediamosa_job_scheduler {
           $response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_CANCELLED) {
 
         // Remove link between server and job.
-        // uit server_job tabel
-        // Server is klaar met job, dus moet uit server_job tabel weggehaald moeten worden. de server_job tabel is de tabel die aangeeft welke jobs er uit gedeeld zijn aan deze server
+        // Toon: Server is klaar met job, dus moet uit server_job tabel weggehaald moeten worden. de server_job tabel is de tabel die aangeeft welke jobs er uit gedeeld zijn aan deze server
         mediamosa_server_job::delete_by_jobid((string) $response_data->items->item[$i]->job_id);
 
         // Remove job on jobserver.
@@ -650,6 +651,7 @@ class mediamosa_job_scheduler {
       )
     )->fetchAll();
 
+    // Toon: Take a look at each server.
     foreach ($server_jobs as $server_job) {
       // Try to start as many jobs as there are free slots.
       for ($i = $server_job['jobcount']; $i < $server_job['slots']; $i++) {
@@ -662,6 +664,7 @@ class mediamosa_job_scheduler {
           break;
         }
 
+        // Toon: Rij aanmaken, niet starten
         if (mediamosa_job::is_valid_job($job_info[mediamosa_job_db::ID], $job_info[mediamosa_job_db::JOB_TYPE], $job_info[mediamosa_job_db::MEDIAFILE_ID])) {
           if (self::start_server_job(
             $job_info[mediamosa_job_db::ID],
