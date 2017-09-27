@@ -195,10 +195,11 @@ class mediamosa_job_scheduler {
 
     // Get all servers for their status and process the result.
     // Toon: Die alle job servers langs loopt en de status opvraagt
+    // "Kijk of er iets moet gebeuren afhankelijk van wat de servers met de jobs gedaan hebben"
     self::check_status_all_servers();
 
     // Start new jobs when slots are available.
-    // kijken of er een slot vrij is en deelt dat uit aan een jobserver als dat kan
+    // Kijkt of er een slot vrij is, zo ja, deel een job uit aan de jobserver met de open slot.
     self::start_new_jobs();
 
     // Deze twee gaan alleen om slots
@@ -209,7 +210,7 @@ class mediamosa_job_scheduler {
     self::check_transcode_timeout();
 
     // Put server that are set on close, on off when they have done all jobs.
-    // Kijk of hij op close gezet is, kijkt of de job van deze serverklaar zijn dan zet hij hem uit
+    // Kijk of hij op close gezet is, kijkt of de job van deze server klaar zijn dan zet hij hem uit
     self::check_server_on_status_close();
 
     // Log ending.
