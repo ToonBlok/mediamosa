@@ -744,6 +744,7 @@ class mediamosa_job {
    */
   public static function create_job($job_type, $app_id, $user_id, $is_app_admin, $mediafile_id, $create_still = FALSE, $still_parameters = array(), $priority = NULL, $hint = FALSE, $mediafile_dest = NULL, $filename = '') {
 
+    self::log(__CLASS__ . ´::´ . __FUNCTION__, array(), WATCHDOG_NOTICE);
     // Get the mediafile.
     $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id);
 

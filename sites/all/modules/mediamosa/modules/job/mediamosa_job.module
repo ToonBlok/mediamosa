@@ -9,6 +9,14 @@
  */
 function mediamosa_job_cron() {
 
+  // Toon: My CRON
+  try {
+    mediamosa_debug::log(__CLASS__ . ' and method ' . __METHOD__ .  ' MY loop ', array(), 'job_cron');
+  }
+  catch (Exception $e) {
+    mediamosa_debug::log(__CLASS__ . ' and method ' . __METHOD__ .  ' MY loop ', array(), 'job_cron');
+  }
+
   try {
     // If we are in simpletest, this cron will generate problems because its
     // triggered during install and we are still not finished.
