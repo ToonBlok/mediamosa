@@ -1,0 +1,11 @@
+<?php
+
+
+function messenger_cron()
+{
+  mediamosa_debug::log('Start ' . __METHOD__, array(), 'Toon');
+  $scheduler = new scheduler();
+  $scheduler->round_up_jobs();
+
+}
+

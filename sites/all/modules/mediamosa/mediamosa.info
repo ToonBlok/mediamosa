@@ -198,6 +198,9 @@ files[] = core/job/mediamosa_job_db.class.inc
 ; Job Scheduler.
 files[] = core/job/scheduler/mediamosa_job_scheduler.class.inc
 
+; Messenger (Toon).
+files[] = modules/messenger/scheduler.class.inc
+
 ; Job Display.
 files[] = core/job/display/mediamosa_job_display_db.class.inc
 files[] = core/job/display/mediamosa_job_display.class.inc
