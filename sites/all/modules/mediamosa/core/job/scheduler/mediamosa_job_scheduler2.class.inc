@@ -15,7 +15,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 class mediamosa_job_scheduler2 {
 
   function __construct() {
-    mediamosa_debug::log('CLASS: ' . __CLASS__ . ', METHOD: ' . __METHOD__, array(), 'Toon');
+    //mediamosa_debug::log('CLASS: ' . __CLASS__ . ', METHOD: ' . __METHOD__, array(), 'Toon');
     //$this->log_debug('!!!!!!!!!!!!!!!!!!!!!' . __CLASS__ . ' and ' . __METHOD__ . " started");
     $this->server_type = 'PROGRESSION';
   }
@@ -25,7 +25,7 @@ class mediamosa_job_scheduler2 {
   }
 
   function round_up_jobs(){
-    mediamosa_debug::log('CLASS: ' . __CLASS__ . ', METHOD: ' . __METHOD__, array(), 'Toon');
+    //mediamosa_debug::log('CLASS: ' . __CLASS__ . ', METHOD: ' . __METHOD__, array(), 'Toon');
 
     $server_jobs = $this->fetch_single_available_job(1);
 

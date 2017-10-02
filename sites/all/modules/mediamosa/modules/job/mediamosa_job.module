@@ -20,7 +20,7 @@ function mediamosa_job_cron() {
     mediamosa_debug::log('mediamosa_job_cron started.', array(), 'job_cron');
 
     // Trigger job scheduler.
-    mediamosa_job_scheduler::trigger();
+    //mediamosa_job_scheduler::trigger();
 
     // Trigger process servers.
     //mediamosa_server::trigger();

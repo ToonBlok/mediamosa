@@ -1,5 +1,9 @@
 <?php
 
+require_once DRUPAL_ROOT . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 class scheduler {
 
   function __construct()
@@ -7,11 +11,12 @@ class scheduler {
     mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
   }
 
-  function call($job) {
-    $connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
-    $channel = $connection->channel();
+  function send($job) {
+    $this->open_connection();
 
-    $channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+    $this->channel->queue_bind($this->server_type, 'jobs', $this->server_type);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -20,10 +25,19 @@ class scheduler {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $channel->basic_publish($msg, 'jobs', $job['job_type']);
+    $this->channel->basic_publish($msg, 'jobs', $job['job_type']);
 
-    $channel->close();
-    $connection->close();
+    $this->close_connection();
+  }
+
+  function open_connection() {
+    $this->connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+    $this->channel = $this->connection->channel();
+  }
+
+  function close_connection() {
+    $this->channel->close();
+    $this->connection->close();
   }
 
   function round_up_jobs(){
@@ -47,15 +61,9 @@ class scheduler {
     )->fetchAll();
 
     foreach ($jobs as $job) {
-      $this->call($job);
-
+      $this->send($job);
     }
-
-    echo 'here';
-
-    //return mediamosa_db::db_query($sql)->fetchAssoc();
+    //$this->send($jobs[0]);
   }
-
-
 
 }
