@@ -1,13 +1,13 @@
 <?php
 
-function messenger_cron()
+function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'Toon');
   $scheduler = new scheduler();
   $scheduler->round_up_jobs();
 
   // Testing purposes
-  $server = new server();
+  //$server = new server();
 
   // create a new cURL resource
   //$ch = curl_init();

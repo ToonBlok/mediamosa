@@ -31,6 +31,7 @@ class server {
     echo ' [*] Waiting for messages. To exit press CTRL+C', "\n";
 
     $callback = function($msg){
+      echo ' [!] Message received!', "\n";
       //$debug_message = 'job_id: ' . $msg['job_id'] . ', job_type: ' . $msg['job_type'] . ' asset_id: ' . $msg['asset_id'] . ' mediafile_id: ' . $msg['mediafile_id'];
       //$msgContent = unserialize($msg->body);
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');

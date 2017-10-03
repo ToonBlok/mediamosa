@@ -9,6 +9,55 @@ class scheduler {
   function __construct()
   {
     mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
+
+    // Who exactly calls scheduler doesn't matter for now
+    // Boot the servers here
+
+    // if
+    $this->boot_servers();
+  }
+
+  // één stap te ver
+  function boot_servers(){
+    // 1: Check if servers are already booted
+    // 1.1: Check which servers should be online
+
+    // ...
+    // 1.2: Check if those servers are online
+    // If servers online
+    //   skip
+    // else:
+    //   start servers (set their value on ON)
+
+
+
+
+
+
+
+    $servers = $this->get_enabled_job_processor();
+  }
+
+  function get_enabled_job_processor(array $enabled_status = array(mediamosa_server_db::SERVER_STATUS_ON, mediamosa_server_db::SERVER_STATUS_CLOSE)) {
+    return $this->get_enabled(array(mediamosa_server_db::SERVER_TYPE_JOB_PROCESSOR), $enabled_status);
+  }
+
+  function get_enabled(array $server_types = array(), array $enabled_status = array(mediamosa_server_db::SERVER_STATUS_ON, mediamosa_server_db::SERVER_STATUS_CLOSE)) {
+    $query = mediamosa_db::db_select(mediamosa_server_db::TABLE_NAME, 'ms')
+      ->fields('ms');
+
+    // Any specific types?
+    if (!empty($server_types)) {
+      $query->condition(mediamosa_server_db::SERVER_TYPE, $server_types, 'IN');
+    }
+
+    if (!empty($enabled_status)) {
+      $query->condition(mediamosa_server_db::SERVER_STATUS, $enabled_status, 'IN');
+    }
+
+    return $query
+      ->orderBy(mediamosa_server_db::SERVER_TYPE)
+      ->execute();
   }
 
   function send($job) {
