@@ -233,6 +233,7 @@ class mediamosa_rest_call_jobserver_job_start extends mediamosa_rest_call {
     // Based on type, call job creation.
     switch ($job_type) {
       case mediamosa_job_server_db::JOB_TYPE_ANALYSE:
+        // eigen kopie van bestaande analyse job
         mediamosa_job_server::create_job_analyse($job_id, $mediafile_id_src);
         break;
 

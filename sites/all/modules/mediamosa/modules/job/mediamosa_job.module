@@ -22,7 +22,7 @@ function mediamosa_job_cron() {
     // Trigger job scheduler.
     //mediamosa_job_scheduler::trigger();
 
-    // Trigger process servers.
+    // Trigger processes on the servers.
     //mediamosa_server::trigger();
 
     // Log it.
@@ -555,3 +555,4 @@ user_id=admin',
 
   return $rest_calls;
 }
+
