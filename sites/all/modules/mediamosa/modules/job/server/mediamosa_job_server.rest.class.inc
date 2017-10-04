@@ -226,6 +226,7 @@ class mediamosa_rest_call_jobserver_job_start extends mediamosa_rest_call {
     $job_type = $this->get_param_value(self::JOB_TYPE);
     $mediafile_id_src = $this->get_param_value(self::MEDIAFILE_SRC);
     $watermark_id = $this->get_param_value(self::WATERMARK_ID);
+    mediamosa_debug::log_export($watermark_id);
 
     // Webservice must be enabled.
     mediamosa_webservice_app::webservice_must_be_active(mediamosa_webservice_app::HANDLE_JOBS, $a_app_ids);

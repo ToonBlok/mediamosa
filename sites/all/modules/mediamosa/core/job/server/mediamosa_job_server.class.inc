@@ -360,6 +360,7 @@ class mediamosa_job_server {
 
     // Based on jobtype we execute the job.
     $execution_string = '';
+    mediamosa_debug::log($job_type . __CLASS__, array(), 'Toon');
     switch ($job_type) {
       case mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
         // Make sure the tmp transcode directory exists.
@@ -894,12 +895,14 @@ class mediamosa_job_server {
    *  The execution string
    */
   public static function get_generate_still_exec($jobserver_job_id, $mediafile_id_source) {
-
     // Get the mime-type.
     $mime_type = mediamosa_asset_mediafile_metadata::get_mediafile_metadata_char($mediafile_id_source, mediamosa_asset_mediafile_metadata::MIME_TYPE);
 
     $job_info = mediamosa_job_server_still::get($jobserver_job_id);
     $job_info += mediamosa_job_server::get($jobserver_job_id);
+    mediamosa_debug::log_export($job_info);
+
+    //mediamosa_debug::log_asset($jobserver_job_id, 'my log_asset', $job_info);
 
     // Call the mediamosa_tool_can_generate_still hook.
     foreach (module_implements('mediamosa_tool_can_generate_still') as $module) {

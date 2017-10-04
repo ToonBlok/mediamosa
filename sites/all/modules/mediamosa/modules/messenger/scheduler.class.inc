@@ -65,7 +65,7 @@ class scheduler {
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare('ANALYSE', false, true, false, false);
-    $this->channel->queue_bind($this->server_type, 'jobs', $this->server_type);
+    //$this->channel->queue_bind($this->server_type, 'jobs', $this->server_type);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -79,8 +79,28 @@ class scheduler {
     $this->close_connection();
   }
 
+  /**
+   * Wrapper around variable_get().
+   */
+  function variable_get($name, $default = NULL) {
+    return variable_get($name, $default);
+  }
+
+  /**
+   * Wrapper around variable_set().
+   */
+  function variable_set($name, $value) {
+    variable_set($name, $value);
+  }
+
   function open_connection() {
-    $this->connection = new AMQPStreamConnection('localhost', 5672, 'guest', 'guest');
+
+    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
+    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
+    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
+
+    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
     $this->channel = $this->connection->channel();
   }
 
@@ -91,8 +111,6 @@ class scheduler {
 
   function round_up_jobs(){
     mediamosa_debug::log('Start method ' . __METHOD__, array(), 'Toon');
-
-    // for loop here
 
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id 
             FROM {#mediamosa_job} AS mj

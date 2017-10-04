@@ -38,5 +38,7 @@ function mediamosa_messenger_drush_command() {
  */
 function drush_mediamosa_messenger() {
   //drush_print('Hello world');
-  $jobcore = new jobcore();
+  $args = func_get_args();
+  $type = $args[0];
+  $jobcore = new jobcore($type);
 }
