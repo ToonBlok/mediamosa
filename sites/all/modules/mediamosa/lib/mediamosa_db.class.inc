@@ -26,7 +26,7 @@ class mediamosa_db {
   const CURRENT_TIMESTAMP = 'CURRENT_TIMESTAMP';
 
   // --------------------------------------------------------------------- Vars.
-  static private $is_db_logging = FALSE;
+  static private $is_db_logging = FALSE; // WAS FALSE
 
   static private $num_of_queries = array();
   static private $num_of_slow_queries = array();
@@ -405,6 +405,7 @@ class mediamosa_db {
       $start_time = microtime(TRUE);
       $result = call_user_func_array('db_update', $args);
       self::db_log(round(microtime(TRUE) - $start_time, 4), $result && isset($result->queryString) ? $result->queryString : '-failure-');
+      //mediamosa_debug::log($result->queryString, array(), 'Toon');
       return $result;
     }
 

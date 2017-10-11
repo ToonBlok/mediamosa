@@ -202,6 +202,9 @@ files[] = core/job/scheduler/mediamosa_job_scheduler.class.inc
 files[] = modules/messenger/scheduler.class.inc
 files[] = modules/messenger/server.class.inc
 files[] = modules/messenger/jobcore.class.inc
+files[] = modules/messenger/jobs/analyze.class.inc
+files[] = modules/messenger/jobs/still.class.inc
+files[] = modules/messenger/jobs/transcode.class.inc
 
 ; Job Display.
 files[] = core/job/display/mediamosa_job_display_db.class.inc

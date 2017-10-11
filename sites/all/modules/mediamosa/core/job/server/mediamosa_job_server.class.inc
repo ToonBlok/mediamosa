@@ -375,6 +375,7 @@ class mediamosa_job_server {
 
       case mediamosa_job_server_db::JOB_TYPE_STILL:
         $execution_string = self::get_generate_still_exec($jobserver_job_id, $mediafile_id_src);
+        //mediamosa_debug::log('HEALTH execution string ' . $execution_string . __CLASS__, array(), 'Toon');
         self::log_mediafile($mediafile_id_src, 'About to start @job_type job: @job_id calling exec: @execution_string', array('@job_type' => $job_type, '@job_id' => $job_id, '@execution_string' => $execution_string));
         break;
 
@@ -900,13 +901,15 @@ class mediamosa_job_server {
 
     $job_info = mediamosa_job_server_still::get($jobserver_job_id);
     $job_info += mediamosa_job_server::get($jobserver_job_id);
-    mediamosa_debug::log_export($job_info);
+    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'Toon' );
 
-    //mediamosa_debug::log_asset($jobserver_job_id, 'my log_asset', $job_info);
+//    mediamosa_debug::log('De Mimetype is: ' . $mime_type, array(), 'Toon');
 
     // Call the mediamosa_tool_can_generate_still hook.
     foreach (module_implements('mediamosa_tool_can_generate_still') as $module) {
       if (module_invoke($module, 'mediamosa_tool_can_generate_still', $mime_type)) {
+        // For still, it doesn't reach here.
+
         // Get generate still exec.
         return module_invoke($module, 'mediamosa_tool_get_generate_still_exec', $job_info, $mediafile_id_source);
       }
@@ -1061,6 +1064,7 @@ class mediamosa_job_server {
     $fields = array(
       mediamosa_job_server_db::MEDIAFILE_DEST => serialize($mediafile_dest),
     );
+    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'Toon - STILL' );
 
     // Add changed.
     $fields = mediamosa_db::db_update_enrich($fields);

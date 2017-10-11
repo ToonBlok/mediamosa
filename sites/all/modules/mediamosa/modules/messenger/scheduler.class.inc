@@ -79,16 +79,10 @@ class scheduler {
     $this->close_connection();
   }
 
-  /**
-   * Wrapper around variable_get().
-   */
   function variable_get($name, $default = NULL) {
     return variable_get($name, $default);
   }
 
-  /**
-   * Wrapper around variable_set().
-   */
   function variable_set($name, $value) {
     variable_set($name, $value);
   }
