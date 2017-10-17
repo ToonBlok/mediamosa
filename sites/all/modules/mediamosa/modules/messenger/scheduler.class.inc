@@ -122,9 +122,117 @@ class scheduler {
     )->fetchAll();
 
     foreach ($jobs as $job) {
+      if ($job['job_type'] == 'STILL') {
+        $job_parameters = $this->get_job_parameters($job['job_id'], $job['mediafile_id']);
+        $job['blackstill_check'] = $job_parameters['blackstill_check'];
+        $job['still_parameters'] = $job_parameters['still_parameters'];
+        $job['size'] = $job_parameters['size'];
+      }
+      mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'Toon - STILL' );
+
       $this->send($job);
     }
-    //$this->send($jobs[0]);
+  }
+
+  // Toon: Is modelled exactly after the real method
+  function get_job_parameters($job_id, $mediafile_id) {
+    $result = array();
+
+    // Get something from mediamosa_still_db
+    $query_job = mediamosa_job_still::get($job_id);
+//    mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'Toon - STILL' );
+
+    if ($query_job) {
+      $result['blackstill_check'] = $query_job['blackstill_check'];
+      $result['still_parameters'] = unserialize($query_job['still_parameters']);
+      $result['frametime'] = $result['still_parameters']['frametime'];
+      $result['h_padding'] = $result['still_parameters']['h_padding'];
+      $result['v_padding'] = $result['still_parameters']['v_padding'];
+      $result['tag'] = $result['still_parameters']['tag'];
+
+      $mediafile = mediamosa_asset_mediafile::get($mediafile_id, NULL, array(mediamosa_asset_mediafile_db::APP_ID));
+      $app_id = $mediafile[mediamosa_asset_mediafile_db::APP_ID];
+
+      // Pre-defined ratios.
+      $sizes = array(
+        'sqcif' => '128x96', 'qcif' => '176x144', 'cif' => '352x288', '4cif' => '704x576',
+        'qqvga' => '160x120', 'qvga' => '320x240', 'vga' => '640x480', 'svga' => '800x600',
+        'xga' => '1024x768', 'uxga' => '1600x1200', 'qxga' => '2048x1536', 'sxga' => '1280x1024',
+        'qsxga' => '2560x2048', 'hsxga' => '5120x4096', 'wvga' => '852x480', 'wxga' => '1366x768',
+        'wsxga' => '1600x1024', 'wuxga' => '1920x1200', 'woxga' => '2560x1600',
+        'wqsxga' => '3200x2048', 'wquxga' => '3840x2400', 'whsxga' => '6400x4096',
+        'whuxga' => '7680x4800', 'cga' => '320x200', 'ega' => '640x350', 'hd360' => '640x360',
+        'hd480' => '852x480', 'hd720' => '1280x720', 'hd1080' => '1920x1080',
+      );
+
+      // Find target size.
+      if (isset($sizes[$query_job['size']])) {
+        $target_size = $sizes[$query_job['size']];
+      }
+      else {
+        // Use size of still parameters instead.
+        $target_size = $result['still_parameters']['size'];
+
+        // Check the size.
+        if (!preg_match('/(\d+)x(\d+)/', $target_size)) {
+          // If there is a still default size for the client app available,
+          // then use that instead.
+          $target_size = mediamosa_app::get_still_default_size($app_id);
+          if (!$target_size) {
+            // Get the video size.
+            $target_size = mediamosa_asset_mediafile::get_size($mediafile_id);
+          }
+        }
+      }
+
+      // First get source width and height.
+      $metadata = mediamosa_asset_mediafile_metadata::get_with_mediafileid($mediafile_id, array(
+        array(
+          'prop_name' => mediamosa_asset_mediafile_metadata::WIDTH,
+          'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_INT,
+        ),
+        array(
+          'prop_name' => mediamosa_asset_mediafile_metadata::HEIGHT,
+          'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_INT,
+        ),
+      ));
+      $width = $metadata[mediamosa_asset_mediafile_metadata::WIDTH];
+      $height = $metadata[mediamosa_asset_mediafile_metadata::HEIGHT];
+      $still_padding = mediamosa_app::get_still_padding_value($app_id);
+
+      // Get the parameter settings.
+      $calc_aspect_ratio = mediamosa_gd::calcAspectRatio($width, $height, $target_size, $result['h_padding'], $result['v_padding'], $still_padding == mediamosa_app_db::STILL_PADDING_YES);
+
+      // Set result.
+      if ($calc_aspect_ratio) {
+        $result['size'] = $calc_aspect_ratio['width'] . 'x' . $calc_aspect_ratio['height'];
+        $result['h_padding'] = $calc_aspect_ratio['h_padding'];
+        $result['v_padding'] = $calc_aspect_ratio['v_padding'];
+      }
+      else {
+        if ($width && $height) {
+          $result['size'] = $width . 'x' . $height;
+        }
+        else {
+          $result['size'] = '640x360';
+        }
+        $result['h_padding'] = 0;
+        $result['v_padding'] = 0;
+      }
+    }
+    else {
+      mediamosa_debug::log('Something went wrong in the analyse script!', array(), 'Toon - STILL');
+      // Something went wrong in the analyse script.
+      // Fall back to the default values.
+      $result['frametime'] = mediamosa_settings::STILL_DEFAULT_FRAME_TIME;
+      $result['size'] = '640x360';
+      $result['h_padding'] = 0;
+      $result['v_padding'] = 0;
+      $result['blackstill_check'] = 'FALSE';
+      $result['tag'] = '';
+    }
+
+    return $result;
   }
 
 }

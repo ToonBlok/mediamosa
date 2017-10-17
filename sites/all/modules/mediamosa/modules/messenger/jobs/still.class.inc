@@ -163,12 +163,13 @@ class still
     $mediafile_id_source = $job['mediafile_id'];
     $execution_string = '';
 
-    $job_parameters = $this->get_job_parameters($job['job_id'], $job['mediafile_id']);
+    //$job_parameters = $this->get_job_parameters($job['job_id'], $job['mediafile_id']);
     // Wait with replacing until stills work, that way you can spot mistakes right away.
+    $job_parameters = $job['still_parameters'];
 
     $job_info = [];
     $job_info['jobserver_job_id'] = 13;
-    $job_info['size'] = $job_parameters['size'];
+    $job_info['size'] = $job['size'];
     $job_info['frametime'] = $job_parameters['frametime'];
     $job_info['h_padding'] = $job_parameters['h_padding'];
     $job_info['v_padding'] = $job_parameters['v_padding'];
@@ -560,7 +561,7 @@ class still
 
     // Get something from mediamosa_still_db
     $query_job = mediamosa_job_still::get($job_id);
-    mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'Toon - STILL' );
+//    mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'Toon - STILL' );
 
     if ($query_job) {
       $result['blackstill_check'] = $query_job['blackstill_check'];

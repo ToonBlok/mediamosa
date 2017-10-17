@@ -901,7 +901,7 @@ class mediamosa_job_server {
 
     $job_info = mediamosa_job_server_still::get($jobserver_job_id);
     $job_info += mediamosa_job_server::get($jobserver_job_id);
-    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'Toon' );
+//    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'Toon' );
 
 //    mediamosa_debug::log('De Mimetype is: ' . $mime_type, array(), 'Toon');
 
