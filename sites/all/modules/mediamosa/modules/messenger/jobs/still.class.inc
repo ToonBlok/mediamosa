@@ -560,6 +560,7 @@ class still
 
     // Get something from mediamosa_still_db
     $query_job = mediamosa_job_still::get($job_id);
+    mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'Toon - STILL' );
 
     if ($query_job) {
       $result['blackstill_check'] = $query_job['blackstill_check'];
@@ -725,7 +726,6 @@ class still
       return mediamosa_job_server_db::JOB_STATUS_FAILED;
     }
     // Check if the frame has any usefull content. We do this by checking the amount of dominant colors.
-    mediamosa_debug::log('File exists. Validate still for useful content', array(), 'Toon - STILL');
     mediamosa_job_server_still::still_validate($job_id, $base_filename);
 
     $i = 1;
@@ -745,7 +745,7 @@ class still
         mediamosa_io::rename($source_uri, $destination_uri);
         $mediafile_dest[] = $mediafile_id;
         $myvar = 1;
-        mediamosa_debug::log('Stills made: ' . $myvar, array(), 'Toon - STILL');
+//        mediamosa_debug::log('Stills made: ' . $myvar, array(), 'Toon - STILL');
         $myvar += 1;
       }
       else {
@@ -757,7 +757,7 @@ class still
     }
     mediamosa_io::unlink(mediamosa_storage::get_realpath_status_file($job_id));
 
-    mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL' );
+//    mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL' );
     // Data to update.
     $fields = array(
       // Toon: Original
@@ -921,7 +921,7 @@ class still
     //
     // Add record to the mediafile metadata table.
     if (is_array($filenames)) {
-      mediamosa_debug::log('$filenames was determined as an array.', array(), 'Toon - STILL');
+//      mediamosa_debug::log('$filenames was determined as an array.', array(), 'Toon - STILL');
       //mediamosa_debug::log_export($filenames, WATCHDOG_NOTICE, 'Toon - STILL' );
 
       $frametime = $still_parameters['frametime'];
@@ -937,7 +937,6 @@ class still
       }
       $i = 0;
       foreach ($filenames as $filename) {
-        mediamosa_debug::log('I pass to create: ' . $filename, array(), 'Toon – STILL');
         mediamosa_asset_mediafile_still::create($asset_id, $filename, $app_id, $owner, '', $order, !$order, $still_parameters, ($scenes == array() ? $sec : $scenes[$i]), $job['mediafile_id'], $tag);
 
         $order++;
