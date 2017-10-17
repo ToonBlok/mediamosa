@@ -7,9 +7,10 @@ use PhpAmqpLib\Message\AMQPMessage;
 class jobcore{
 
   function __construct($server_type) {
-    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
+//    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
     $this->analyze = new analyze();
     $this->still = new still();
+    $this->transcode = new transcode();
     $this->server_type = $server_type;
     $this->listen();
   }
@@ -26,7 +27,6 @@ class jobcore{
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $job = unserialize($msg->body);
       echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      //var_dump($job);
 
       $this->start_job($job);
 
@@ -58,7 +58,7 @@ class jobcore{
         $this->still->update($job);
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-
+        $this->transcode->start($job);
         break;
     }
 

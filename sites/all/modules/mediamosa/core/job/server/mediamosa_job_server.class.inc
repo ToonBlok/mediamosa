@@ -360,7 +360,6 @@ class mediamosa_job_server {
 
     // Based on jobtype we execute the job.
     $execution_string = '';
-    mediamosa_debug::log($job_type . __CLASS__, array(), 'Toon');
     switch ($job_type) {
       case mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
         // Make sure the tmp transcode directory exists.

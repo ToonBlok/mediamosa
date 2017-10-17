@@ -29,13 +29,7 @@ class scheduler {
     // else:
     //   start servers (set their value on ON)
 
-
-
-
-
-
-
-    $servers = $this->get_enabled_job_processor();
+    //$servers = $this->get_enabled_job_processor();
   }
 
   function get_enabled_job_processor(array $enabled_status = array(mediamosa_server_db::SERVER_STATUS_ON, mediamosa_server_db::SERVER_STATUS_CLOSE)) {
@@ -122,25 +116,168 @@ class scheduler {
     )->fetchAll();
 
     foreach ($jobs as $job) {
-      if ($job['job_type'] == 'STILL') {
-        $job_parameters = $this->get_job_parameters($job['job_id'], $job['mediafile_id']);
-        $job['blackstill_check'] = $job_parameters['blackstill_check'];
-        $job['still_parameters'] = $job_parameters['still_parameters'];
-        $job['size'] = $job_parameters['size'];
+
+      switch ($job['job_type']) {
+        case mediamosa_job_db::JOB_TYPE_STILL:
+          $job_parameters = $this->get_job_parameters($job);
+          $job['blackstill_check'] = $job_parameters['blackstill_check'];
+          $job['still_parameters'] = $job_parameters['still_parameters'];
+          $job['size'] = $job_parameters['size'];
+          break;
+        case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+          $job_parameters = $this->get_job_parameters($job);
+//          $this->get_transcode_exec($job['job_id'], $job['mediafile_id']);
+          break;
       }
+
       mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'Toon - STILL' );
 
       $this->send($job);
     }
   }
 
+  /**
+   * Generate the string that is used for the vpx_transcode script.
+   *
+   * @param string $jobserver_job_id
+   * @param string $mediafile_id
+   */
+  function get_transcode_exec($jobserver_job_id, $mediafile_id) {
+
+    // Get it.
+    $job_server_transcode = mediamosa_job_server_transcode::get($jobserver_job_id);
+    mediamosa_debug::log_export($job_server_transcode, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+
+    if (empty($job_server_transcode)) {
+      mediamosa_job_server::log_mediafile($mediafile_id, 'Transcode job not found, jobserver_id: @jobserver_id', array('@jobserver_id' => $jobserver_job_id));
+      return '';
+    }
+
+    $tool = $job_server_transcode[mediamosa_job_server_transcode_db::TOOL];
+    $file_extension = $job_server_transcode[mediamosa_job_server_transcode_db::FILE_EXTENSION];
+    $command = $job_server_transcode[mediamosa_job_server_transcode_db::COMMAND];
+
+    // Get the mediafile.
+    $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id);
+
+    // Create parameter string from the command.
+    $commands = mediamosa_transcode_profile::commandToArray($command);
+
+    // Build the parameter string.
+    $parameters = array();
+    foreach ($commands as $name => $value) {
+      if ($value == mediamosa_tool_params_db::ALLOWED_VALUE_FOR_SWITCH) {
+        $value = '';
+      }
+      $parameters[] = $name . ' ' . $value;
+    }
+
+    // Rebuild.
+    $parameter_string = implode(' ', $parameters);
+
+    // The name of the status file is '<job_id>.status'.
+    $job_server = mediamosa_job_server::get($jobserver_job_id);
+    $status_file = mediamosa_storage::get_realpath_status_file($job_server[mediamosa_job_server_db::JOB_ID]);
+
+    // Empty.
+    $execution_string = '';
+
+    // Combine based on selection.
+    switch ($tool) {
+      // TODO: move to tool.
+      case 'ffmpeg':
+        $parameter_string = trim($parameter_string);
+        if (!empty($parameter_string)) {
+          $parameter_string = escapeshellarg($parameter_string);
+        }
+
+        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_server[mediamosa_job_server_db::JOB_ID], $file_extension, $parameter_string);
+        break;
+
+      default:
+        // Now check if for this tool the hook exists.
+        $class_name = 'mediamosa_tool_' . $tool;
+
+        // FIXME:
+        // This code here is first attempt to rewrite the jobs module in more
+        // flexible one. In future ::generate_transcode() is called directly and
+        // jobs will no longer worry about exec strings.
+        // Will start moving all ffmpeg code out of core into ffmpeg tool very
+        // soon.
+
+        // Now see if transcode function is found.
+        if (class_exists($class_name) && method_exists($class_name, 'get_transcode_exec')) {
+          $args = array(
+            // Job ID.
+            'job_id' => $job_server[mediamosa_job_server_db::JOB_ID],
+            // ID of mediafile to transcode.
+            'mediafile_id' => $mediafile_id,
+            // File extension of dest.
+            'file_extension' => $file_extension,
+            // Parameter string for cmd.
+            'parameter_string' => $parameter_string,
+            // the data dir in sannas (extra).
+            'path_mount_point_data' => mediamosa_storage::get_local_mediafile_path($mediafile),
+            // Path to the transcode file.
+            'location_dest_file' => mediamosa_storage::get_realpath_temporary_file($job_server[mediamosa_job_server_db::JOB_ID]),
+            // Location of source mediafile.
+            'location_source_file' => mediamosa_storage::get_realpath_mediafile($mediafile),
+            // Location of the status_file.
+            'status_file' => $status_file,
+          );
+
+          // PHP 5.2.3 or higher.
+          $execution_string = call_user_func($class_name . '::get_transcode_exec', $args);
+        }
+    }
+
+    // Unknown.
+    if (empty($execution_string)) {
+      return strtr('{ echo "Status: error"; echo "Errors: Error"; } > @status', array(
+        '@status' => $status_file,
+      ));
+
+      // One tool has been found. Process started. Return now.
+    }
+
+    return $execution_string;
+  } // End get_transcode_exec()
+
   // Toon: Is modelled exactly after the real method
-  function get_job_parameters($job_id, $mediafile_id) {
+  function get_job_parameters($job) {
+    $job_id = $job['job_id'];
+    $mediafile_id = $job['mediafile_id'];
+    $job_type = $job['job_type'];
+
+
+
+//    switch ($job_type) {
+//      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+//        // Get job transcode.
+//        $job_transcode = mediamosa_job_transcode::get($job_id);
+//
+//        $result['profile_id'] = $job_transcode[mediamosa_job_transcode_db::TRANSCODE_PROFILE_ID];
+//        $result['tool'] = $job_transcode[mediamosa_job_transcode_db::TOOL];
+//        $result['file_extension'] = $job_transcode[mediamosa_job_transcode_db::FILE_EXTENSION];
+//        $result['command'] = self::map_parameters($job_transcode[mediamosa_job_transcode_db::TOOL], $job_transcode[mediamosa_job_transcode_db::COMMAND], $mediafile_id);
+//        break;
+//
+//      case mediamosa_job_db::JOB_TYPE_STILL:
+//
+//        break;
+//
+//    }
+
+
+
+
+
+
+
     $result = array();
 
-    // Get something from mediamosa_still_db
     $query_job = mediamosa_job_still::get($job_id);
-//    mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'Toon - STILL' );
 
     if ($query_job) {
       $result['blackstill_check'] = $query_job['blackstill_check'];
