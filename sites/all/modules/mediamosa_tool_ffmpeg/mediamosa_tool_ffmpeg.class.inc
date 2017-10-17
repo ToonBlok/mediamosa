@@ -90,6 +90,13 @@ class mediamosa_tool_ffmpeg {
    *   id of mediafile.
    */
   public static function get_generate_still_exec($job_info, $mediafile_id_source) {
+    //mediamosa_debug::log('$job_info: ', array(), 'Toon');
+    //mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'Toon' );
+    //mediamosa_debug::log('$job_parameters[still_parameters]: ', array(), 'Toon');
+    //mediamosa_debug::log_export($job_parameters['still_parameters'], WATCHDOG_NOTICE, 'Toon' );
+    //echo '$job_info2: ';
+    //var_dump($job_info);
+
 
     $execution_string = '';
 

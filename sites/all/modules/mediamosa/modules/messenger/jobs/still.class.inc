@@ -173,10 +173,10 @@ class still
     $job_info['v_padding'] = $job_parameters['v_padding'];
     $job_info['blackstill_check'] = $job_parameters['h_padding'];
     $job_info['still_parameters'] = $job_parameters['still_parameters'];
+    $job_info['job_id'] = $job['job_id'];
     $job_info['created'] = 13;
     $job_info['changed'] = 13;
     $job_info['install_id'] = 13;
-    $job_info['job_id'] = $job['job_id'];
     $job_info['status'] = 13;
     $job_info['progress'] = 13;
     $job_info['job_type'] = 13;
@@ -186,6 +186,16 @@ class still
     $job_info['started'] = 13;
     $job_info['finished'] = 13;
     $job_info['error_description'] = 13;
+
+    $mime_type = mediamosa_asset_mediafile_metadata::get_mediafile_metadata_char($mediafile_id_source, mediamosa_asset_mediafile_metadata::MIME_TYPE);
+    mediamosa_debug::log('mime_type: ' . $mime_type, array(), 'Toon - STILL');
+
+    foreach (module_implements('mediamosa_tool_can_generate_still') as $module) {
+      if (module_invoke($module, 'mediamosa_tool_can_generate_still', $mime_type)) {
+        // Get generate still exec.
+        return module_invoke($module, 'mediamosa_tool_get_generate_still_exec', $job_info, $mediafile_id_source);
+      }
+    }
 
     if ($job_info['job_id']) {
       $frametime = (int) $job_info[mediamosa_job_server_still_db::FRAMETIME];
