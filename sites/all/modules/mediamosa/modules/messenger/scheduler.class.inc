@@ -134,16 +134,20 @@ class scheduler {
 
       // ###
       // Only for debug purpose
-      $transcode = new transcode();
-      $transcode->start($job);
-      // Set job in progress.
-//      $this->set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, '0.000');
-      $transcode->update($job);
-      $transcode->store_new_mediafile($job);
+//      $transcode = new transcode();
+//      $transcode->start($job);
+////      $this->set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, '0.000'); // Set job in progress.
+//      $transcode->update($job);
+//      $transcode->store_new_mediafile($job); // Is already called inside update...
 
-      return;
+//      return;
       // ###
-      $this->send($job);
+      try {
+        $this->send($job);
+      } catch (Exception $e) {
+        mediamosa_debug::log($e, array(), 'Toon - SCHEDULER');
+      }
+
     }
   }
 

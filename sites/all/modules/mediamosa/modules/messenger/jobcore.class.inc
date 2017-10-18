@@ -58,7 +58,9 @@ class jobcore{
         $this->still->update($job);
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-        $this->transcode->start($job);
+//        is called in job scheduler for now
+//        $this->transcode->start($job);
+//        $this->transcode->update($job);
         break;
     }
 
