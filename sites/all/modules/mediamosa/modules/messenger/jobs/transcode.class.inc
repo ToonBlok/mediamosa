@@ -4,7 +4,7 @@ class transcode
 {
   function __construct()
   {
-    $this->debug = true;
+    $this->debug = false;
   }
 
   function start($job){
@@ -16,7 +16,9 @@ class transcode
     $execution_string = $this->get_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
 
     $exec_output = mediamosa_io::exec($execution_string);
-    $link_asset = mediamosa_job_server::get_asset_link($job_id);
+    mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+
+    $link_asset = mediamosa_job_server::get_asset_link($job_id); // THIS GOES INTO DB!!!!!!!!!!!!!!!!!!
     mediamosa_job_server::log_mediafile($mediafile_id, 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
       array(
         '@job_type' => $job_type,
@@ -88,7 +90,10 @@ class transcode
           $parameter_string = escapeshellarg($parameter_string);
         }
 
+        // ORIGINAL
         $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $jobserver_job_id, $file_extension, $parameter_string);
+        // MODIFIED
+//        $execution_string = sprintf('%s %s %s %s %s %s %s', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $jobserver_job_id, $file_extension, $parameter_string);
         break;
 
       default:
@@ -137,6 +142,7 @@ class transcode
       // One tool has been found. Process started. Return now.
     }
 
+
     return $execution_string;
   } // End get_transcode_exec()
 
@@ -153,11 +159,14 @@ class transcode
   function update($job) {
     $job_type = $job[mediamosa_job_server_db::JOB_TYPE];
     $job_id = $job[mediamosa_job_server_db::JOB_ID];
-    $mediafile_id_src = $job[mediamosa_job_server_db::MEDIAFILE_ID_SRC]; // hmmmmmmm
+    $mediafile_id_src = $job[mediamosa_job_db::MEDIAFILE_ID]; // hmmmmmmm
     $status = mediamosa_job_db::JOB_STATUS_INPROGRESS; // Default status
 
     // Read the contents of the status file in an array.
-    $job_status = mediamosa_job_server::get_status_contents($job_id); // Is this even kept up-to-date?
+    $job_status['Status'] = 'aa';
+    while ($job_status['Status'] != 'done') { // Is this a good temporary solution????????
+      $job_status = mediamosa_job_server::get_status_contents($job_id); // Is this even kept up-to-date?
+    }
 
     // No status file found, we just have to wait.
     if (empty($job_status['Status'])) {
@@ -170,7 +179,7 @@ class transcode
       $status = mediamosa_job_db::JOB_STATUS_FINISHED;
 
       // Store the transcode.
-      mediamosa_job_server::store_new_mediafile($job_id);
+      $this->store_new_mediafile($job);
 
       // Log it.
 //          mediamosa_job_server::log_mediafile($mediafile_id_src, 'End job @job_type, Job ID: @job_id, status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $status));
@@ -182,6 +191,7 @@ class transcode
 
       // Generate event transcode finished.
       mediamosa::rules_invoke_event('mediamosa_event_transcode_finished', $mediafile_id_src);
+//      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'Toon - TRANSCODE');
     }
     elseif ($job_status['Status'] == 'error' && (empty($job_status['Errors']) || $job_status['Errors'] != 'none')) {
       $status = mediamosa_job_server_db::JOB_STATUS_FAILED;
@@ -261,38 +271,11 @@ class transcode
   function store_new_mediafile($job) {
     $job_id = $job['job_id'];
     $transcode_parameters = unserialize($job['transcode_parameters']);
-
-    // Get the job.
-//    $job = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT));
+//    $job = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT)); // Get the job.
     $app_id = $job[mediamosa_job_db::APP_ID];
-
-    // Generate new mediafile ID.
-    $mediafile_id = mediamosa_db::uuid($job_id);
-
-//    $job_server = mediamosa_db::db_query(
-//      'SELECT mjst.#command, mjst.#file_extension, mjs.#mediafile_id
-//       FROM {#mediamosa_job_server_transcode} AS mjst
-//       JOIN {#mediamosa_job_server} AS mjs ON mjs.#jobserver_job_id = mjst.#jobserver_job_id
-//       WHERE mjs.#job_id = :job_id',
-//      array(
-//        '#command' => mediamosa_job_server_transcode_db::COMMAND,
-//        '#file_extension' => mediamosa_job_server_transcode_db::FILE_EXTENSION,
-//        '#mediafile_id' => mediamosa_job_server_db::MEDIAFILE_ID_SRC,
-//        '#mediamosa_job_server_transcode' => mediamosa_job_server_transcode_db::TABLE_NAME,
-//        '#mediamosa_job_server' => mediamosa_job_server_db::TABLE_NAME,
-//        '#jobserver_job_id' => mediamosa_job_server_db::ID,
-//        '#job_id' => mediamosa_job_server_db::JOB_ID,
-//        ':job_id' => $job_id,
-//      )
-//    )->fetchAssoc();
-
-//    if ($job_server == FALSE) {
-//      mediamosa_job_server::log('Transcode job not fould for job with ID @job_id', array('@job_id' => $job_id));
-//      return;
-//    }
-
-    // Get file extension.
+    $mediafile_id = mediamosa_db::uuid($job_id); // Generate new mediafile ID.
     $file_extension = $transcode_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
+    mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'Toon - TRANSCODE');
 
     // Get the filenames.
     $file_status_uri = mediamosa_storage::get_uri_status_file($job_id);
@@ -321,4 +304,15 @@ class transcode
     // Log it.
 //    mediamosa_job_server::log_mediafile($job_server[mediamosa_job_server_db::MEDIAFILE_ID_SRC], "Job with ID @job_id ready, new mediafile stored as '@uri' (@path).", array('@job_id' => $job_id, '@uri' => $file_destination_uri, '@path' => mediamosa_io::realpath($file_destination_uri)));
   }
+
+
 }
+
+
+
+
+
+
+
+
+

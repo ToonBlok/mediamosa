@@ -6,5 +6,6 @@ function mediamosa_messenger_cron()
 
   $scheduler = new scheduler();
   $scheduler->round_up_jobs();
+  $scheduler->update_jobs();
 }
 

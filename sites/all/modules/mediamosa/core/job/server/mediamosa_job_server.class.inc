@@ -423,6 +423,7 @@ class mediamosa_job_server {
     }
     else {
       $exec_output = mediamosa_io::exec($execution_string);
+//      mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
       $link_asset = self::get_asset_link($job_id);
       self::log_mediafile($mediafile_id_src, 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
         array(
@@ -535,6 +536,7 @@ class mediamosa_job_server {
 
           // Generate event transcode finished.
           mediamosa::rules_invoke_event('mediamosa_event_transcode_finished', $mediafile_id_src);
+          mediamosa_debug::log('ORIGINAL CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'Toon - TRANSCODE');
         }
         elseif ($job_status['Status'] == 'error' && (empty($job_status['Errors']) || $job_status['Errors'] != 'none')) {
           $status = mediamosa_job_server_db::JOB_STATUS_FAILED;
@@ -883,6 +885,7 @@ class mediamosa_job_server {
       // One tool has been found. Process started. Return now.
     }
 
+    mediamosa_debug::log('Exec string in original code: ' . $execution_string, array(), 'Toon - TRANSCODE');
     return $execution_string;
   }
 
@@ -1124,6 +1127,15 @@ class mediamosa_job_server {
     $file_status_uri = mediamosa_storage::get_uri_status_file($job_id);
     $file_transcode_uri = mediamosa_storage::get_uri_temporary_file($job_id . '.' . $file_extension);
     $file_destination_uri = mediamosa_storage::create_local_mediafile_uri($app_id, $mediafile_id);
+
+    $myarr = [];
+    $myarr['name of array'] = 'myarr';
+    $myarr['file_status_uri'] = $file_status_uri;
+    $myarr['file_transcode_uri'] = $file_transcode_uri;
+    $myarr['file_destination_uri'] = $file_destination_uri;
+    $myarr['file_extension'] = $file_extension;
+    mediamosa_debug::log_export($myarr, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+
 
     // Rename transcoded file to new dest.
     mediamosa_io::rename($file_transcode_uri, $file_destination_uri);

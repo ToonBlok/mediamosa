@@ -97,9 +97,7 @@ class scheduler {
     $this->connection->close();
   }
 
-  function round_up_jobs(){
-    mediamosa_debug::log('Start method ' . __METHOD__, array(), 'Toon');
-
+  function ask_db($status) {
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id
             FROM {#mediamosa_job} AS mj
             WHERE mj.#job_status = :status';
@@ -109,11 +107,32 @@ class scheduler {
       '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
     ));
 
-    $jobs = mediamosa_db::db_query($sql,
+    return mediamosa_db::db_query($sql,
       array(
-        ':status' => mediamosa_job_db::JOB_STATUS_WAITING
+        ':status' => $status
       )
     )->fetchAll();
+
+  }
+
+  function round_up_jobs(){
+    mediamosa_debug::log('Start method ' . __METHOD__, array(), 'Toon');
+
+    $jobs = $this->ask_db(mediamosa_job_db::JOB_STATUS_WAITING);
+//    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id
+//            FROM {#mediamosa_job} AS mj
+//            WHERE mj.#job_status = :status';
+//
+//    $sql = strtr($sql, array(
+//      '#job_status' => mediamosa_job_db::JOB_STATUS,
+//      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
+//    ));
+//
+//    $jobs = mediamosa_db::db_query($sql,
+//      array(
+//        ':status' => mediamosa_job_db::JOB_STATUS_WAITING
+//      )
+//    )->fetchAll();
 
     foreach ($jobs as $job) {
 
@@ -126,22 +145,19 @@ class scheduler {
           break;
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
           $job['transcode_parameters'] = serialize($this->get_job_parameters($job));
-
+          // ########################################################################
+//          // Just useful to call in scheduler to use debug
+//          $transcode = new transcode();
+//          $transcode->start($job);
+////      $this->set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, '0.000'); // Set job in progress.
+//          $transcode->update($job);
+//          // Mediafile aanmaken hoort echt in scheduler thuis:
+////          $this->start_server_job_media();
+////          return;
+          // ########################################################################
           break;
       }
 
-//      mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'Toon - STILL' );
-
-      // ###
-      // Only for debug purpose
-//      $transcode = new transcode();
-//      $transcode->start($job);
-////      $this->set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, '0.000'); // Set job in progress.
-//      $transcode->update($job);
-//      $transcode->store_new_mediafile($job); // Is already called inside update...
-
-//      return;
-      // ###
       try {
         $this->send($job);
       } catch (Exception $e) {
@@ -151,6 +167,9 @@ class scheduler {
     }
   }
 
+  function update_jobs(){
+
+  }
 
   // Toon: Is modelled exactly after the real method
   function get_job_parameters($job) {
@@ -272,12 +291,126 @@ class scheduler {
     return $result;
   }
 
+//  // Imitates update_server_job_status()
+//  public static function update_job_status($uri) {
+//
+//    // Get response.
+//    // Toon: Returns XML with waiting jobs from mediamosa_server_job
+//    $response = mediamosa_http::do_internal_call($uri, 'server/joblist');
+//    if ($response->code != '200') {
+//      self::log('Call to server/joblist did not return a 200 result (header: @header)', array('@header' => var_export($response, TRUE)));
+//      return;
+//    }
+//
+//    try {
+//      // Toon: Parse the raw XML in $response to $response_data, a object that contains all values from the XML data in $response.
+//      $response_data = new mediamosa_connector_response($response->data);
+//    }
+//    catch (Exception $e) {
+//      mediamosa_debug::log_export($response->data);
+//      self::log(
+//        'Parse XML: @msg (@resp)',
+//        array(
+//          '@msg' => $e->getMessage(),
+//          '@resp' => print_r($response->data, TRUE),
+//        ),
+//        WATCHDOG_ERROR
+//      );
+//      return;
+//    }
+//
+//    // Toon: The jobs here come from the mediamosa_server_job table
+//    for ($i = 0; $i < $response_data->header->item_count; $i++) {
+//      // Get current status.
+//      // Toon: Retrieve the actual job
+//      // de job in de loop waar hij nu is.
+//      $job = mediamosa_job::get((string) $response_data->items->item[$i]->job_id);
+//
+//      // Toon: Get some fields of this job, store them in the $fiels array.
+//      // Toon: Is verzameling alle wijzingen
+//      $fields = array(
+//        mediamosa_job_db::JOB_STATUS => $response_data->items->item[$i]->status,
+//        mediamosa_job_db::PROGRESS => $response_data->items->item[$i]->progress,
+//        mediamosa_job_db::ERROR_DESCRIPTION => $response_data->items->item[$i]->error_description,
+//      );
+//
+//      // Add started time.
+//      if ($response_data->items->item[$i]->started != '') {
+//        $fields[mediamosa_job_db::STARTED] = $response_data->items->item[$i]->started;
+//      }
+//
+//      // Add finished time.
+//      if ($response_data->items->item[$i]->finished != '') {
+//        $fields[mediamosa_job_db::FINISHED] = $response_data->items->item[$i]->finished;
+//      }
+//
+//      // Add changed.
+//      $fields = mediamosa_db::db_update_enrich($fields);
+//
+//      // Update.
+//      // Toon: mediamosa_job en mediamosa_server_job both contain the same job, however the row in
+//      // mediamosa_server_job table is more up-to-date and the row in mediamosa_job has to be updated.
+//      mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//        ->fields($fields)
+//        ->condition(mediamosa_job_db::ID, (string) $response_data->items->item[$i]->job_id)
+//        ->execute();
+//
+//      // Trigger url.
+//      // Toon: Deze methode notified the frontend wanneer een transcoding job voltooid is. $job is de oude waarde, $responsedate is net geupdate in de db statement hierboven.
+//      // Toon: recording 20170913_004
+//      mediamosa_job::notify_transcoding($job[mediamosa_job_db::JOB_STATUS], (string) $response_data->items->item[$i]->status, (string) $response_data->items->item[$i]->job_id);
+//
+//      if ($response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_FINISHED ||
+//        $response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_FAILED ||
+//        $response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_CANCELLED) {
+//
+//        // Remove link between server and job.
+//        // Toon: Server is klaar met job, dus moet uit server_job tabel weggehaald moeten worden. de server_job tabel is de tabel die aangeeft welke jobs er uit gedeeld zijn aan deze server
+//        mediamosa_server_job::delete_by_jobid((string) $response_data->items->item[$i]->job_id);
+//
+//        // Remove job on jobserver.
+//        self::remove_job_on_server($uri, (string) $response_data->items->item[$i]->job_id);
+//      }
+//
+//      if ($response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_FINISHED) {
+//        switch ($response_data->items->item[$i]->job_type) {
+//          case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+//            // Statistics.
+//            // statistiek bij houden hoeveel jobs er zijn gestart
+//            mediamosa_statistics::insert_job_transcode($response_data->items->item[$i]->mediafile_dest, $job[mediamosa_job_db::ID]);
+//            //
+//            // If the transcode job is completed, add it to the mediafile.
+//            self::parse_finished_transcode((string) $response_data->items->item[$i]->job_id, (string) $response_data->items->item[$i]->mediafile_src, (string) $response_data->items->item[$i]->mediafile_dest);
+//            break;
+//
+//          case mediamosa_job_db::JOB_TYPE_ANALYSE:
+//            // If the analyse job is completed, add it to the technical
+//            // metadata.
+//            mediamosa_asset_mediafile_metadata::store_analyse(
+//              (string) $response_data->items->item[$i]->job_id,
+//              unserialize((string) $response_data->items->item[$i]->analyse_result)
+//            );
+//            break;
+//
+//          case mediamosa_job_db::JOB_TYPE_STILL:
+//            // If the still job is completed, add the still to db.
+//            // We serialize it, because of the multiple stills.
+//            mediamosa_debug::log_export($response_data->items->item[$i]->mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL' );
+//            self::add_still_to_db((string) $response_data->items->item[$i]->job_id, unserialize((string) $response_data->items->item[$i]->mediafile_dest));
+//            break;
+//        }
+//      }
+//      elseif ($response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_FAILED ||
+//        $response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_CANCELLED) {
+//
+//        switch ($response_data->items->item[$i]->job_type) {
+//          case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+//            // When transcode has failed.
+//            self::parse_failed_transcode((string) $response_data->items->item[$i]->job_id);
+//            break;
+//        }
+//      }
+//    }
+//  }
 
-
-  /**
-   * Save a new mediafile.
-   *
-   * @param int $job_id
-   *   The job ID.
-   */
 }
