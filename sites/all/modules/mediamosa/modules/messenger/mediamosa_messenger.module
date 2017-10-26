@@ -2,7 +2,7 @@
 
 function mediamosa_messenger_cron()
 {
-  mediamosa_debug::log('Start ' . __METHOD__, array(), 'Toon');
+  mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
   $scheduler = new scheduler();
   $scheduler->round_up_jobs();

@@ -743,6 +743,7 @@ class mediamosa_job_server {
   public static function get_analyse_string($mediafile_id, $job_id) {
 
     // Get the job.
+    // een hint heeft invloed op mp4 die gegenereerd werd, voor andere executable die hints gaf of die streamable was ja of nee
     $job = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT));
     $app_id = $job[mediamosa_job_db::APP_ID];
     $hint = $job[mediamosa_job_db::HINT];
@@ -1129,11 +1130,12 @@ class mediamosa_job_server {
     $file_destination_uri = mediamosa_storage::create_local_mediafile_uri($app_id, $mediafile_id);
 
     $myarr = [];
-    $myarr['name of array'] = 'myarr';
+    $myarr['name of array'] = '25 oct myarr';
     $myarr['file_status_uri'] = $file_status_uri;
     $myarr['file_transcode_uri'] = $file_transcode_uri;
     $myarr['file_destination_uri'] = $file_destination_uri;
     $myarr['file_extension'] = $file_extension;
+    $myarr['job'] = serialize($job);
     mediamosa_debug::log_export($myarr, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
 
 

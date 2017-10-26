@@ -305,10 +305,14 @@ class mediamosa_asset_mediafile_metadata {
     mediamosa_job::store_error_description($job_id, $ffmpeg_output);
 
     $job = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
+
+    mediamosa_debug::log('Mediafile_dest at the moment of truth: ' . $job['mediafile_dest'], array(), 'Toon - TRANSCODE');
+
     // Is it a retranscode job?
     if ($job[mediamosa_job_db::MEDIAFILE_DEST]) {
       // Get the realpath before we remove the mediafile from database.
       $mediafile_realpath_dest = mediamosa_storage::get_realpath_mediafile($job[mediamosa_job_db::MEDIAFILE_DEST]);
+      mediamosa_debug::log('$mediafile_realpath_dest: ' . $mediafile_realpath_dest . ' and $job[mediafile_dest]: ' . $job[mediamosa_job_db::MEDIAFILE_DEST], array(), 'Toon - TRANSCODE');
 
       // Delete the original so it can be overwritten.
       mediamosa_asset_mediafile::delete($job[mediamosa_job_db::MEDIAFILE_DEST]);

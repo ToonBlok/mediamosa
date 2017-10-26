@@ -292,6 +292,8 @@ class mediamosa_job_scheduler {
       // Add changed.
       $fields = mediamosa_db::db_update_enrich($fields);
 
+      //#############################################
+
       // Update.
       // Toon: mediamosa_job en mediamosa_server_job both contain the same job, however the row in
       // mediamosa_server_job table is more up-to-date and the row in mediamosa_job has to be updated.
@@ -311,6 +313,7 @@ class mediamosa_job_scheduler {
 
         // Remove link between server and job.
         // Toon: Server is klaar met job, dus moet uit server_job tabel weggehaald moeten worden. de server_job tabel is de tabel die aangeeft welke jobs er uit gedeeld zijn aan deze server
+
         mediamosa_server_job::delete_by_jobid((string) $response_data->items->item[$i]->job_id);
 
         // Remove job on jobserver.

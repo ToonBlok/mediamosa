@@ -166,6 +166,7 @@ class transcode
     $job_status['Status'] = 'aa';
     while ($job_status['Status'] != 'done') { // Is this a good temporary solution????????
       $job_status = mediamosa_job_server::get_status_contents($job_id); // Is this even kept up-to-date?
+      mediamosa_debug::log('Job ' . $job_id . ', status: ' . $job_status['Progress'] . ', errors: ' . $job_status['Errors'], array(), 'Toon - TRANSCODE');
     }
 
     // No status file found, we just have to wait.
@@ -175,6 +176,7 @@ class transcode
     }
 
     if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
+      mediamosa_debug::log('Transcode done and errors are none.', array(), 'Toon - TRANSCODE');
       // Status to finished.
       $status = mediamosa_job_db::JOB_STATUS_FINISHED;
 
@@ -261,6 +263,7 @@ class transcode
       $fields[mediamosa_job_db::ERROR_DESCRIPTION] = $error_description;
     }
 
+    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status, array(), 'Toon - TRANSCODE');
     // Update.
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
@@ -277,6 +280,9 @@ class transcode
     $file_extension = $transcode_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
     mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'Toon - TRANSCODE');
 
+    // Cleared:
+    // mediafile_id
+    //
     // Get the filenames.
     $file_status_uri = mediamosa_storage::get_uri_status_file($job_id);
     $file_transcode_uri = mediamosa_storage::get_uri_temporary_file($job_id . '.' . $file_extension);
@@ -304,6 +310,9 @@ class transcode
     // Log it.
 //    mediamosa_job_server::log_mediafile($job_server[mediamosa_job_server_db::MEDIAFILE_ID_SRC], "Job with ID @job_id ready, new mediafile stored as '@uri' (@path).", array('@job_id' => $job_id, '@uri' => $file_destination_uri, '@path' => mediamosa_io::realpath($file_destination_uri)));
   }
+
+
+
 
 
 }
