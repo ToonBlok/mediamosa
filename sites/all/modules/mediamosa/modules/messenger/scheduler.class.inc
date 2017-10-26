@@ -85,7 +85,7 @@ class scheduler {
           case mediamosa_job_db::JOB_TYPE_STILL:
 //            // If the still job is completed, add the still to db.
 //            // We serialize it, because of the multiple stills.
-//            mediamosa_debug::log_export($response_data->items->item[$i]->mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL');
+//            mediamosa_debug::log_export($response_data->items->item[$i]->mediafile_dest, WATCHDOG_NOTICE, 'T - STILL');
 //            self::add_still_to_db((string)$response_data->items->item[$i]->job_id, unserialize((string)$response_data->items->item[$i]->mediafile_dest));
             break;
         }
@@ -377,7 +377,7 @@ class scheduler {
           }
         }
         else {
-          mediamosa_debug::log('Something went wrong in the analyse script!', array(), 'Toon - STILL');
+          mediamosa_debug::log('Something went wrong in the analyse script!', array(), 'T - STILL');
           // Something went wrong in the analyse script.
           // Fall back to the default values.
           $result['frametime'] = mediamosa_settings::STILL_DEFAULT_FRAME_TIME;

@@ -1067,7 +1067,7 @@ class mediamosa_job_server {
     $fields = array(
       mediamosa_job_server_db::MEDIAFILE_DEST => serialize($mediafile_dest),
     );
-    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'Toon - STILL' );
+    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - STILL' );
 
     // Add changed.
     $fields = mediamosa_db::db_update_enrich($fields);

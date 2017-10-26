@@ -6,7 +6,7 @@ class still
   // Can only handle video/mp4 at the moment due to the specific still exec
   function start($job) {
     $execution_string = $this->get_ffmpeg_generate_still_exec($job);
-    mediamosa_debug::log('Execution string received: ' . $execution_string, array(), 'Toon - STILL');
+    mediamosa_debug::log('Execution string received: ' . $execution_string, array(), 'T - STILL');
     $exec_output = mediamosa_io::exec($execution_string);
 
 
@@ -73,7 +73,7 @@ class still
     if (mediamosa_io::file_exists($file_scene) || ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none')) {
       $status = $this->store_new_still($job);
 
-      //mediamosa_debug::log('END RESULT OF STORE STILL: ' . $status, array(), 'Toon - STILL');
+      //mediamosa_debug::log('END RESULT OF STORE STILL: ' . $status, array(), 'T - STILL');
 
       if ($status == mediamosa_job_server_db::JOB_STATUS_INPROGRESS) {
         mediamosa_job_server::log_debug_mediafile($mediafile_id, 'Running @job_type job (storing file busy), Job ID @job_id, with status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $status));
@@ -583,8 +583,8 @@ class still
 
     $append_fields = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT, mediamosa_job_db::STILL_PARAMETERS, mediamosa_job_db::OWNER_ID));
     $job = array_merge($job, $append_fields);
-    //mediamosa_debug::log('$job array was enriched in ' . __CLASS__ . ', ' . __METHOD__,  array(), 'Toon - STILL');
-    //mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'Toon - STILL' );
+    //mediamosa_debug::log('$job array was enriched in ' . __CLASS__ . ', ' . __METHOD__,  array(), 'T - STILL');
+    //mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - STILL' );
 
     $app_id = $job[mediamosa_job_db::APP_ID];
 
@@ -594,7 +594,7 @@ class still
     $filename = mediamosa_storage::get_uri_temporary_file($base_filename . sprintf(mediamosa_settings::STILL_EXTENSION, 1) . '.jpeg');
 
     if (!mediamosa_io::file_exists($filename) || !mediamosa_io::filesize($filename)) {
-      mediamosa_debug::log('STILL creation failed, file does not exist. ' . __CLASS__ . ', ' . __METHOD__ . ', on line: ' . __LINE__, array(), 'Toon - STILL');
+      mediamosa_debug::log('STILL creation failed, file does not exist. ' . __CLASS__ . ', ' . __METHOD__ . ', on line: ' . __LINE__, array(), 'T - STILL');
       // Something failed. Remove the files and fail the job.
 
       $still_error = mediamosa_error::error_code_find_description(mediamosa_error::ERRORCODE_STILL_IS_NOT_CREATABLE, array('@mediafile_id' => $mediafile_id_src));
@@ -636,7 +636,7 @@ class still
         mediamosa_io::rename($source_uri, $destination_uri);
         $mediafile_dest[] = $mediafile_id;
         $myvar = 1;
-//        mediamosa_debug::log('Stills made: ' . $myvar, array(), 'Toon - STILL');
+//        mediamosa_debug::log('Stills made: ' . $myvar, array(), 'T - STILL');
         $myvar += 1;
       }
       else {
@@ -648,7 +648,7 @@ class still
     }
     mediamosa_io::unlink(mediamosa_storage::get_realpath_status_file($job_id));
 
-//    mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL' );
+//    mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'T - STILL' );
     // Data to update.
     $fields = array(
       // Toon: Original
@@ -657,7 +657,7 @@ class still
       mediamosa_job_db::MEDIAFILE_DEST => $mediafile_dest,
     );
     // Contents are fine
-    //Omediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'Toon - STILL' );
+    //Omediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - STILL' );
 
 
     // Add changed.
@@ -674,7 +674,7 @@ class still
 
     // unserialize turns value into false so away it goes
     //$this->add_still_to_db($job, unserialize((string)$mediafile_dest)); // $job here is nothing but app_id and hint
-    //mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'Toon - STILL' );
+    //mediamosa_debug::log_export($mediafile_dest, WATCHDOG_NOTICE, 'T - STILL' );
 
     // Bug #1: mediafile_dest has the wrong contents
     $this->add_still_to_db($job, $mediafile_dest); // $job here is nothing but app_id and hint
@@ -770,7 +770,7 @@ class still
    *   The filenames of the stills.
    */
   public static function add_still_to_db($job, $filenames) {
-    mediamosa_debug::log('Entered ' . __CLASS__ . ', ' . __METHOD__, array(), 'Toon - STILL');
+    mediamosa_debug::log('Entered ' . __CLASS__ . ', ' . __METHOD__, array(), 'T - STILL');
     // Vergeet niet dat job id to string werd gedaan
     $job_id = $job['job_id'];
     $asset_id = $job['asset_id'];
@@ -812,8 +812,8 @@ class still
     //
     // Add record to the mediafile metadata table.
     if (is_array($filenames)) {
-//      mediamosa_debug::log('$filenames was determined as an array.', array(), 'Toon - STILL');
-      //mediamosa_debug::log_export($filenames, WATCHDOG_NOTICE, 'Toon - STILL' );
+//      mediamosa_debug::log('$filenames was determined as an array.', array(), 'T - STILL');
+      //mediamosa_debug::log_export($filenames, WATCHDOG_NOTICE, 'T - STILL' );
 
       $frametime = $still_parameters['frametime'];
       if (isset($still_parameters['framerate']) && is_numeric($still_parameters['framerate'])) {

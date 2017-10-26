@@ -218,6 +218,8 @@ class transcode
     }
   }
 
+
+
   function set_job_status($job, $job_status, $progress, $error_description = '', $error_description_args = array()) {
     $job_id = $job['job_id'];
     $mediafile_id = $job['mediafile_id'];

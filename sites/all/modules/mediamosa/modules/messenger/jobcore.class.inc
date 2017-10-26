@@ -53,7 +53,7 @@ class jobcore{
         $this->analyze->start($job);
         break;
       case mediamosa_job_db::JOB_TYPE_STILL:
-        mediamosa_debug::log('STILL started.', array(), 'Toon - STILL');
+        mediamosa_debug::log('STILL started.', array(), 'T - STILL');
         $this->still->start($job);
         $this->still->update($job);
         break;
