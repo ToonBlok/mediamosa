@@ -60,52 +60,6 @@ class scheduler {
     }
   }
 
-  // Modelled after update_server_job_status
-  function update_jobs() {
-    $jobs = $this->get_jobs(mediamosa_job_db::JOB_STATUS_FINISHED);
-
-    foreach ($jobs as $job) {
-      $this->notify_transcoding($job['status'], $job['job_id']);
-
-      if ($job['job_id'] == 706) {
-        echo 'ok';
-      }
-
-      if ($job['status'] == mediamosa_job_db::JOB_STATUS_FINISHED) {
-        switch ($job['job_type']) {
-          case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-//            mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
-//            // If the transcode job is completed, add it to the mediafile.
-//            $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $job['mediafile_dest']); // second was mediafile_src ???
-            break;
-          case mediamosa_job_db::JOB_TYPE_ANALYSE:
-            // If the analyse job is completed, add it to the technical
-            // metadata.
-//            mediamosa_asset_mediafile_metadata::store_analyse(
-//              (string)$response_data->items->item[$i]->job_id,
-//              unserialize((string)$response_data->items->item[$i]->analyse_result)
-//            );
-            break;
-          case mediamosa_job_db::JOB_TYPE_STILL:
-//            // If the still job is completed, add the still to db.
-//            // We serialize it, because of the multiple stills.
-//            mediamosa_debug::log_export($response_data->items->item[$i]->mediafile_dest, WATCHDOG_NOTICE, 'T - STILL');
-//            self::add_still_to_db((string)$response_data->items->item[$i]->job_id, unserialize((string)$response_data->items->item[$i]->mediafile_dest));
-            break;
-        }
-      } elseif ($job['status'] == mediamosa_job_db::JOB_STATUS_FAILED ||
-        $job['status'] == mediamosa_job_db::JOB_STATUS_CANCELLED) {
-
-        switch ($job['job_type']) {
-          case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-            // When transcode has failed.
-            $this->parse_failed_transcode((string)$job['job_id']);
-            break;
-        }
-      }
-    }
-  }
-
   function listen() {
     $server_type = 'PROGRESSION';
     $this->open_connection();
@@ -247,6 +201,16 @@ class scheduler {
     }
   }
 
+  // Where the hell does this go..............
+//} elseif ($job['status'] == mediamosa_job_db::JOB_STATUS_FAILED ||
+//  $job['status'] == mediamosa_job_db::JOB_STATUS_CANCELLED) {
+//
+//        switch ($job['job_type']) {
+//          case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+//            // When transcode has failed.
+//            $this->parse_failed_transcode((string)$job['job_id']);
+//            break;
+//        }
   /**
    * Create a link to the parent asset belonging to a given job id.
    *
@@ -1010,7 +974,7 @@ class scheduler {
 
   }
 
-  function get_job_where($id) {
+  function get_job_where($job_id) {
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
             FROM {#mediamosa_job} AS mj
             WHERE mj.#job_id = :id';
@@ -1022,7 +986,7 @@ class scheduler {
 
     return mediamosa_db::db_query($sql,
       array(
-        ':id' => $id
+        ':id' => $job_id
       )
     )->fetch();
 

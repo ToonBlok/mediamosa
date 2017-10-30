@@ -105,10 +105,6 @@ class jobcore extends mediamosa_rest_call {
 
   }
 
-  function update_job($job){
-
-  }
-
   function loop($job){
     // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
     for ($x = 0; $x < 18; $x++) {
