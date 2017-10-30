@@ -94,7 +94,8 @@ class jobcore extends mediamosa_rest_call {
       case mediamosa_job_db::JOB_TYPE_STILL:
         mediamosa_debug::log('STILL started.', array(), 'T - STILL');
         $this->still->start($job);
-        $this->still->update($job);
+        $this->loop($job);
+//        $this->still->update($job);
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $this->transcode->start($job);
@@ -116,6 +117,10 @@ class jobcore extends mediamosa_rest_call {
 
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']); // Is this even kept up-to-date?
       $this->send($job);
+
+      if ($job['new_job_status']['Status'] == 'done') {
+        break;
+      }
 
       $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
       if ($time_to_sleep > 0) {
