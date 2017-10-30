@@ -68,6 +68,7 @@ class jobcore extends mediamosa_rest_call {
       mediamosa_debug::log(' [!][' . $this->core_type . '] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       $this->start_job($job);
+      $this->loop();
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -105,6 +106,21 @@ class jobcore extends mediamosa_rest_call {
   }
 
   function update_job($job){
+
+  }
+
+  function loop($job){
+    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
+    for ($x = 0; $x < 6; $x++) {
+      $start_at = microtime(TRUE);
+      // Now take the time it took, and subtrac that from 10.
+      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
+      if ($time_to_sleep > 0) {
+        sleep($time_to_sleep);
+      }
+
+      // And repeat for 6 times = 1 minute = 1 cron run.
+    }
 
   }
 
