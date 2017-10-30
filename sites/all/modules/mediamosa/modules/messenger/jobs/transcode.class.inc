@@ -12,11 +12,11 @@ class transcode
     $job_type = $job['job_type'];
     $mediafile_id = $job['mediafile_id'];
 
-    mediamosa_debug::log('Transcode started.', array(), 'Toon - TRANSCODE');
+    mediamosa_debug::log('Transcode started.', array(), 'T - Transcode');
     $execution_string = $this->get_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
 
     $exec_output = mediamosa_io::exec($execution_string);
-    mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+    mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'T - Transcode' );
 
     $link_asset = mediamosa_job_server::get_asset_link($job_id); // THIS GOES INTO DB!!!!!!!!!!!!!!!!!!
     mediamosa_job_server::log_mediafile($mediafile_id, 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
@@ -39,7 +39,7 @@ class transcode
 
     // Get it.
 //    $job_server_transcode = mediamosa_job_server_transcode::get($jobserver_job_id);
-//    mediamosa_debug::log_export($job_server_transcode, WATCHDOG_NOTICE, 'Toon - TRANSCODE' );
+//    mediamosa_debug::log_export($job_server_transcode, WATCHDOG_NOTICE, 'T - Transcode' );
 
 //    if (empty($job_server_transcode)) {
 //      mediamosa_job_server::log_mediafile($mediafile_id, 'Transcode job not found, jobserver_id: @jobserver_id', array('@jobserver_id' => $jobserver_job_id));
@@ -166,7 +166,7 @@ class transcode
     $job_status['Status'] = 'aa';
     while ($job_status['Status'] != 'done') { // Is this a good temporary solution????????
       $job_status = mediamosa_job_server::get_status_contents($job_id); // Is this even kept up-to-date?
-      mediamosa_debug::log('Job ' . $job_id . ', status: ' . $job_status['Progress'] . ', errors: ' . $job_status['Errors'], array(), 'Toon - TRANSCODE');
+      mediamosa_debug::log('Job ' . $job_id . ', status: ' . $job_status['Progress'] . ', errors: ' . $job_status['Errors'], array(), 'T - Transcode');
     }
 
     // No status file found, we just have to wait.
@@ -176,7 +176,7 @@ class transcode
     }
 
     if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
-      mediamosa_debug::log('Transcode done and errors are none.', array(), 'Toon - TRANSCODE');
+      mediamosa_debug::log('Transcode done and errors are none.', array(), 'T - Transcode');
       // Status to finished.
       $status = mediamosa_job_db::JOB_STATUS_FINISHED;
 
@@ -193,7 +193,7 @@ class transcode
 
       // Generate event transcode finished.
       mediamosa::rules_invoke_event('mediamosa_event_transcode_finished', $mediafile_id_src);
-//      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'Toon - TRANSCODE');
+//      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'T - Transcode');
     }
     elseif ($job_status['Status'] == 'error' && (empty($job_status['Errors']) || $job_status['Errors'] != 'none')) {
       $status = mediamosa_job_server_db::JOB_STATUS_FAILED;
@@ -265,7 +265,7 @@ class transcode
       $fields[mediamosa_job_db::ERROR_DESCRIPTION] = $error_description;
     }
 
-    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status, array(), 'Toon - TRANSCODE');
+    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status, array(), 'T - Transcode');
     // Update.
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
@@ -280,7 +280,7 @@ class transcode
     $app_id = $job[mediamosa_job_db::APP_ID];
     $mediafile_id = mediamosa_db::uuid($job_id); // Generate new mediafile ID.
     $file_extension = $transcode_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
-    mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'Toon - TRANSCODE');
+    mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'T - Transcode');
 
     // Cleared:
     // mediafile_id

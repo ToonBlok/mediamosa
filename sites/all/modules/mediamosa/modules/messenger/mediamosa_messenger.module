@@ -4,8 +4,12 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  start_core('STILL');
-  start_core('TRANSCODE');
+  $start_cores = false;
+
+  if ($start_cores) {
+    start_core('STILL');
+    start_core('TRANSCODE');
+  }
 
   $scheduler = new scheduler();
   $scheduler->round_up_jobs();
@@ -14,6 +18,8 @@ function mediamosa_messenger_cron()
 
 function start_core($core_type)
 {
+  // Check if exist already
+
 
   // Test REST CALL
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);

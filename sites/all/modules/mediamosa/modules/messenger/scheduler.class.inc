@@ -213,7 +213,7 @@ class scheduler {
       if (strpos($completed_transcoding_url, '?') === FALSE) {
         $completed_transcoding_url .= substr($completed_transcoding_url, -1) == '/' ? '' : '/';
       }
-      mediamosa_debug::log('Call to completed transcoding URL: ' . $completed_transcoding_url . $new_status, array(), 'Toon - TRANSCODE');
+//      mediamosa_debug::log('Call to completed transcoding URL: ' . $completed_transcoding_url . $new_status, array(), 'Toon - TRANSCODE');
 
       // Do the call (through proxy).
       mediamosa_http::do_head_call($completed_transcoding_url . $new_status, array('use_curlproxy' => TRUE));
@@ -236,7 +236,6 @@ class scheduler {
 
     $job = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
 
-    mediamosa_debug::log('Mediafile_dest at the moment of truth: ' . $job['mediafile_dest'], array(), 'Toon - TRANSCODE');
 
     // Have to skip and do retranscode in a different way later
 //    // Is it a retranscode job?

@@ -35,6 +35,7 @@ class jobcore extends mediamosa_rest_call {
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
+    $this->core_type = $core_type;
     mediamosa_debug::log('Started ' . $core_type, array(), 'T - DEBUG');
     $this->listen($core_type);
 
@@ -63,7 +64,8 @@ class jobcore extends mediamosa_rest_call {
     $callback = function($msg){
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $job = unserialize($msg->body);
-      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
+//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
+      mediamosa_debug::log(' [!][' . $this->core_type . '] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       $this->start_job($job);
 
@@ -86,7 +88,7 @@ class jobcore extends mediamosa_rest_call {
 
     switch ($job['job_type']) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
-        mediamosa_debug::log('ANALYZE started.', array(), 'Toon - ANALYZE');
+        mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
         break;
       case mediamosa_job_db::JOB_TYPE_STILL:
