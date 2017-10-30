@@ -6,22 +6,22 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 class jobcore{
 
-  function __construct($server_type) {
+  function __construct($core_type) {
 //    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
-    $this->server_type = $server_type;
+    $this->core_type = $core_type;
     $this->listen();
   }
 
   function listen() {
     $this->open_connection();
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare($this->server_type, false, true, false, false);
-    $this->channel->queue_bind($this->server_type, 'jobs', $this->server_type);
+    $this->channel->queue_declare($this->core_type, false, true, false, false);
+    $this->channel->queue_bind($this->core_type, 'jobs', $this->core_type);
 
-    echo ' [*] Waiting for ' . $this->server_type . ' messages. To exit press CTRL+C', "\n";
+    echo ' [*] Waiting for ' . $this->core_type . ' messages. To exit press CTRL+C', "\n";
 
     $callback = function($msg){
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
@@ -36,7 +36,7 @@ class jobcore{
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume($this->server_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume($this->core_type, '', false, false, false, false, $callback);
 
     while(count($this->channel->callbacks)) {
       $this->channel->wait();

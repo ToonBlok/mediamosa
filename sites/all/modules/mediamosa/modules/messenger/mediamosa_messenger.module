@@ -4,8 +4,58 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  $scheduler = new scheduler();
-  $scheduler->round_up_jobs();
-  $scheduler->update_jobs();
+  start_core('STILL');
+  start_core('TRANSCODE');
+
+//  $scheduler = new scheduler();
+//  $scheduler->round_up_jobs();
+//  $scheduler->update_jobs();
 }
+
+function start_core($server_type)
+{
+
+  // Test REST CALL
+  $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
+  if (isset($mediamosa_jobscheduler_uri)) {
+    // We convert the internal call to an url and append /internal/cron/jobscheduler
+    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/server/parsequeue?server_type=' . $server_type;
+//    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/server/parsequeue';
+
+
+    // Log it.
+    mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
+
+    // Dont trigger in sandbox.
+    if (mediamosa::in_simpletest_sandbox()) {
+      // So we wait till finished.
+      MediaMosaTestCase::staticInternalRestCallGet($url);
+    } else {
+      // Trigger.
+      mediamosa_http::do_head_internal_call($url);
+    }
+  } else {
+    mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
+  }
+}
+
+  /**
+   * Implements hook_mediamosa_register_rest_call().
+   */
+  function mediamosa_messenger_mediamosa_register_rest_call()
+  {
+    $rest_calls = array();
+
+    $rest_calls['server/parsequeue'][mediamosa_rest_call::METHOD_GET] = array(
+      mediamosa_rest_call::CLASS_NAME => 'server',
+      mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
+      mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
+      mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
+      mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
+      mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
+    );
+
+    return $rest_calls;
+  }
 

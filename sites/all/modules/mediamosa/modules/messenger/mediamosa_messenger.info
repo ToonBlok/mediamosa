@@ -1,3 +1,11 @@
 name = Messenger
 description = Description of what this module does
 core = 7.x
+
+; Messenger (Toon).
+files[] = scheduler.class.inc
+files[] = server.class.inc
+files[] = jobcore.class.inc
+files[] = jobs/analyze.class.inc
+files[] = jobs/still.class.inc
+files[] = jobs/transcode.class.inc
