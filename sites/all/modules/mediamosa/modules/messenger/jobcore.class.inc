@@ -4,24 +4,61 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-class jobcore{
+class jobcore extends mediamosa_rest_call {
 
-  function __construct($core_type) {
-//    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
+  const CORE_TYPE = 'core_type';
+  // ------------------------------------------------------------------ Methods.
+  /**
+   * Implements get_var_setup().
+   */
+  public function get_var_setup() {
+    $var_setup = array(
+      self::VARS => array(
+        self::CORE_TYPE => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        )
+      )
+    );
+
+    // Enrich with required REST vars.
+    return self::get_var_setup_default($var_setup, FALSE);
+  }
+
+  /**
+   * Implements do_call().
+   */
+  public function do_call() {
+    $mediamosa = mediamosa::get();
+
+    $core_type = $this->get_param_value(self::CORE_TYPE);
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
-    $this->core_type = $core_type;
-    $this->listen();
+    mediamosa_debug::log('Started ' . $core_type, array(), 'T - DEBUG');
+    $this->listen($core_type);
+
+    // Geef array terug van response
+    // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->add_item(
+      array(
+        'version' => mediamosa_version::get_current_version_str(FALSE),
+        'server_type' => $core_type,
+      )
+    );
   }
 
-  function listen() {
+//  function __construct($core_type) {
+//    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
+//  }
+
+  function listen($core_type) {
     $this->open_connection();
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare($this->core_type, false, true, false, false);
-    $this->channel->queue_bind($this->core_type, 'jobs', $this->core_type);
+    $this->channel->queue_declare($core_type, false, true, false, false);
+    $this->channel->queue_bind($core_type, 'jobs', $core_type);
 
-    echo ' [*] Waiting for ' . $this->core_type . ' messages. To exit press CTRL+C', "\n";
+    echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
 
     $callback = function($msg){
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
@@ -36,7 +73,7 @@ class jobcore{
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume($this->core_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume($core_type, '', false, false, false, false, $callback);
 
     while(count($this->channel->callbacks)) {
       $this->channel->wait();
