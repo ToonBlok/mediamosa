@@ -4,9 +4,10 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  $start_cores = false;
+  $start_cores = 0;
 
   if ($start_cores) {
+    start_core('ANALYSE');
     start_core('STILL');
     start_core('TRANSCODE');
   }

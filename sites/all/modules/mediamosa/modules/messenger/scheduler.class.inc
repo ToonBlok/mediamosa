@@ -30,6 +30,9 @@ class scheduler {
     foreach ($jobs as $job) {
 
       switch ($job[mediamosa_job_db::JOB_TYPE]) {
+        case mediamosa_job_db::JOB_TYPE_ANALYSE:
+
+          break;
         case mediamosa_job_db::JOB_TYPE_STILL:
           $job_parameters = $this->get_job_parameters($job);
 
@@ -100,6 +103,36 @@ class scheduler {
         }
       }
     }
+  }
+
+  function listen() {
+    $server_type = 'PROGRESSION';
+    $this->open_connection();
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare($server_type, false, true, false, false);
+    $this->channel->queue_bind($server_type, 'jobs', $server_type);
+
+    echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
+
+    $callback = function($msg){
+      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
+      $job = unserialize($msg->body);
+//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
+      mediamosa_debug::log(' [!][scheduler] Message received. Progression for job ' . $job['job_id'] . ' = ' . $job['Progress'], array(), 'T - Scheduler');
+
+      echo ' [x] Done', "\n";
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+    };
+
+    // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
+    $this->channel->basic_qos(null, 1, null);
+    $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
+
+    while(count($this->channel->callbacks)) {
+      $this->channel->wait();
+    }
+
+    $this->close_connection();
   }
 
   /**
