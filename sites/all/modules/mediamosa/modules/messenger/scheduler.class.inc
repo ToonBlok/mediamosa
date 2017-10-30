@@ -73,9 +73,9 @@ class scheduler {
       if ($job['status'] == mediamosa_job_db::JOB_STATUS_FINISHED) {
         switch ($job['job_type']) {
           case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-            mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
-            // If the transcode job is completed, add it to the mediafile.
-            $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $job['mediafile_dest']); // second was mediafile_src ???
+//            mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
+//            // If the transcode job is completed, add it to the mediafile.
+//            $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $job['mediafile_dest']); // second was mediafile_src ???
             break;
           case mediamosa_job_db::JOB_TYPE_ANALYSE:
             // If the analyse job is completed, add it to the technical
@@ -118,7 +118,8 @@ class scheduler {
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!][scheduler] Message received. Progression for job ' . $job['job_id'] . ' = ' . $job['Progress'], array(), 'T - Scheduler');
+      mediamosa_debug::log(' [!] Job ' . $job['job_id'] . ' = ' . $job['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
+      $this->update_progression($job);
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -133,6 +134,156 @@ class scheduler {
     }
 
     $this->close_connection();
+  }
+
+  function update_progression($job) {
+    $job_type = $job[mediamosa_job_server_db::JOB_TYPE];
+    $job_id = $job[mediamosa_job_server_db::JOB_ID];
+    $mediafile_id_src = $job[mediamosa_job_db::MEDIAFILE_ID]; // hmmmmmmm
+    $status = mediamosa_job_db::JOB_STATUS_INPROGRESS; // Default status
+    $job_status = $job['new_job_status'];
+
+    // No status file found, we just have to wait.
+    if (empty($job_status['Status'])) {
+      mediamosa_job_server::log_debug_mediafile($mediafile_id_src, "No status file found with @statusfile for job @job_id, maybe next run.", array('@statusfile' => mediamosa_storage::get_realpath_status_file($job_id), '@job_id' => $job_id));
+      return;
+    }
+
+    if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
+      mediamosa_debug::log('Transcode done and errors are none.', array(), 'T - TRANSCODE');
+      // Status to finished.
+      $status = mediamosa_job_db::JOB_STATUS_FINISHED;
+
+      // Store the transcode.
+      $this->store_new_mediafile($job);
+
+      // Log it.
+//          mediamosa_job_server::log_mediafile($mediafile_id_src, 'End job @job_type, Job ID: @job_id, status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $status));
+
+      // Set job status.
+      $this->set_job_status($job, $status, $job_status['Progress']);
+
+      // Generate event transcode finished.
+      mediamosa::rules_invoke_event('mediamosa_event_transcode_finished', $mediafile_id_src);
+//      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'T - Transcode');
+
+      $job = $this->get_job_where($job['job_id']);
+      mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 1517' );
+      // Toon: This is completely somewhere else in the original code
+      mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
+      // If the transcode job is completed, add it to the mediafile.
+      $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $job['mediafile_dest']); // second was mediafile_src ???
+    }
+    elseif ($job_status['Status'] == 'error' && (empty($job_status['Errors']) || $job_status['Errors'] != 'none')) {
+      $status = mediamosa_job_server_db::JOB_STATUS_FAILED;
+      $link_asset = mediamosa_job_server::get_asset_link($job_id);
+
+      mediamosa_job_server::log_mediafile($mediafile_id_src, "End @job_type job, Job ID @job_id, with status: @status<br /><br />@link", array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $status, '@link' => $link_asset));
+      mediamosa_job_server::log_mediafile($mediafile_id_src, "Info @job_type job, Job ID @job_id, status file '@statusfile'", array('@job_type' => $job_type, '@job_id' => $job_id, '@statusfile' => mediamosa_job_server::get_status_contents($job_id, TRUE)));
+
+      // Set status to failed.
+      $this->set_job_status($job, $status, $job_status['Progress'], isset($job_status["ffmpeg-output"]) ? ($job_status["Errors"] != "" ? $job_status["Errors"] . "-\n" : '') . $job_status["ffmpeg-output"] : $job_status["Errors"]);
+
+      // Generate event transcode failed.
+      mediamosa::rules_invoke_event('mediamosa_event_transcode_failed', $mediafile_id_src);
+    }
+    else {
+      // Set job status.
+      $this->set_job_status($job, $status, $job_status['Progress']);
+    }
+  }
+
+  function store_new_mediafile($job) {
+    $job_id = $job['job_id'];
+    $transcode_parameters = unserialize($job['transcode_parameters']);
+//    $job = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT)); // Get the job.
+    $app_id = $job[mediamosa_job_db::APP_ID];
+    $mediafile_id = mediamosa_db::uuid($job_id); // Generate new mediafile ID.
+    $file_extension = $transcode_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
+    mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'T - Transcode');
+
+    // Cleared:
+    // mediafile_id
+    //
+    // Get the filenames.
+    $file_status_uri = mediamosa_storage::get_uri_status_file($job_id);
+    $file_transcode_uri = mediamosa_storage::get_uri_temporary_file($job_id . '.' . $file_extension);
+    $file_destination_uri = mediamosa_storage::create_local_mediafile_uri($app_id, $mediafile_id);
+
+    // Rename transcoded file to new dest.
+    mediamosa_io::rename($file_transcode_uri, $file_destination_uri);
+
+    // Now remove the status file.
+    mediamosa_io::unlink($file_status_uri);
+
+    $fields = array(
+      mediamosa_job_server_db::MEDIAFILE_DEST => $mediafile_id,
+    );
+
+    // Enrich with update date.
+    $fields = mediamosa_db::db_update_enrich($fields);
+
+    // Update the filename in mediafile_dest.
+    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+      ->fields($fields)
+      ->condition(mediamosa_job_db::ID, $job_id)
+      ->execute();
+
+    // Log it.
+//    mediamosa_job_server::log_mediafile($job_server[mediamosa_job_server_db::MEDIAFILE_ID_SRC], "Job with ID @job_id ready, new mediafile stored as '@uri' (@path).", array('@job_id' => $job_id, '@uri' => $file_destination_uri, '@path' => mediamosa_io::realpath($file_destination_uri)));
+  }
+
+  function set_job_status($job, $job_status, $progress, $error_description = '', $error_description_args = array()) {
+    $job_id = $job['job_id'];
+    $mediafile_id = $job['mediafile_id'];
+
+    // Set args in description.
+    if (!empty($error_description_args)) {
+      $error_description = strtr($error_description, $error_description_args);
+    }
+
+    $fields = array(
+      mediamosa_job_db::JOB_STATUS => $job_status,
+      mediamosa_job_db::PROGRESS => is_null($progress) ? '0.000' : $progress,
+    );
+
+    switch ($job_status) {
+      case mediamosa_job_db::JOB_STATUS_FINISHED:
+      case mediamosa_job_db::JOB_STATUS_FAILED:
+      case mediamosa_job_db::JOB_STATUS_CANCELLED:
+        $fields[mediamosa_job_db::FINISHED] = mediamosa_datetime::utc_current_timestamp_now(TRUE);
+        break;
+    }
+
+    // Check if its started.
+//    $jobserver_job = self::get_with_jobid($job_id);
+//    if (!$jobserver_job) {
+//      self::log('Fatal: trying to update job with ID; @job_id', array('@job_id' => $job_id));
+//      assert(0);
+//      return;
+//    }
+
+    // Invalidate technical metadata if analyse fails.
+    if ($job_status == mediamosa_job_server_db::JOB_STATUS_FAILED && $job[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_ANALYSE) {
+      // Delete metadata, its no longer valid when analyse fails.
+      mediamosa_asset_mediafile_metadata::delete_by_mediafileid($mediafile_id);
+    }
+
+    // Set status.
+    if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_WAITING && $job_status == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+      $fields[mediamosa_job_db::STARTED] = mediamosa_datetime::utc_current_timestamp_now(TRUE);
+    }
+
+    if (!empty($error_description)) {
+      $fields[mediamosa_job_db::ERROR_DESCRIPTION] = $error_description;
+    }
+
+    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status . ' and progress to ' . $fields[mediamosa_job_db::PROGRESS], array(), 'T - TRANSCODE');
+    // Update.
+    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+      ->fields($fields)
+      ->condition(mediamosa_job_db::ID, $job_id)
+      ->execute();
   }
 
   /**
@@ -507,6 +658,24 @@ class scheduler {
         ':status' => $status
       )
     )->fetchAll();
+
+  }
+
+  function get_job_where($id) {
+    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
+            FROM {#mediamosa_job} AS mj
+            WHERE mj.#job_id = :id';
+
+    $sql = strtr($sql, array(
+      '#job_id' => mediamosa_job_db::ID,
+      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
+    ));
+
+    return mediamosa_db::db_query($sql,
+      array(
+        ':id' => $id
+      )
+    )->fetch();
 
   }
 

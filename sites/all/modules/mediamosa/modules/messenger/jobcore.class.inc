@@ -68,7 +68,6 @@ class jobcore extends mediamosa_rest_call {
       mediamosa_debug::log(' [!][' . $this->core_type . '] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       $this->start_job($job);
-      $this->loop();
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -99,7 +98,7 @@ class jobcore extends mediamosa_rest_call {
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $this->transcode->start($job);
-        $this->transcode->update($job);
+        $this->loop($job);
         break;
     }
 
@@ -111,9 +110,13 @@ class jobcore extends mediamosa_rest_call {
 
   function loop($job){
     // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-    for ($x = 0; $x < 6; $x++) {
+    for ($x = 0; $x < 18; $x++) {
       $start_at = microtime(TRUE);
       // Now take the time it took, and subtrac that from 10.
+
+      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']); // Is this even kept up-to-date?
+      $this->send($job);
+
       $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
       if ($time_to_sleep > 0) {
         sleep($time_to_sleep);
@@ -159,7 +162,7 @@ class jobcore extends mediamosa_rest_call {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, 'jobs', $job['job_type']);
+    $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
 
     $this->close_connection();
   }

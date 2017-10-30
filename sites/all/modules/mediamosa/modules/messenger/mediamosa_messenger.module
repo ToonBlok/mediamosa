@@ -4,7 +4,7 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  $start_cores = 0;
+  $start_cores = 1;
 
   if ($start_cores) {
     start_core('ANALYSE');
@@ -14,7 +14,8 @@ function mediamosa_messenger_cron()
 
   $scheduler = new scheduler();
   $scheduler->round_up_jobs();
-  $scheduler->update_jobs();
+//  $scheduler->update_jobs();
+  $scheduler->listen();
 }
 
 function start_core($core_type)
