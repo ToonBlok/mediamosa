@@ -8,7 +8,7 @@ class transcode
     $mediafile_id = $job['mediafile_id'];
 
     mediamosa_debug::log('Transcode started.', array(), 'T - Transcode');
-    $execution_string = $this->get_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
+    $execution_string = $this->generate_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
 
     $exec_output = mediamosa_io::exec($execution_string);
     mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'T - Transcode' );
@@ -30,7 +30,7 @@ class transcode
    * @param string $jobserver_job_id
    * @param string $mediafile_id
    */
-  function get_transcode_exec($jobserver_job_id, $mediafile_id, $job_parameters) {
+  function generate_transcode_exec($jobserver_job_id, $mediafile_id, $job_parameters) {
 
 //     Get it.
 //    $job_server_transcode = mediamosa_job_server_transcode::get($jobserver_job_id);
