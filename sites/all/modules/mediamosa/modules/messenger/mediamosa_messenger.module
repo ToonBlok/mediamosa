@@ -4,29 +4,26 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  $start_cores = 1;
+  $start_cores = 0;
 
   if ($start_cores) {
-    start_core('ANALYSE');
-    start_core('STILL');
-    start_core('TRANSCODE');
+    call('/jobcore/parsequeue?core_type=', 'ANALYSE');
+    call('/jobcore/parsequeue?core_type=', 'STILL');
+    call('/jobcore/parsequeue?core_type=', 'TRANSCODE');
   }
 
   // Round up jobs
-  call('roundupjobs');
+  call('/jobscheduler/roundupjobs?server_action=', 'roundupjobs');
   // Listen
-  call('listen');
+  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 }
 
-function call($server_action) {
+function call($path, $value) {
   // Test REST CALL
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
   if (isset($mediamosa_jobscheduler_uri)) {
-    // We convert the internal call to an url and append /internal/cron/jobscheduler
 
-    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/jobscheduler/roundupjobs?server_action=' . $server_action;
-//    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/server/parsequeue';
-
+    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path . $value;
 
     // Log it.
     mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
@@ -45,61 +42,31 @@ function call($server_action) {
 
 }
 
-function start_core($core_type)
+/**
+ * Implements hook_mediamosa_register_rest_call().
+ */
+function mediamosa_messenger_mediamosa_register_rest_call()
 {
-  // Check if exist already
+  $rest_calls = array();
 
+  $rest_calls['jobcore/parsequeue'][mediamosa_rest_call::METHOD_GET] = array(
+    mediamosa_rest_call::CLASS_NAME => 'jobcore',
+    mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
+    mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
+    mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
+    mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
+    mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
+  );
 
-  // Test REST CALL
-  $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+  $rest_calls['jobscheduler/roundupjobs'][mediamosa_rest_call::METHOD_GET] = array(
+    mediamosa_rest_call::CLASS_NAME => 'scheduler',
+    mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
+    mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
+    mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
+    mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
+    mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
+  );
 
-  if (isset($mediamosa_jobscheduler_uri)) {
-    // We convert the internal call to an url and append /internal/cron/jobscheduler
-    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/jobcore/parsequeue?core_type=' . $core_type;
-//    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . '/server/parsequeue';
-
-
-    // Log it.
-    mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
-
-    // Dont trigger in sandbox.
-    if (mediamosa::in_simpletest_sandbox()) {
-      // So we wait till finished.
-      MediaMosaTestCase::staticInternalRestCallGet($url);
-    } else {
-      // Trigger.
-      mediamosa_http::do_head_internal_call($url);
-    }
-  } else {
-    mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
-  }
+  return $rest_calls;
 }
-
-  /**
-   * Implements hook_mediamosa_register_rest_call().
-   */
-  function mediamosa_messenger_mediamosa_register_rest_call()
-  {
-    $rest_calls = array();
-
-    $rest_calls['jobcore/parsequeue'][mediamosa_rest_call::METHOD_GET] = array(
-      mediamosa_rest_call::CLASS_NAME => 'jobcore',
-      mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
-      mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
-      mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
-      mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
-      mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
-    );
-
-    $rest_calls['jobscheduler/roundupjobs'][mediamosa_rest_call::METHOD_GET] = array(
-      mediamosa_rest_call::CLASS_NAME => 'scheduler',
-      mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
-      mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
-      mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
-      mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
-      mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
-    );
-
-    return $rest_calls;
-  }
 
