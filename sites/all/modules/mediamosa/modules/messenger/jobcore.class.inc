@@ -36,7 +36,7 @@ class jobcore extends mediamosa_rest_call {
     $this->still = new still();
     $this->transcode = new transcode();
     $this->core_type = $core_type;
-    mediamosa_debug::log('Started ' . $core_type, array(), 'T - DEBUG');
+    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
     $this->listen($core_type);
 
     // Geef array terug van response
@@ -60,12 +60,12 @@ class jobcore extends mediamosa_rest_call {
     $this->channel->queue_bind($core_type, 'jobs', $core_type);
 
     echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
+    mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $core_type);
 
     $callback = function($msg){
-      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!][' . $this->core_type . '] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
+      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       $this->start_job($job);
 
@@ -90,6 +90,7 @@ class jobcore extends mediamosa_rest_call {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
+//        $this->loop($job);
         break;
       case mediamosa_job_db::JOB_TYPE_STILL:
         mediamosa_debug::log('STILL started.', array(), 'T - STILL');
@@ -111,7 +112,7 @@ class jobcore extends mediamosa_rest_call {
       $start_at = microtime(TRUE);
       // Now take the time it took, and subtrac that from 10.
 
-      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']); // Is this even kept up-to-date?
+      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
       $this->send($job);
 
       if ($job['new_job_status']['Status'] == 'done') {

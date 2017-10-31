@@ -32,7 +32,7 @@ class analyze {
       $analyse_output[] = $key . ' [' . $value['type'] . '] ' . $value['value'];
     }
 
-    $link_asset = self::get_asset_link($job['job_id']);
+//    $link_asset = self::get_asset_link($job['job_id']);
 
     mediamosa_job_scheduler::log_mediafile
     (
@@ -40,7 +40,7 @@ class analyze {
       array(
         '@job_id' => $job['job_id'],
         '@output' => implode("\n", $analyse_output) . "\n",
-        '@link' => $link_asset,
+        '@link' => $job['asset_link']
       )
     );
 

@@ -31,6 +31,7 @@ class scheduler {
 
       switch ($job[mediamosa_job_db::JOB_TYPE]) {
         case mediamosa_job_db::JOB_TYPE_ANALYSE:
+          $job['asset_link'] = $this->get_asset_link($job['job_id']);
 
           break;
         case mediamosa_job_db::JOB_TYPE_STILL:
