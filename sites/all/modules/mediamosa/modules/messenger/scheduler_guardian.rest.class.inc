@@ -24,9 +24,9 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
 
+    $this->send();
+//    sleep(300);
     $this->check();
-//    $this->send();
-//    $this->listen();
 
 
     $mediamosa->add_item(
@@ -34,21 +34,6 @@ class scheduler_guardian extends mediamosa_rest_call
         'version' => mediamosa_version::get_current_version_str(FALSE)
       )
     );
-  }
-
-  function check(){
-    $this->open_connection();
-    // This code will declare a queue and then return the amount of active queues, therefore if the return value is 1, the scheduler is not open
-    $scheduler_consumer_count = $this->channel->queue_declare('PROGRESSION', false, true, false, false);
-    $this->close_connection();
-
-    if ($scheduler_consumer_count[2]) {
-      mediamosa_debug::log('online', array(), 'T - 1349');
-    } else {
-      mediamosa_debug::log('offline, creating...', array(), 'T - 1349');
-      $this->call('/jobscheduler/roundupjobs?server_action=listen');
-    }
-
   }
 
   function call($path) {
@@ -75,22 +60,38 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-//  function send() {
-//    $this->open_connection();
-//
-//    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-//    $this->channel->queue_declare('ANALYSE', false, true, false, false);
-//
-//    $msg = new AMQPMessage(
-//      'art thou perished',
-//      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-//    );
-//
-//    // Temporarily named PROGRESSION, but its start core
-//    $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
-//
-//    $this->close_connection();
-//  }
+  function send() {
+    $this->open_connection();
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+
+    $msg = new AMQPMessage(
+      'art thou perished',
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    // Temporarily named PROGRESSION, but its start core
+    $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
+
+    $this->close_connection();
+  }
+
+  function check() {
+    $this->open_connection();
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+
+    while ($this->channel->basic_get('task_queue', 1) != NULL) {
+      // New msg
+    }
+
+
+    $this->close_connection();
+  }
+
+
 //
 //  function listen() {
 //    $server_type = 'PROGRESSION';

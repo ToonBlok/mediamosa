@@ -6,7 +6,12 @@ core = 7.x
 files[] = scheduler.class.inc
 files[] = server.class.inc
 files[] = jobcore.class.inc
+files[] = scheduler_guardian.rest.class.inc
+
 files[] = jobs/analyze.class.inc
 files[] = jobs/still.class.inc
 files[] = jobs/transcode.class.inc
-files[] = scheduler_guardian.rest.class.inc
+files[] = jobs/download.class.inc
+files[] = jobs/move.class.inc
+files[] = jobs/upload.class.inc
+

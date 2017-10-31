@@ -16,7 +16,6 @@ function mediamosa_messenger_cron()
   call('/jobscheduler/roundupjobs?server_action=', 'roundupjobs');
   // Check if scheduler is listening. If yes, leave alone. If no, make scheduler listen.
   call('/scheduler_guardian/check');
-  call('/scheduler_guardian/check');
 
 //  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 
