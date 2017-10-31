@@ -1252,23 +1252,34 @@ class mediamosa_rest_call_job_cancel extends mediamosa_rest_call {
  */
 class mediamosa_rest_call_cron_jobscheduler extends mediamosa_rest_call {
 
-  // ---------------------------------------------------------------- Functions.
+  /**
+   * Implements get_var_setup().
+   */
   public function get_var_setup() {
     $var_setup = array();
 
     // Enrich with required REST vars.
-    return self::get_var_setup_default($var_setup);
+    return self::get_var_setup_default($var_setup, FALSE);
   }
 
+  /**
+   * Implements do_call().
+   */
   public function do_call() {
     $mediamosa = mediamosa::get();
 
-    // Run them.
-    mediamosa_job_scheduler::run_parse_queue();
+//    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
+    $this->round_up_jobs();
 
-    // Set ok.
-    $mediamosa->set_result_okay();
+    // Geef array terug van response
+    // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->add_item(
+      array(
+        'version' => mediamosa_version::get_current_version_str(FALSE)
+      )
+    );
   }
+
 }
 
 /**

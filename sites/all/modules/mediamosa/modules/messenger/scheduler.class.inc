@@ -4,7 +4,52 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-class scheduler {
+class scheduler extends mediamosa_rest_call {
+
+  const SERVER_ACTION = 'server_action';
+
+  /**
+   * Implements get_var_setup().
+   */
+  public function get_var_setup() {
+    $var_setup = array(
+      self::VARS => array(
+        self::SERVER_ACTION => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        )
+      )
+    );
+
+    // Enrich with required REST vars.
+    return self::get_var_setup_default($var_setup, FALSE);
+  }
+
+  /**
+   * Implements do_call().
+   */
+  public function do_call() {
+    $mediamosa = mediamosa::get();
+
+    $server_action = $this->get_param_value(self::SERVER_ACTION);
+
+    if($server_action == 'roundupjobs') {
+      $this->round_up_jobs();
+    } elseif ($server_action == 'listen') {
+      $this->listen();
+    }
+    mediamosa_debug::log('server action: ' . $server_action, array(), 'T - 1244');
+
+//    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
+
+    // Geef array terug van response
+    // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->add_item(
+      array(
+        'version' => mediamosa_version::get_current_version_str(FALSE)
+      )
+    );
+  }
 
   function send($job) {
     $this->open_connection();
