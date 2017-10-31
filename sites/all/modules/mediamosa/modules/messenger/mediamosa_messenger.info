@@ -9,3 +9,4 @@ files[] = jobcore.class.inc
 files[] = jobs/analyze.class.inc
 files[] = jobs/still.class.inc
 files[] = jobs/transcode.class.inc
+files[] = scheduler_guardian.rest.class.inc

@@ -36,6 +36,7 @@ class scheduler extends mediamosa_rest_call {
     if($server_action == 'roundupjobs') {
       $this->round_up_jobs();
     } elseif ($server_action == 'listen') {
+      mediamosa_debug::log('STARTED!', array(), 'T - 1349');
       $this->listen();
     }
     mediamosa_debug::log('server action: ' . $server_action, array(), 'T - 1244');
