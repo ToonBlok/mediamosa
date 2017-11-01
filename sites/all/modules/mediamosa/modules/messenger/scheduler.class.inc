@@ -37,7 +37,13 @@ class scheduler extends mediamosa_rest_call {
       $this->round_up_jobs();
     } elseif ($server_action == 'listen') {
       mediamosa_debug::log('STARTED!', array(), 'T - 1349');
-      $this->listen();
+      try {
+        $this->listen();
+      } catch (Exception $e) {
+        mediamosa_debug::log($e, array(), 'T - SCHEDULER');
+
+      }
+
     }
     mediamosa_debug::log('server action: ' . $server_action, array(), 'T - 1244');
 
@@ -53,10 +59,12 @@ class scheduler extends mediamosa_rest_call {
   }
 
   function send($job) {
-    $this->open_connection();
-
+    // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
+    if ($job['job_type'] != 'task_queue') {
+      $this->open_connection();
+    }
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+    $this->channel->queue_declare($job['job_type'], false, true, false, false);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -65,7 +73,10 @@ class scheduler extends mediamosa_rest_call {
 
     $this->channel->basic_publish($msg, 'jobs', $job['job_type']);
 
-    $this->close_connection();
+    // Keep alive messages are sent via a construction that already has an close connection, so close it here.
+    if ($job['job_type'] != 'task_queue') {
+      $this->close_connection();
+    }
   }
 
 
@@ -121,7 +132,8 @@ class scheduler extends mediamosa_rest_call {
       $update_message = unserialize($msg->body);
 
       if ($update_message['server_action'] == 'keepalive') {
-        $update_message['timestamp'] = time();
+        $update_message['timestamp'] = microtime(true);
+        $update_message['job_type'] = 'task_queue';
         $this->send($update_message);
       } else {
         mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');

@@ -25,7 +25,6 @@ class scheduler_guardian extends mediamosa_rest_call
     $mediamosa = mediamosa::get();
 
     $this->send();
-//    sleep(300);
     $this->peek();
 
 
@@ -36,12 +35,12 @@ class scheduler_guardian extends mediamosa_rest_call
     );
   }
 
-  function call($path) {
+  function call($path, $value = '') {
     // Test REST CALL
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
     if (isset($mediamosa_jobscheduler_uri)) {
 
-      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path;
+      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path . $value;
 
       // Log it.
       mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
@@ -64,10 +63,10 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
 
     $alive_message = [
-      'server_action' => 'keepalive',
+      "server_action" => "keepalive"
     ];
 
     $msg = new AMQPMessage(
@@ -75,7 +74,9 @@ class scheduler_guardian extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
+    // If you add the exchange it doesn't work anymore...
+    $this->channel->basic_publish($msg, '', 'PROGRESSION');
+    mediamosa_debug::log('Message sent', array(), 'T - GUARDIAN');
 
     $this->close_connection();
 
@@ -85,15 +86,15 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare('ANALYSE', false, true, false, false);
+    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
 
     $time_now = microtime(true);
 
     // If the variable has not been set yet, scheduler has never started before.
     if ($this->variable_get('time_last_update') == NULL){
+      mediamosa_debug::log('Scheduler has never started yet', array(), 'T - GUARDIAN');
       $this->variable_set('time_last_update', $time_now);
       $this->start_scheduler();
-      mediamosa_debug::log('Scheduler has never started yet', array(), 'T - GUARDIAN');
     } else {
       // Loop trough all the messages available in order to get the most recent message.
       while ($this->channel->basic_get('task_queue') != NULL) {
@@ -113,10 +114,11 @@ class scheduler_guardian extends mediamosa_rest_call
 
       $time_last_update = variable_get('time_last_update');
 
+      // Replace 300 with drush value with default 300
       if (($time_last_update + 300) < ($time_now)) {
         mediamosa_debug::log('Scheduler has not responded for 5mins', array(), 'T - GUARDIAN');
         $this->start_scheduler();
-      } {
+      } else {
         mediamosa_debug::log('Scheduler has responded within 5mins', array(), 'T - GUARDIAN');
       }
 
@@ -181,6 +183,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
   function start_scheduler() {
     mediamosa_debug::log('start_scheduler() iniated', array(), 'T - GUARDIAN');
+    $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
   }
 
   function open_connection() {
