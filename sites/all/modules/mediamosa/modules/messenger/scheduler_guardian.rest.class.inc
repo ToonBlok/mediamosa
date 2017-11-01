@@ -26,7 +26,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
     $this->send();
 //    sleep(300);
-    $this->check();
+    $this->peek();
 
 
     $mediamosa->add_item(
@@ -66,25 +66,60 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare('ANALYSE', false, true, false, false);
 
+    $alive_message = [
+      'server_action' => 'keepalive',
+    ];
+
     $msg = new AMQPMessage(
-      'art thou perished',
+      serialize($alive_message),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    // Temporarily named PROGRESSION, but its start core
     $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
 
     $this->close_connection();
+
   }
 
-  function check() {
+  function peek() {
     $this->open_connection();
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare('ANALYSE', false, true, false, false);
 
-    while ($this->channel->basic_get('task_queue', 1) != NULL) {
-      // New msg
+    $time_now = microtime(true);
+
+    // If the variable has not been set yet, scheduler has never started before.
+    if ($this->variable_get('time_last_update') == NULL){
+      $this->variable_set('time_last_update', $time_now);
+      $this->start_scheduler();
+      mediamosa_debug::log('Scheduler has never started yet', array(), 'T - GUARDIAN');
+    } else {
+      // Loop trough all the messages available in order to get the most recent message.
+      while ($this->channel->basic_get('task_queue') != NULL) {
+
+        // Receive a message and remove it from RabbitMQ.
+        $msg = $this->channel->basic_get('task_queue', 1);
+
+        $time_last_update = variable_get('time_last_update');
+
+        // if: The timestamp in the message is more recent, update time_last_update.
+        // else: Prevent updating of time_last_update with a value older than it is already.
+        if ($time_last_update < $msg['timestamp']) {
+          $this->variable_set('time_last_update', $msg['timestamp']);
+        }
+
+      }
+
+      $time_last_update = variable_get('time_last_update');
+
+      if (($time_last_update + 300) < ($time_now)) {
+        mediamosa_debug::log('Scheduler has not responded for 5mins', array(), 'T - GUARDIAN');
+        $this->start_scheduler();
+      } {
+        mediamosa_debug::log('Scheduler has responded within 5mins', array(), 'T - GUARDIAN');
+      }
+
     }
 
 
@@ -144,6 +179,10 @@ class scheduler_guardian extends mediamosa_rest_call
 //    variable_set($name, $value);
 //  }
 
+  function start_scheduler() {
+    mediamosa_debug::log('start_scheduler() iniated', array(), 'T - GUARDIAN');
+  }
+
   function open_connection() {
 
     $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
@@ -160,6 +199,24 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->connection->close();
   }
 
+  /**
+   * Returns a persistent variable.
+   *
+   * Case-sensitivity of the variable_* functions depends on the database
+   * collation used. To avoid problems, always use lower case for persistent
+   * variable names.
+   *
+   * @param $name
+   *   The name of the variable to return.
+   * @param $default
+   *   The default value to use if this variable has never been set.
+   *
+   * @return
+   *   The value of the variable. Unserialization is taken care of as necessary.
+   *
+   * @see variable_del()
+   * @see variable_set()
+   */
   function variable_get($name, $default = NULL) {
     return variable_get($name, $default);
   }

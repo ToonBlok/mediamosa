@@ -118,10 +118,15 @@ class scheduler extends mediamosa_rest_call {
 
     $callback = function($msg){
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
-      $job = unserialize($msg->body);
-//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!] Job ' . $job['job_id'] . ' = ' . $job['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
-      $this->update_progression($job);
+      $update_message = unserialize($msg->body);
+
+      if ($update_message['server_action'] == 'keepalive') {
+        $update_message['timestamp'] = time();
+        $this->send($update_message);
+      } else {
+        mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
+        $this->update_progression($update_message);
+      }
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
