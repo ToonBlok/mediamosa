@@ -7,19 +7,22 @@ function mediamosa_messenger_cron()
 //   For messing with tests
 //  $test = new MediaMosaTestCaseMessenger();
 
-  $start_cores = 0;
+  $first_start = 1;
 
-  if ($start_cores) {
+  if ($first_start) {
     call('/jobcore/parsequeue?core_type=', 'ANALYSE');
     call('/jobcore/parsequeue?core_type=', 'STILL');
     call('/jobcore/parsequeue?core_type=', 'TRANSCODE');
+
+
+    call('/jobscheduler/roundupjobs?server_action=', 'listen');
   }
 
 //   Round up jobs
   call('/jobscheduler/roundupjobs?server_action=', 'roundupjobs');
 
 //   Check if scheduler is listening. If yes, leave alone. If no, make scheduler listen.
-  call('/scheduler_guardian/check');
+//  call('/scheduler_guardian/check');
 }
 
 //  call('/jobscheduler/roundupjobs?server_action=', 'listen');
