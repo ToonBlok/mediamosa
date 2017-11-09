@@ -59,6 +59,10 @@ class jobcore extends mediamosa_rest_call {
     $this->channel->queue_declare($core_type, false, true, false, false);
     $this->channel->queue_bind($core_type, 'jobs', $core_type);
 
+    if (mediamosa::in_simpletest_sandbox()) {
+      mediamosa_debug::log('In sandbox...', array(), 'T - UNIT TESTS');
+      return;
+    }
     echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $core_type);
 

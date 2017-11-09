@@ -87,6 +87,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare('PROGRESSION', false, true, false, false);
+    $this->channel->queue_declare('task_queue', false, true, false, false);
 
     $time_now = microtime(true);
 
@@ -97,7 +98,18 @@ class scheduler_guardian extends mediamosa_rest_call
       $this->start_scheduler();
     } else {
       // Loop trough all the messages available in order to get the most recent message.
+      $varOne = $this->channel->basic_get('task_queue');
+      if ($varOne == NULL) {
+        $varTwo = true;
+      } else {
+        $varTwo = false;
+      }
+      mediamosa_debug::log('Task queue is empty: ' . $varTwo, array(), 'T - GUARDIAN');
+
       while ($this->channel->basic_get('task_queue') != NULL) {
+        $var = $this->channel->basic_get('task_queue');
+        mediamosa_debug::log('Guardian received keepalive message back with time: ' . $var->body, array(), 'T - GUARDIAN');
+
 
         // Receive a message and remove it from RabbitMQ.
         $msg = $this->channel->basic_get('task_queue', 1);
@@ -116,10 +128,10 @@ class scheduler_guardian extends mediamosa_rest_call
 
       // Replace 300 with drush value with default 300
       if (($time_last_update + 300) < ($time_now)) {
-        mediamosa_debug::log('Scheduler has not responded for 5mins', array(), 'T - GUARDIAN');
+        mediamosa_debug::log('Scheduler has not responded for the last 5 minutes', array(), 'T - GUARDIAN');
         $this->start_scheduler();
       } else {
-        mediamosa_debug::log('Scheduler has responded within 5mins', array(), 'T - GUARDIAN');
+        mediamosa_debug::log('Scheduler has responded in the last 5 minutes', array(), 'T - GUARDIAN');
       }
 
     }

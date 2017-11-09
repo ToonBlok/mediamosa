@@ -864,9 +864,9 @@ class MediaMosaTestCaseEga extends MediaMosaTestCase {
 
       // Our upload.
       $this->verbose('POST request to: ' . $action .
-                    '<hr />Ending URL: ' . $this->getUrl() .
-                    '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
-                    '<hr />' . $out);
+        '<hr />Ending URL: ' . $this->getUrl() .
+        '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
+        '<hr />' . $out);
     }
     else {
       // PUT.
@@ -1030,9 +1030,9 @@ class MediaMosaTestCaseEga extends MediaMosaTestCase {
 
       // Our upload.
       $this->verbose('POST request to: ' . url($uri, array('absolute' => TRUE)) .
-                    '<hr />Ending URL: ' . $this->getUrl() .
-                    '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
-                    '<hr />' . $out);
+        '<hr />Ending URL: ' . $this->getUrl() .
+        '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
+        '<hr />' . $out);
     }
     else { // PUT.
       // Open the file to transfer.
@@ -1191,9 +1191,9 @@ class MediaMosaTestCaseEga extends MediaMosaTestCase {
 
     // Our upload.
     $this->var_export('POST request to: ' . url($uri, array('absolute' => TRUE)) .
-                   '<hr />Ending URL: ' . $this->getUrl() .
-                   '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
-                   '<hr />' . $out);
+      '<hr />Ending URL: ' . $this->getUrl() .
+      '<hr />Fields: ' . highlight_string('<?php ' . var_export($postfields, TRUE), TRUE) .
+      '<hr />' . $out);
 
     list($response, $data) = explode("\r\n\r\n", $out, 2);
     $response = preg_split("/\r\n|\n|\r/", $response);
@@ -3606,9 +3606,9 @@ class MediaMosaTestCaseEga extends MediaMosaTestCase {
     $parameters += array(
       mediamosa_rest_call_asset_update::USER_ID => self::SIMPLETEST_USER_ID,
       mediamosa_rest_call_asset_update::ISPRIVATE => (
-        $isprivate ?
-          mediamosa_rest_call_asset_update::ISPRIVATE_TRUE :
-          mediamosa_rest_call_asset_update::ISPRIVATE_FALSE
+      $isprivate ?
+        mediamosa_rest_call_asset_update::ISPRIVATE_TRUE :
+        mediamosa_rest_call_asset_update::ISPRIVATE_FALSE
       ),
     );
 
@@ -4194,7 +4194,7 @@ class MediaMosaTestCaseEga extends MediaMosaTestCase {
    *   Node ID server.
    * @param type $nid_viewer
    *   Noder ID viewer.
-     *
+   *
    */
   protected function viewer_link_server_app($app_id, $nid_server, $nid_viewer) {
     // Insert when not already.

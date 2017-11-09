@@ -15,3 +15,6 @@ files[] = jobs/download.class.inc
 files[] = jobs/move.class.inc
 files[] = jobs/upload.class.inc
 
+files[] = mediamosa_messenger_test.test
+
+

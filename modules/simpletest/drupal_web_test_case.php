@@ -258,9 +258,9 @@ abstract class DrupalTestCase {
     // The first element is the call. The second element is the caller.
     // We skip calls that occurred in one of the methods of our base classes
     // or in an assertion function.
-   while (($caller = $backtrace[1]) &&
-         ((isset($caller['class']) && isset($this->skipClasses[$caller['class']])) ||
-           substr($caller['function'], 0, 6) == 'assert')) {
+    while (($caller = $backtrace[1]) &&
+      ((isset($caller['class']) && isset($this->skipClasses[$caller['class']])) ||
+        substr($caller['function'], 0, 6) == 'assert')) {
       // We remove that call.
       array_shift($backtrace);
     }
@@ -1989,8 +1989,8 @@ class DrupalWebTestCase extends DrupalTestCase {
       $out = $new;
     }
     $this->verbose('GET request to: ' . $path .
-                   '<hr />Ending URL: ' . $this->getUrl() .
-                   '<hr />' . $out);
+      '<hr />Ending URL: ' . $this->getUrl() .
+      '<hr />' . $out);
     return $out;
   }
 
@@ -2145,9 +2145,9 @@ class DrupalWebTestCase extends DrupalTestCase {
             $out = $new;
           }
           $this->verbose('POST request to: ' . $path .
-                         '<hr />Ending URL: ' . $this->getUrl() .
-                         '<hr />Fields: ' . highlight_string('<?php ' . var_export($post_array, TRUE), TRUE) .
-                         '<hr />' . $out);
+            '<hr />Ending URL: ' . $this->getUrl() .
+            '<hr />Fields: ' . highlight_string('<?php ' . var_export($post_array, TRUE), TRUE) .
+            '<hr />' . $out);
           return $out;
         }
       }
@@ -2567,7 +2567,7 @@ class DrupalWebTestCase extends DrupalTestCase {
             if (!isset($element['checked'])) {
               break;
             }
-            // Deliberate no break.
+          // Deliberate no break.
           default:
             $post[$name] = $value;
         }

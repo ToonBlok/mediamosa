@@ -1,0 +1,284 @@
+<?php
+
+class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
+{
+  public static function getInfo() {
+    return array(
+      'name' => 'Mediamosa messenger tests',
+      'description' => '...',
+      'group' => 'MediaMosa Jobs'
+    );
+  }
+
+  function setUp()
+  {
+    parent::setUp();
+  }
+
+//  // ---------------------------------------------------------------- Functions.
+//  /**
+//   * Implements setUp().
+//   */
+//  protected function setUp() {
+//    // Get from outside sandbox.
+//    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+//
+//    // Run parent first so we are inside sandbox.
+//    // Call parent::setUp and preserve arguments.
+//    $args = func_get_args();
+//    mediamosa_debug::log_export($args, array(), 'T - UNIT TESTS');
+//
+//    // Create and setup the CORE module.
+//    $args = array_unique(array_merge(array('mediamosa_job', 'mediamosa_tool_ffmpeg'), $args));
+//    if (drupal_substr(phpversion(), 0, 3) < '5.3') {
+//      call_user_func_array(array($this, 'parent::setUp'), $args);
+//    }
+//    else {
+//      call_user_func_array('parent::setUp', $args);
+//    }
+//
+//    // Set jobserver selection.
+//    if (!empty($mediamosa_jobscheduler_uri)) {
+//      variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
+//    }
+//  }
+
+  protected function testStartCore(){
+    // Arrange
+    $core_type = 'TRANSCODE';
+
+    // Act
+    $this->start_core('TRANSCODE');
+
+
+    // Assert
+//    $this->assertTrue();
+
+
+  }
+
+  protected function open_connection() {
+    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
+    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
+    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
+
+    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
+    $this->channel = $this->connection->channel();
+  }
+
+  protected function close_connection() {
+    $this->channel->close();
+    $this->connection->close();
+  }
+
+  protected function send_message($job) {
+    $this->open_connection();
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+
+    $msg = new AMQPMessage(
+      '',
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    # Send the message.
+    //echo 'sent with routing_key: ' . $job['job_type'];
+    $this->channel->basic_publish($msg, 'jobs', 'TRANSCODE');
+
+    $this->close_connection();
+  }
+
+  protected function start_core($core_type, $do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
+    $parameters += array(
+      mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
+      'core_type' => $core_type
+    );
+
+    $options = [
+      'timeout' => 3
+    ];
+
+    $uri = '/jobcore/parsequeue';
+
+    $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
+
+  }
+
+//  /**
+//   * Do a REST call inside the sandbox.
+//   *
+//   * @param string $uri
+//   *  The uri of the REST call.
+//   * @param string $request_method
+//   *  POST / GET / PUT / DELETE.
+//   * @param array $parameters
+//   *  name => value
+//   * @param array $headers
+//   *  Name: value
+//   * @param array $expected_result_ids
+//   *  Contains the mediamosa_error::ERRORCODE_* that we expect. For example, you
+//   *  might expect an error instead of OKAY; specify the error code here.
+//   */
+//  protected function restCall($uri, $request_method = 'POST', array $parameters = array(), array $headers = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY), $do_internal = FALSE) {
+//
+//    if ($do_internal) {
+//      // Set internal password.
+//      $headers[] = mediamosa_settings::X_MEDIAMOSA_INTERNAL_PASS . ': ' . mediamosa::get_internal_password();
+//
+////      // Add internal to uri.
+////      if (strpos($uri, 'internal/') === FALSE) {
+////        $uri = 'internal/' . $uri;
+////      }
+//    }
+//
+////    $parameters += array(
+////      'curl_file_upload' => FALSE,
+////      'curl_file_upload_param' => 'file',
+////    );
+////
+////    $curl_file_upload = $parameters['curl_file_upload'];
+////    unset($parameters['curl_file_upload']);
+////    $curl_file_upload_param = $parameters['curl_file_upload_param'];
+////    unset($parameters['curl_file_upload_param']);
+//
+//    $parameters_get = $parameters;
+//
+//    // Prepare the CURL options.
+//    $curl_opts = array(
+//      CURLOPT_NOBODY => FALSE,
+//      CURLOPT_HTTPHEADER => $headers,
+//      CURLOPT_HEADER => TRUE,
+//    );
+//
+//    $parameters = http_build_query($parameters);
+//
+//    $curl_opts += array(
+//      CURLOPT_POST => TRUE,
+//      CURLOPT_URL => url($uri, array('absolute' => TRUE, 'query' => $parameters_get)),
+//      CURLOPT_POSTFIELDS => $parameters,
+//    );
+//
+//////    if (strcasecmp($request_method, 'GET') == 0) {
+//////      assert($curl_file_upload === FALSE);
+//////
+//////      $curl_opts += array(
+//////        CURLOPT_HTTPGET => TRUE,
+//////        CURLOPT_URL => url($uri, array('absolute' => TRUE, 'query' => $parameters)),
+//////      );
+//////    }
+//////    else {
+////      // Just in case when we use 'app_id'.
+////      $parameters_get = array();
+////      if (isset($parameters['app_id'])) {
+////        $parameters_get['app_id'] = $parameters['app_id'];
+////        unset($parameters['app_id']);
+////      }
+////
+////      if ($curl_file_upload !== FALSE) {
+////        $parameters_get = $parameters;
+////        $parameters = array();
+////        if (function_exists('curl_file_create')) {
+////          $parameters[$curl_file_upload_param] = new CURLFile($curl_file_upload);
+////        }
+////        else {
+////          $parameters[$curl_file_upload_param] = '@' . $curl_file_upload;
+////        }
+////      }
+////      else {
+////        $parameters = http_build_query($parameters);
+////      }
+////
+////      $curl_opts += array(
+////        CURLOPT_POST => TRUE,
+////        CURLOPT_URL => url($uri, array('absolute' => TRUE, 'query' => $parameters_get)),
+////        CURLOPT_POSTFIELDS => $parameters,
+////      );
+////    }
+//
+////    timer_start('simpletest');
+//
+//    // Perform the CURL request.
+//    $result = $this->curlExec($curl_opts);
+//
+////    $timer = timer_stop('simpletest');
+////    if (strlen($result) == 0) {
+////      trigger_error(t('Got zero length body. Total time (ms):@ms', array('@ms' => $timer['run'])), E_USER_ERROR);
+////      error_log(t('Got zero length body. Total time (ms):@ms', array('@ms' => $timer['run'])));
+////    }
+//
+//    // Clear cache files. REST call might have removed files.
+//    mediamosa_io::clearstatcache();
+//
+////    // Parse the headers and get the body.
+////    $lines = explode("\n", $result);
+////    $line_count = count($lines);
+////
+////    $http_result = explode(' ', $lines[0]);
+////
+////    // Unset the HTTP header line.
+////    unset($lines[0]);
+////
+////    // Iterate until an empty row is found.
+////    $out = array();
+////    for ($i = 1; $i < $line_count; $i++) {
+////      if (trim($lines[$i]) != '') {
+////        list($key, $value) = explode(':', $lines[$i], 2);
+////        $out['headers'][trim($key)] = trim($value);
+////        unset($lines[$i]);
+////      }
+////      else {
+////        $out['body'] = trim(implode("\n", $lines));
+////        break;
+////      }
+////    }
+////
+////    // Create a SimpleXMLElement from the restcall's output.
+////    try {
+////      // We expect char '<' on REST calls, if not we need to output it.
+////      if ($out['body'][0] != '<') {
+////        $this->var_export($out['body']);
+////      }
+////      else {
+////        $this->var_export_verbose(mediamosa_unicode::substr($out['body'], 0, 10000) . (mediamosa_unicode::strlen($out['body']) > 10000 ? '...<snap>...' : ''));
+////      }
+////    }
+////    catch (Exception $e) {
+////      $this->assert(FALSE, 'var_export of REST response body failed! ' . $e->getMessage());
+////      return;
+////    }
+////
+////    try {
+////      $out['xml'] = new mediamosa_connector_response($out['body']);
+////    }
+////    catch (Exception $e) {
+////      $this->assert(FALSE, 'simple XML creation failed! ' . $e->getMessage());
+////      return;
+////    }
+////
+////    // Get the result ID.
+////    if (!empty($out['xml']->header)) {
+////      $result_id = empty($out['xml']->header->request_result_id) ? 0 : (int) $out['xml']->header->request_result_id;
+////      $result_description = empty($out['xml']->header->request_result_description) ? 'no description' : (string) $out['xml']->header->request_result_description;
+////    }
+////    elseif (!empty($out['xml']->extension)) {
+////      $result_id = empty($out['xml']->extension->request_result_id) ? 0 : (int) $out['xml']->extension->request_result_id;
+////      $result_description = empty($out['xml']->extension->request_result_description) ? 'no description' : (string) $out['xml']->extension->request_result_description;
+////    }
+////
+////    // Look for a request_result_id.
+////    if (isset($result_id) && isset($result_description)) {
+////      $this->assertTrue(in_array($result_id, $expected_result_ids), t('@method request to: "@uri", got result ID @result_id (@description) was expecting one of; {@expected}.', array('@method' => $request_method, '@uri' => $uri, '@result_id' => $result_id, '@description' => $result_description, '@expected' => implode(', ', $expected_result_ids))));
+////    }
+////    else {
+////      $this->assertTrue(TRUE, t('@method request to: "@uri".', array('@method' => $request_method, '@uri' => $uri)));
+////    }
+////
+////    $this->assertFalse($http_result[1] == 404, 'REST call was found');
+//
+//    // Return the request data.
+////    return $out;
+//  }
+
+
+}
