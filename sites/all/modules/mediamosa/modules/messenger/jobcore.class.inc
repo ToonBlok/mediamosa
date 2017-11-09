@@ -7,6 +7,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 class jobcore extends mediamosa_rest_call {
 
   const CORE_TYPE = 'core_type';
+  const EXCHANGE_JOBS = 'jobs';
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().
@@ -55,21 +56,22 @@ class jobcore extends mediamosa_rest_call {
 
   function listen($core_type) {
     $this->open_connection();
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($core_type, false, true, false, false);
-    $this->channel->queue_bind($core_type, 'jobs', $core_type);
+    $this->channel->queue_bind($core_type, self::EXCHANGE_JOBS, $core_type);
 
     if (mediamosa::in_simpletest_sandbox()) {
       mediamosa_debug::log('In sandbox...', array(), 'T - UNIT TESTS');
       return;
     }
+
     echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $core_type);
 
     $callback = function($msg){
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
+//      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       $this->start_job($job);
 
@@ -159,7 +161,7 @@ class jobcore extends mediamosa_rest_call {
   function send($job) {
     $this->open_connection();
 
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -168,7 +170,7 @@ class jobcore extends mediamosa_rest_call {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, 'jobs', 'PROGRESSION');
+    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, 'PROGRESSION');
 
     $this->close_connection();
   }

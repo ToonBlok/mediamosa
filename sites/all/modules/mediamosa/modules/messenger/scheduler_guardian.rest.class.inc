@@ -62,7 +62,7 @@ class scheduler_guardian extends mediamosa_rest_call
   function send() {
     $this->open_connection();
 
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare('PROGRESSION', false, true, false, false);
 
     $alive_message = [
@@ -85,7 +85,7 @@ class scheduler_guardian extends mediamosa_rest_call
   function peek() {
     $this->open_connection();
 
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare('PROGRESSION', false, true, false, false);
     $this->channel->queue_declare('task_queue', false, true, false, false);
 

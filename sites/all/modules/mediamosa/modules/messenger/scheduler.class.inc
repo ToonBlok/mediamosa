@@ -63,7 +63,7 @@ class scheduler extends mediamosa_rest_call {
     if ($job['job_type'] != 'task_queue') {
       $this->open_connection();
     }
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
 
     $msg = new AMQPMessage(
@@ -71,7 +71,7 @@ class scheduler extends mediamosa_rest_call {
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, 'jobs', $job['job_type']);
+    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     // Keep alive messages are sent via a construction that already has an close connection, so close it here.
     if ($job['job_type'] != 'task_queue') {
@@ -121,20 +121,22 @@ class scheduler extends mediamosa_rest_call {
   function listen() {
     $server_type = 'PROGRESSION';
     $this->open_connection();
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($server_type, false, true, false, false);
-    $this->channel->queue_bind($server_type, 'jobs', $server_type);
+    $this->channel->queue_bind($server_type, jobcore::EXCHANGE_JOBS, $server_type);
 
     echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
 
-    $callback = function($msg){
+    $callback = function($msg) {
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $update_message = unserialize($msg->body);
 
-      if ($update_message['server_action'] == 'keepalive') {
-        $update_message['timestamp'] = microtime(true);
-        $update_message['job_type'] = 'task_queue';
-        $this->send($update_message);
+      if (isset($update_message['server_action'])) {
+        if ($update_message['server_action'] == 'keepalive') {
+          $update_message['timestamp'] = microtime(true);
+          $update_message['job_type'] = 'task_queue';
+          $this->send($update_message);
+        }
       } else {
         mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
         $this->update_progression($update_message);
