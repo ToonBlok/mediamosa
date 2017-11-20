@@ -7,6 +7,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 class scheduler extends mediamosa_rest_call {
 
   const SERVER_ACTION = 'server_action';
+  const QUEUE_KEEPALIVE = 'keepalive';
 
   /**
    * Implements get_var_setup().
@@ -82,7 +83,7 @@ class scheduler extends mediamosa_rest_call {
 
   function round_up_jobs(){
     $jobs = $this->get_jobs(mediamosa_job_db::JOB_STATUS_WAITING);
-    mediamosa_debug::log(count($jobs) . ' jobs found with status \"WAITING\" ', array(), 'T - Scheduler');
+    mediamosa_debug::log(count($jobs) . ' jobs found with status \"WAITING\" ', array(), 'T - SCHEDULER');
 
     foreach ($jobs as $job) {
 
@@ -125,12 +126,14 @@ class scheduler extends mediamosa_rest_call {
     $this->open_connection();
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($server_type, false, true, false, false);
+    $this->channel->queue_declare(self::QUEUE_KEEPALIVE, false, true, false, false);
     $this->channel->queue_bind($server_type, jobcore::EXCHANGE_JOBS, $server_type);
+    $this->channel->queue_bind(self::QUEUE_KEEPALIVE, jobcore::EXCHANGE_JOBS, self::QUEUE_KEEPALIVE);
 
     echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
 
     $callback = function($msg) {
-      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
+      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'T - SCHEDULER');
       $update_message = unserialize($msg->body);
 
 //      if (isset($update_message['server_action'])) {
@@ -140,7 +143,7 @@ class scheduler extends mediamosa_rest_call {
 //          $this->send($update_message);
 //        }
 //      } else {
-        mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
+        mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - SCHEDULER');
         $this->update_progression($update_message);
 //      }
 
@@ -148,9 +151,14 @@ class scheduler extends mediamosa_rest_call {
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
     };
 
+    $keepalive_callback = function($msg) {
+      mediamosa_debug::log('New callback works', array(), 'T - SCHEDULER');
+    };
+
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
     $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume(self::QUEUE_KEEPALIVE, '', false, false, false, false, $keepalive_callback);
 
     while(count($this->channel->callbacks)) {
       $this->channel->wait();

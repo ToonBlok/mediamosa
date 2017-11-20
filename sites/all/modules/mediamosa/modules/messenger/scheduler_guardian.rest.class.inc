@@ -63,7 +63,9 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
+//    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
+    $this->channel->queue_declare(scheduler::QUEUE_KEEPALIVE, false, true, false, false);
+    $this->channel->queue_bind(scheduler::QUEUE_KEEPALIVE, jobcore::EXCHANGE_JOBS, scheduler::QUEUE_KEEPALIVE);
 
     $alive_message = [
       "server_action" => "keepalive"
@@ -74,8 +76,9 @@ class scheduler_guardian extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    // If you add the exchange it doesn't work anymore...
-    $this->channel->basic_publish($msg, '', 'PROGRESSION');
+    // IF YOU ADD THE EXCHANGE IT DOESN'T WORK ANYMORE...
+    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, scheduler::QUEUE_KEEPALIVE);
+
     mediamosa_debug::log('Message sent', array(), 'T - GUARDIAN');
 
     $this->close_connection();
@@ -86,8 +89,7 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
-    $this->channel->queue_declare('task_queue', false, true, false, false);
+    $this->channel->queue_declare(scheduler::QUEUE_KEEPALIVE, false, true, false, false);
 
     $time_now = microtime(true);
 
@@ -98,27 +100,28 @@ class scheduler_guardian extends mediamosa_rest_call
       $this->start_scheduler();
     } else {
       // Loop trough all the messages available in order to get the most recent message.
-      $varOne = $this->channel->basic_get('task_queue');
-      if ($varOne == NULL) {
-        $varTwo = true;
-      } else {
-        $varTwo = false;
-      }
-      mediamosa_debug::log('Task queue is empty: ' . $varTwo, array(), 'T - GUARDIAN');
+//      $varOne = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE);
+//      if ($varOne == NULL) {
+//        $varTwo = true;
+//      } else {
+//        $varTwo = false;
+//      }
+//      mediamosa_debug::log('Task queue is empty: ' . $varTwo, array(), 'T - GUARDIAN');
 
-      while ($this->channel->basic_get('task_queue') != NULL) {
-        $var = $this->channel->basic_get('task_queue');
+      while ($this->channel->basic_get(scheduler::QUEUE_KEEPALIVE) != NULL) {
+        $var = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE);
         mediamosa_debug::log('Guardian received keepalive message back with time: ' . $var->body, array(), 'T - GUARDIAN');
 
 
         // Receive a message and remove it from RabbitMQ.
-        $msg = $this->channel->basic_get('task_queue', 1);
+        $msg = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE, 1);
 
         $time_last_update = variable_get('time_last_update');
 
         // if: The timestamp in the message is more recent, update time_last_update.
         // else: Prevent updating of time_last_update with a value older than it is already.
         if ($time_last_update < $msg['timestamp']) {
+          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $msg['timestamp'], 'T - GUARDIAN');
           $this->variable_set('time_last_update', $msg['timestamp']);
         }
 
