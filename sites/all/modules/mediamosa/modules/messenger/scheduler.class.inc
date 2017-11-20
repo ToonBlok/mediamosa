@@ -61,21 +61,23 @@ class scheduler extends mediamosa_rest_call {
 
   function send($job) {
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
-    if ($job['job_type'] != 'task_queue') {
+    if ($job['job_type'] != scheduler_guardian::QUEUE_GUARDIAN) {
       $this->open_connection();
     }
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
+    $this->channel->queue_bind($job['job_type'], jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     $msg = new AMQPMessage(
       serialize($job),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
+//    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
-    if ($job['job_type'] != 'task_queue') {
+    if ($job['job_type'] != scheduler_guardian::QUEUE_GUARDIAN) {
       $this->close_connection();
     }
   }
@@ -102,7 +104,7 @@ class scheduler extends mediamosa_rest_call {
             'asset_link' => $this->get_asset_link($job['job_id'])
           );
 
-          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
+//          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
           break;
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
@@ -153,6 +155,12 @@ class scheduler extends mediamosa_rest_call {
 
     $keepalive_callback = function($msg) {
       mediamosa_debug::log('New callback works', array(), 'T - SCHEDULER');
+
+      $update_message = unserialize($msg->body);
+      $update_message['timestamp'] = microtime(true);
+      $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
+      $this->send($update_message);
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
     };
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
@@ -252,7 +260,7 @@ class scheduler extends mediamosa_rest_call {
 //      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'T - Transcode');
 
           $job = $this->get_job_where($job['job_id']);
-          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 1517');
+//          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 1517');
           // Toon: This is completely somewhere else in the original code
           mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
           // If the transcode job is completed, add it to the mediafile.

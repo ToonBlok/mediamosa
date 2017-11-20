@@ -6,6 +6,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 class scheduler_guardian extends mediamosa_rest_call
 {
+  const QUEUE_GUARDIAN = 'guardian';
   /*
    * Implements get_var_setup().
    */
@@ -23,10 +24,10 @@ class scheduler_guardian extends mediamosa_rest_call
   public function do_call()
   {
     $mediamosa = mediamosa::get();
+    mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
 
     $this->send();
     $this->peek();
-
 
     $mediamosa->add_item(
       array(
@@ -79,8 +80,6 @@ class scheduler_guardian extends mediamosa_rest_call
     // IF YOU ADD THE EXCHANGE IT DOESN'T WORK ANYMORE...
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, scheduler::QUEUE_KEEPALIVE);
 
-    mediamosa_debug::log('Message sent', array(), 'T - GUARDIAN');
-
     $this->close_connection();
 
   }
@@ -89,9 +88,13 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare(scheduler::QUEUE_KEEPALIVE, false, true, false, false);
+    $this->channel->queue_declare(self::QUEUE_GUARDIAN, false, true, false, false);
+    $this->channel->queue_bind(self::QUEUE_GUARDIAN, jobcore::EXCHANGE_JOBS, self::QUEUE_GUARDIAN);
 
     $time_now = microtime(true);
+
+//    $var = unserialize($this->channel->basic_get(self::QUEUE_GUARDIAN)->body);
+//    mediamosa_debug::log_export($var, WATCHDOG_NOTICE, 'T - GUARDIAN' );
 
     // If the variable has not been set yet, scheduler has never started before.
     if ($this->variable_get('time_last_update') == NULL){
@@ -100,29 +103,27 @@ class scheduler_guardian extends mediamosa_rest_call
       $this->start_scheduler();
     } else {
       // Loop trough all the messages available in order to get the most recent message.
-//      $varOne = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE);
-//      if ($varOne == NULL) {
-//        $varTwo = true;
-//      } else {
-//        $varTwo = false;
-//      }
-//      mediamosa_debug::log('Task queue is empty: ' . $varTwo, array(), 'T - GUARDIAN');
 
-      while ($this->channel->basic_get(scheduler::QUEUE_KEEPALIVE) != NULL) {
-        $var = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE);
-        mediamosa_debug::log('Guardian received keepalive message back with time: ' . $var->body, array(), 'T - GUARDIAN');
+
+      while ($this->channel->basic_get(self::QUEUE_GUARDIAN) != NULL) {
+        $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
+        $update_msg = unserialize($msg->body);
+
+        //mediamosa_debug::log('Received message with timestamp: ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
 
 
         // Receive a message and remove it from RabbitMQ.
-        $msg = $this->channel->basic_get(scheduler::QUEUE_KEEPALIVE, 1);
+//        $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
 
         $time_last_update = variable_get('time_last_update');
 
         // if: The timestamp in the message is more recent, update time_last_update.
         // else: Prevent updating of time_last_update with a value older than it is already.
-        if ($time_last_update < $msg['timestamp']) {
-          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $msg['timestamp'], 'T - GUARDIAN');
-          $this->variable_set('time_last_update', $msg['timestamp']);
+//        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
+        if ($time_last_update < $update_msg['timestamp']) {
+//          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
+          mediamosa_debug::log('New time received and set.', array(), 'T - GUARDIAN');
+          $this->variable_set('time_last_update', $update_msg['timestamp']);
         }
 
       }
@@ -130,11 +131,13 @@ class scheduler_guardian extends mediamosa_rest_call
       $time_last_update = variable_get('time_last_update');
 
       // Replace 300 with drush value with default 300
+
+      // Scheduler has not responded in the last 5 minutes
       if (($time_last_update + 300) < ($time_now)) {
-        mediamosa_debug::log('Scheduler has not responded for the last 5 minutes', array(), 'T - GUARDIAN');
+        mediamosa_debug::log('Scheduler is offline. Iniating scheduler.', array(), 'T - GUARDIAN');
         $this->start_scheduler();
-      } else {
-        mediamosa_debug::log('Scheduler has responded in the last 5 minutes', array(), 'T - GUARDIAN');
+      } else { // Scheduler has responded in the last 5 minutes
+        mediamosa_debug::log('Scheduler is online. No further action undertaken.', array(), 'T - GUARDIAN');
       }
 
     }
