@@ -9,6 +9,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     parent::__construct($test_id);
     $this->skipClasses[__CLASS__] = TRUE;
   }
+
   // ---------------------------------------------------------------- Functions.
   /**
    * Implements setUp().
@@ -16,9 +17,11 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
   protected function setUp() {
     // Get from outside sandbox.
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
     // Run parent first so we are inside sandbox.
     // Call parent::setUp and preserve arguments.
     $args = func_get_args();
+
     // Create and setup the CORE module.
     $args = array_unique(array_merge(array('mediamosa_job', 'mediamosa_tool_ffmpeg'), $args));
     if (drupal_substr(phpversion(), 0, 3) < '5.3') {
@@ -27,38 +30,49 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     else {
       call_user_func_array('parent::setUp', $args);
     }
+
     // Set jobserver selection.
     if (!empty($mediamosa_jobscheduler_uri)) {
       variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
     }
   }
+
   /**
    * Implements tearDown().
    */
   protected function tearDown() {
+
     // Dump job table contents.
     $this->dump_jobs();
+
     // Call parent.
     parent::tearDown();
   }
+
   /**
    * Dump the log so we know what happened.
    */
   protected function dump_jobs() {
     // Dump the log.
     $result = db_query('SELECT * FROM {mediamosa_job}');
+
     $texts = array('Dumping contents of job and server-job table');
+
     foreach ($result as $log_item) {
       $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
     }
+
     $result = db_query('SELECT * FROM {mediamosa_server_job}');
     $texts[] = strtr('Dumping contents (@total) of job server table', array('@total' => $result->rowCount()));
     foreach ($result as $log_item) {
       $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
     }
+
     // In verbose mode only.
     $this->verbose(implode('<br />', $texts), 'job main dump');
+
     $texts = array('Dumping contents of job tables');
+
     $result = db_query('SELECT * FROM {mediamosa_job_still}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job still server table';
@@ -66,6 +80,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     $result = db_query('SELECT * FROM {mediamosa_job_transcode}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job transcode table';
@@ -73,6 +88,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     $result = db_query('SELECT * FROM {mediamosa_job_upload}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job upload table';
@@ -82,7 +98,9 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     }
     // In verbose mode only.
     $this->verbose(implode('<br />', $texts), 'job tables dump');
+
     $texts = array('Dumping contents of job server tables');
+
     $result = db_query('SELECT * FROM {mediamosa_job_server}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job server table';
@@ -90,6 +108,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     $result = db_query('SELECT * FROM {mediamosa_job_server_analyse}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job server analyse table';
@@ -97,6 +116,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     $result = db_query('SELECT * FROM {mediamosa_job_server_still}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job server still table';
@@ -104,6 +124,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     $result = db_query('SELECT * FROM {mediamosa_job_server_transcode}');
     if ($result->rowCount()) {
       $texts[] = 'Dumping contents of job server table';
@@ -111,14 +132,17 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $texts[] = highlight_string('<?php ' . var_export($log_item, TRUE), TRUE);
       }
     }
+
     // In verbose mode only.
     $this->verbose(implode('<br />', $texts), 'job server dump (these should be empty)');
   }
+
   /**
    * Create a transcode job.
    */
   protected function createTranscodeJob($job_id, $fields = array()) {
     $fields[mediamosa_job_transcode_db::JOB_ID] = $job_id;
+
     $fields += array(
       mediamosa_job_transcode_db::TRANSCODE_PROFILE_ID => $this->getDefaultProfileId($this->a_app['app_id']),
       mediamosa_job_transcode_db::TOOL => '',
@@ -126,10 +150,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       mediamosa_job_transcode_db::FILE_EXTENSION => '',
       mediamosa_job_transcode_db::COMPLETED_TRANSCODING_URL => '',
     );
+
     $fields = mediamosa_db::db_insert_enrich($fields);
+
     $fields[mediamosa_job_transcode_db::ID] = mediamosa_db::db_insert(mediamosa_job_transcode_db::TABLE_NAME)->fields($fields)->execute();
     return $fields[mediamosa_job_transcode_db::ID];
   }
+
   /**
    * Get the information about a job using REST.
    *
@@ -146,13 +173,18 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $parameters += array(
       mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
     );
+
     // Set the URI.
     $uri = strtr('job/@job_id/status', array('@job_id' => $job_id));
+
     // Do Post call.
     $response = $this->restCallGet($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     $this->var_export($response);
+
     return $response['xml'];
   }
+
   /**
    * Basic upload of test file.
    *
@@ -176,15 +208,19 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
    * @see MediaMosaTestCaseEga::uploadTestFile()
    */
   protected function uploadTestFile($options = array()) {
+
     // Call parent.
     $result = parent::uploadTestFile($options);
-      // Any options need job processing?
+
+    // Any options need job processing?
     if (!empty($options['create_still']) || !empty($options['transcode'])) {
       // Parse the queue.
       $this->doQueueCycleAll();
     }
+
     return $result;
   }
+
   /**
    * Create still.
    *
@@ -195,10 +231,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $parameters += array(
       mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
     );
+
     // Set the URI.
     $uri = strtr('mediafile/@mediafile_id/still/create', array('@mediafile_id' => $mediafile_id));
+
     // Do Post call.
     $response = $this->restCallPost($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     // Check response.
     $this->assertTrue(
       in_array((string) $response['xml']->header->request_result_id, $expected_result_ids),
@@ -211,26 +250,33 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         )
       )
     );
+
     if ((string) $response['xml']->header->request_result_id != mediamosa_error::ERRORCODE_OKAY) {
       return FALSE;
     }
+
     // Get the job_id.
     $job_id = $response['xml']->items->item[0]->job_id;
+
     // Must have job id.
     $this->assertTrue($job_id, strtr('Got valid job ID @job_id.', array('@job_id' => $job_id)));
+
     // Return the job_id.
     return array('job_id' => $job_id);
   }
+
   /**
    * Return the most default transcode profile.
    */
   protected function getDefaultTranscodeProfile() {
+
     $profile = mediamosa_transcode_profile::get_default(0);
     if (isset($profile['transcode_profile_id'])) {
       return $profile['transcode_profile_id'];
     }
     return FALSE;
   }
+
   /**
    * Create transcode.
    *
@@ -241,10 +287,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $parameters += array(
       mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
     );
+
     // Set the URI.
     $uri = strtr('mediafile/@mediafile_id/analyse', array('@mediafile_id' => $mediafile_id));
+
     // Do Post call.
     $response = $this->restCallPost($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     // Check response.
     $this->assertTrue(
       in_array((string) $response['xml']->header->request_result_id, $expected_result_ids),
@@ -257,13 +306,17 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         )
       )
     );
+
     // Get the job_id.
     $job_id = $response['xml']->items->item[0]->job_id;
+
     // Must have job id.
     $this->assertTrue($job_id, strtr('Got valid job ID @job_id.', array('@job_id' => $job_id)));
+
     // Return the job_id.
     return array('job_id' => $job_id);
   }
+
   /**
    * Create transcode.
    *
@@ -274,10 +327,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $parameters += array(
       mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
     );
+
     // Set the URI.
     $uri = strtr('mediafile/@mediafile_id/transcode', array('@mediafile_id' => $mediafile_id));
+
     // Do Post call.
     $response = $this->restCallPost($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     // Check response.
     $this->assertTrue(
       in_array((string) $response['xml']->header->request_result_id, $expected_result_ids),
@@ -290,16 +346,20 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         )
       )
     );
+
     $job_id = empty($response['xml']->items->item[0]->job_id) ? 0 : $response['xml']->items->item[0]->job_id;
     if (in_array(mediamosa_error::ERRORCODE_OKAY, $expected_result_ids)) {
       // Get the job_id.
       $job_id = $response['xml']->items->item[0]->job_id;
+
       // Must have job id.
       $this->assertTrue($job_id, strtr('Got valid job ID @job_id.', array('@job_id' => $job_id)));
     }
+
     // Return the job_id.
     return array('job_id' => $job_id);
   }
+
   /**
    * Create retranscode.
    *
@@ -310,10 +370,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $parameters += array(
       mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
     );
+
     // Set the URI.
     $uri = strtr('mediafile/@mediafile_id/retranscode', array('@mediafile_id' => $mediafile_id));
+
     // Do Post call.
     $response = $this->restCallPost($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     // Check response.
     $this->assertTrue(
       in_array((string) $response['xml']->header->request_result_id, $expected_result_ids),
@@ -326,13 +389,17 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         )
       )
     );
+
     // Get the job_id.
     $job_id = $response['xml']->items->item[0]->job_id;
+
     // Must have job id.
     $this->assertTrue($job_id, strtr('Got valid job ID @job_id.', array('@job_id' => $job_id)));
+
     // Return the job_id.
     return array('job_id' => $job_id);
   }
+
   /**
    * Move a mediafile to another location.
    *
@@ -345,10 +412,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     );
     $parameters[mediamosa_rest_call_storage_move::STORAGE_PROFILE_ID] = $storage_profile_id;
     $parameters[mediamosa_rest_call_storage_move::PATH] = $path;
+
     // Set the URI.
     $uri = strtr('storage/@mediafile_id/move', array('@mediafile_id' => $mediafile_id));
+
     // Do Post call.
     $response = $this->restCallPost($uri, $parameters, array(), $expected_result_ids, $do_internal);
+
     // Check response.
     $this->assertTrue(
       in_array((string) $response['xml']->header->request_result_id, $expected_result_ids),
@@ -361,13 +431,18 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         )
       )
     );
+
     // Get the job_id.
     $job_id = $response['xml']->items->item[0]->job_id;
+
     // Must have job id.
     $this->assertTrue($job_id, strtr('Got valid job ID @job_id.', array('@job_id' => $job_id)));
+
     // Return the job_id.
     return $job_id;
   }
+
+
   /**
    * Run and execute the current jobs (one cycle).
    *
@@ -375,8 +450,10 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
    *   Trigger the scheduler, to handout and start new jobs.
    */
   public function doQueueCycle($trigger_scheduler = true) {
+
     try {
       mediamosa_server::trigger();
+
       if ($trigger_scheduler) {
         mediamosa_job_scheduler::trigger();
       }
@@ -390,6 +467,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       throw $e;
     }
   }
+
   /**
    * Run and execute the current jobs (one cycle).
    *
@@ -397,17 +475,21 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
    *   Trigger the scheduler, to handout and start new jobs.
    */
   protected function doQueueCycleAll($trigger_scheduler = true) {
+
     // Keep in mind that with less slots, this needs to be 18.
     $max_runs = 20;
     $running_jobs = 1;
     while ($max_runs-- && $running_jobs) {
       // Run one job cycle.
       self::doQueueCycle($trigger_scheduler);
+
       // Set flag to know if all jobs are finished or failed.
       $running_jobs = 0;
       $waiting_jobs = 0;
+
       // Get all jobs.
       $jobs = mediamosa_job::get_job_list(0, '', TRUE);
+
       // Check if the jobs are all done.
       foreach ($jobs as $job) {
         if (!in_array($job[mediamosa_job_db::JOB_STATUS],
@@ -418,6 +500,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
           )
         )) {
           $running_jobs++;
+
           if ($job[mediamosa_job_db::JOB_STATUS] === mediamosa_job_db::JOB_STATUS_WAITING) {
             // Waiting jobs stay waiting when trigger scheduler is off.
             if (!$trigger_scheduler) {
@@ -427,6 +510,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
           }
         }
       }
+
       if ($running_jobs) {
         $this->pass(strtr('Found @running running jobs of which where @waiting waiting jobs, waiting for next cycle.', array('@running' => $running_jobs, '@waiting' => $waiting_jobs)));
         // Wait 5 seconds.
@@ -436,10 +520,10 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $this->pass('No more running jobs found, exiting job cycle.');
       }
     }
+
     // If we are dead locked, we need to know.
     if ($max_runs < 0) {
       $this->fail(strtr('Job scheduler deadlock; Failed to complete all jobs. Jobs waiting for: @running', array('@running' => $running_jobs)));
     }
   }
 }
-

@@ -45,10 +45,10 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
 
   protected function testStartCore(){
     // Arrange
-    $core_type = 'TRANSCODE';
+//    $core_type = 'TRANSCODE';
 
     // Act
-    $this->start_core('TRANSCODE');
+//    $this->start_core('TRANSCODE');
 
 
     // Assert
@@ -75,7 +75,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
   protected function send_message($job) {
     $this->open_connection();
 
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->exchange_declare('exchange', 'direct', false, false, false);
 
     $msg = new AMQPMessage(
       '',
@@ -84,7 +84,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, 'jobs', 'TRANSCODE');
+    $this->channel->basic_publish($msg, 'exchange', 'TRANSCODE');
 
     $this->close_connection();
   }

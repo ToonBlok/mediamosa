@@ -555,18 +555,12 @@ class MediaMosaTestCase extends DrupalWebTestCase {
     $curl_file_upload_param = $parameters['curl_file_upload_param'];
     unset($parameters['curl_file_upload_param']);
 
-    $options = []; // REMOVE !!!
-
-    $options += array(
-      'timeout' => FALSE
-    );
 
     // Prepare the CURL options.
     $curl_opts = array(
       CURLOPT_NOBODY => FALSE,
       CURLOPT_HTTPHEADER => $headers,
       CURLOPT_HEADER => TRUE,
-      CURLOPT_TIMEOUT => $options['timeout']
     );
 
     if (strcasecmp($request_method, 'GET') == 0) {
