@@ -66,6 +66,7 @@ class still
     }
     // ############
 
+    // ????????
     if ($job_info['job_id']) {
       $frametime = (int) $job_info[mediamosa_job_server_still_db::FRAMETIME];
       $size = $job_info[mediamosa_job_server_still_db::SIZE];

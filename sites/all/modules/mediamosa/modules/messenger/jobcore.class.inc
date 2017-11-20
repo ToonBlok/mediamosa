@@ -159,7 +159,7 @@ class jobcore extends mediamosa_rest_call {
   }
 
   function send($job) {
-    $this->open_connection();
+    //$this->open_connection();
 
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
 
@@ -172,7 +172,7 @@ class jobcore extends mediamosa_rest_call {
     //echo 'sent with routing_key: ' . $job['job_type'];
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, 'PROGRESSION');
 
-    $this->close_connection();
+    //$this->close_connection();
   }
 
 }

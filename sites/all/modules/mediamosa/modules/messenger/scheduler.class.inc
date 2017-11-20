@@ -101,6 +101,8 @@ class scheduler extends mediamosa_rest_call {
             'asset_link' => $this->get_asset_link($job['job_id'])
           );
 
+          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
+
           break;
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
           $job += array(
