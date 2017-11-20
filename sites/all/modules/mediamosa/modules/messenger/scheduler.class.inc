@@ -73,7 +73,7 @@ class scheduler extends mediamosa_rest_call {
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
 
-    // Keep alive messages are sent via a construction that already has an close connection, so close it here.
+    // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
     if ($job['job_type'] != 'task_queue') {
       $this->close_connection();
     }
@@ -133,16 +133,16 @@ class scheduler extends mediamosa_rest_call {
       mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'Toon');
       $update_message = unserialize($msg->body);
 
-      if (isset($update_message['server_action'])) {
-        if ($update_message['server_action'] == 'keepalive') {
-          $update_message['timestamp'] = microtime(true);
-          $update_message['job_type'] = 'task_queue';
-          $this->send($update_message);
-        }
-      } else {
+//      if (isset($update_message['server_action'])) {
+//        if ($update_message['server_action'] == 'keepalive') {
+//          $update_message['timestamp'] = microtime(true);
+//          $update_message['job_type'] = 'task_queue';
+//          $this->send($update_message);
+//        }
+//      } else {
         mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - Scheduler');
         $this->update_progression($update_message);
-      }
+//      }
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
