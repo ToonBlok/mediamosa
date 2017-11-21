@@ -4,14 +4,6 @@ function mediamosa_messenger_cron()
 {
   mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
 
-  $first_start = 0;
-
-  if ($first_start) {
-    call('/jobcore/parsequeue?core_type=', 'ANALYSE');
-    call('/jobcore/parsequeue?core_type=', 'STILL');
-    call('/jobcore/parsequeue?core_type=', 'TRANSCODE');
-  }
-
   call('/scheduler_guardian/check');
   call('/jobscheduler/roundupjobs?server_action=', 'roundupjobs');
 }
