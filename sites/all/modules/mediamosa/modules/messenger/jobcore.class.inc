@@ -8,6 +8,7 @@ class jobcore extends mediamosa_rest_call {
 
   const CORE_TYPE = 'core_type';
   const EXCHANGE_JOBS = 'jobs';
+  const QUEUE_KEEPALIVE = 'jobcore_keepalive';
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().

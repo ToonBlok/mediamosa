@@ -36,7 +36,16 @@ class scheduler_guardian extends mediamosa_rest_call
     $server_type = $this->get_param_value(self::SERVER_TYPE);
     mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
-    $this->send($server_type);
+    if ($server_type == 'scheduler') {
+      $queue = scheduler::QUEUE_KEEPALIVE;
+    } elseif ($server_type == 'jobcore') {
+      $queue = jobcore::QUEUE_KEEPALIVE;
+    } else {
+      mediamosa_debug::log('Something went wrong with passing along the $server_type', array(), 'T - GUARDIAN');
+      exit();
+    }
+
+    $this->send($queue);
     $this->peek();
 
     $mediamosa->add_item(
@@ -70,15 +79,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-  function send($server_type) {
-    if ($server_type == 'scheduler') {
-      $queue = scheduler::QUEUE_KEEPALIVE;
-    }
-
-
-//    mediamosa_debug::log('Queue is ' . $queue, array(), 'T - GUARDIAN');
-
-
+  function send($queue) {
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);

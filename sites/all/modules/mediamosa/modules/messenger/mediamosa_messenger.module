@@ -9,20 +9,30 @@ function mediamosa_messenger_cron()
   // kijk if string, cast naar array en behandel hierna altijd als array
 
   // if null dan niks doen
-  $server_type = 'scheduler';
 
-  call('/scheduler_guardian/check?server_type=', $server_type);
-  call('/jobscheduler/roundupjobs?server_action=', 'roundupjobs');
+
+
+  $server_type = 'scheduler';
+  $core_type = ['transcode', '...'];
+//  $server_type = 'jobcore';
+
+  if ($server_type == 'scheduler'){
+    call('/scheduler_guardian/check?server_type=' . $server_type);
+  } else {
+    call('/scheduler_guardian/check?server_type=' . $server_type . '?core_type=' . $core_type);
+  }
+
+  call('/jobscheduler/roundupjobs?server_action=roundupjobs');
 }
 
 //  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 
-function call($path, $value = '') {
+function call($path) {
   // Test REST CALL
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
   if (isset($mediamosa_jobscheduler_uri)) {
 
-    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path . $value;
+    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path;
 
     // Log it.
     mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
