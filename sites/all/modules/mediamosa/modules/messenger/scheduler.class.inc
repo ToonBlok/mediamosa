@@ -7,7 +7,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 class scheduler extends mediamosa_rest_call {
 
   const SERVER_ACTION = 'server_action';
-  const QUEUE_KEEPALIVE = 'keepalive';
+  const QUEUE_KEEPALIVE = 'scheduler_keepalive';
 
   /**
    * Implements get_var_setup().
@@ -33,6 +33,8 @@ class scheduler extends mediamosa_rest_call {
     $mediamosa = mediamosa::get();
 
     $server_action = $this->get_param_value(self::SERVER_ACTION);
+
+    mediamosa_debug::log('Scheduler server action: ' . $server_action, array(), 'T - SCHEDULER');
 
     if($server_action == 'roundupjobs') {
       $this->round_up_jobs();
@@ -75,6 +77,7 @@ class scheduler extends mediamosa_rest_call {
 
 //    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
+
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
     if ($job['job_type'] != scheduler_guardian::QUEUE_GUARDIAN) {
@@ -154,13 +157,14 @@ class scheduler extends mediamosa_rest_call {
     };
 
     $keepalive_callback = function($msg) {
-      mediamosa_debug::log('New callback works', array(), 'T - SCHEDULER');
+      mediamosa_debug::log('aNew callback works', array(), 'T - SCHEDULER');
 
       $update_message = unserialize($msg->body);
       $update_message['timestamp'] = microtime(true);
       $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
-      $this->send($update_message);
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+      $this->send($update_message);
     };
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.

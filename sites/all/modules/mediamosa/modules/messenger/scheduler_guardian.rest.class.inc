@@ -7,12 +7,20 @@ use PhpAmqpLib\Message\AMQPMessage;
 class scheduler_guardian extends mediamosa_rest_call
 {
   const QUEUE_GUARDIAN = 'guardian';
+  const SERVER_TYPE = 'server_type';
   /*
    * Implements get_var_setup().
    */
   public function get_var_setup()
   {
-    $var_setup = array();
+    $var_setup = array(
+      self::VARS => array(
+        self::SERVER_TYPE=> array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        )
+      )
+    );
 
     // Enrich with required REST vars.
     return self::get_var_setup_default($var_setup, FALSE);
@@ -25,8 +33,10 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
     mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
+    $server_type = $this->get_param_value(self::SERVER_TYPE);
+    mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
-    $this->send();
+    $this->send($server_type);
     $this->peek();
 
     $mediamosa->add_item(
@@ -60,13 +70,21 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-  function send() {
+  function send($server_type) {
+    if ($server_type == 'scheduler') {
+      $queue = scheduler::QUEUE_KEEPALIVE;
+    }
+
+
+//    mediamosa_debug::log('Queue is ' . $queue, array(), 'T - GUARDIAN');
+
+
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
 //    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
-    $this->channel->queue_declare(scheduler::QUEUE_KEEPALIVE, false, true, false, false);
-    $this->channel->queue_bind(scheduler::QUEUE_KEEPALIVE, jobcore::EXCHANGE_JOBS, scheduler::QUEUE_KEEPALIVE);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
 
     $alive_message = [
       "server_action" => "keepalive"
@@ -77,8 +95,9 @@ class scheduler_guardian extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
+    mediamosa_debug::log('sent keepalive message to queue ' . $queue, array(), 'T - SCHEDULER');
     // IF YOU ADD THE EXCHANGE IT DOESN'T WORK ANYMORE...
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, scheduler::QUEUE_KEEPALIVE);
+    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue);
 
     $this->close_connection();
 
@@ -104,9 +123,13 @@ class scheduler_guardian extends mediamosa_rest_call
     } else {
       // Loop trough all the messages available in order to get the most recent message.
 
+      $testvar = 0;
 
       while ($this->channel->basic_get(self::QUEUE_GUARDIAN) != NULL) {
+        $testvar += 1;
         $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
+        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - GUARDIAN' );
+
         $update_msg = unserialize($msg->body);
 
         //mediamosa_debug::log('Received message with timestamp: ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
@@ -119,14 +142,15 @@ class scheduler_guardian extends mediamosa_rest_call
 
         // if: The timestamp in the message is more recent, update time_last_update.
         // else: Prevent updating of time_last_update with a value older than it is already.
-//        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
+        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
         if ($time_last_update < $update_msg['timestamp']) {
 //          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
-          mediamosa_debug::log('New time received and set.', array(), 'T - GUARDIAN');
+          mediamosa_debug::log('New time received and set (' . $time_last_update . ' became ' . $update_msg['timestamp'] . ').', array(), 'T - GUARDIAN');
           $this->variable_set('time_last_update', $update_msg['timestamp']);
         }
 
       }
+      mediamosa_debug::log($testvar, array(), 'T - GUARDIAN');
 
       $time_last_update = variable_get('time_last_update');
 
