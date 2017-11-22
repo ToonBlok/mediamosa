@@ -59,7 +59,9 @@ class jobcore extends mediamosa_rest_call {
     $this->open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($core_type, false, true, false, false);
+    $this->channel->queue_declare(self::QUEUE_KEEPALIVE, false, true, false, false);
     $this->channel->queue_bind($core_type, self::EXCHANGE_JOBS, $core_type);
+    $this->channel->queue_bind(self::QUEUE_KEEPALIVE, self::EXCHANGE_JOBS, self::QUEUE_KEEPALIVE);
 
     if (mediamosa::in_simpletest_sandbox()) {
       mediamosa_debug::log('In sandbox...', array(), 'T - UNIT TESTS');
@@ -80,9 +82,23 @@ class jobcore extends mediamosa_rest_call {
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
     };
 
+    $keepalive_callback = function($msg) {
+      mediamosa_debug::log('worked!!', array(), 'T - TEST');
+
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+
+      $update_message['timestamp'] = microtime(true);
+      $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
+
+      $this->send($update_message);
+
+      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+    };
+
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
     $this->channel->basic_consume($core_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume(self::QUEUE_KEEPALIVE, '', false, false, false, false, $keepalive_callback);
 
     while(count($this->channel->callbacks)) {
       $this->channel->wait();
@@ -160,9 +176,17 @@ class jobcore extends mediamosa_rest_call {
   }
 
   function send($job) {
+    if ($job['job_type'] == scheduler_guardian::QUEUE_GUARDIAN) {
+      $queue = scheduler_guardian::QUEUE_GUARDIAN;
+    } else {
+      $queue = 'PROGRESSION';
+    }
+
     //$this->open_connection();
 
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -171,7 +195,7 @@ class jobcore extends mediamosa_rest_call {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, 'PROGRESSION');
+    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $queue);
 
     //$this->close_connection();
   }

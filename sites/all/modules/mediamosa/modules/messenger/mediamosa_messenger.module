@@ -6,33 +6,38 @@ function mediamosa_messenger_cron()
 
   // static van maken, voor herbruikbaarheid en leesbaarheid, zo zie je meteen wat de methode doe als je zegt is_scheduler() : bool
   $var = variable_get('mediamosa_server_type'); // string jobcore of string scheduler of array waarin allebei zitten
-  // kijk if string, cast naar array en behandel hierna altijd als array
+
+  // kijk if string, cast naar array en behandel hierna altijd als array/
+  // ...
+
+  // vraag tools hier op
+  // ...
 
   // if null dan niks doen
-
-
+  // ...
 
   $server_type = 'scheduler';
-  $core_type = ['transcode', '...'];
-//  $server_type = 'jobcore';
+  $core_type = ['transcode'];
 
-  if ($server_type == 'scheduler'){
-    call('/scheduler_guardian/check?server_type=' . $server_type);
-  } else {
-    call('/scheduler_guardian/check?server_type=' . $server_type . '?core_type=' . $core_type);
-  }
+  $query_data = [
+    'server_type' => $server_type,
+    'core_type' => $core_type[0]
+  ];
 
+  $location = '/scheduler_guardian/check?' . http_build_query($query_data);
+
+  call($location);
   call('/jobscheduler/roundupjobs?server_action=roundupjobs');
 }
 
 //  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 
-function call($path) {
+function call($location) {
   // Test REST CALL
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
   if (isset($mediamosa_jobscheduler_uri)) {
 
-    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path;
+    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
 
     // Log it.
     mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));

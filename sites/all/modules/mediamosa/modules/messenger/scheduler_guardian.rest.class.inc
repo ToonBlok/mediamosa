@@ -8,6 +8,7 @@ class scheduler_guardian extends mediamosa_rest_call
 {
   const QUEUE_GUARDIAN = 'guardian';
   const SERVER_TYPE = 'server_type';
+  const CORE_TYPE = 'core_type';
   /*
    * Implements get_var_setup().
    */
@@ -16,6 +17,10 @@ class scheduler_guardian extends mediamosa_rest_call
     $var_setup = array(
       self::VARS => array(
         self::SERVER_TYPE=> array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::CORE_TYPE=> array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         )
@@ -34,6 +39,7 @@ class scheduler_guardian extends mediamosa_rest_call
     $mediamosa = mediamosa::get();
     mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
     $server_type = $this->get_param_value(self::SERVER_TYPE);
+    $core_type = $this->get_param_value(self::CORE_TYPE);
     mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
     if ($server_type == 'scheduler') {
@@ -45,8 +51,10 @@ class scheduler_guardian extends mediamosa_rest_call
       exit();
     }
 
+    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type, array(), 'T - GUARDIAN');
+
     $this->send($queue);
-    $this->peek();
+    $this->peek($queue);
 
     $mediamosa->add_item(
       array(
@@ -104,7 +112,11 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-  function peek() {
+  function peek($queue) {
+    if ($queue == scheduler::QUEUE_KEEPALIVE) {
+      $drush_var = 'time_last_update';
+    }
+
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -117,9 +129,9 @@ class scheduler_guardian extends mediamosa_rest_call
 //    mediamosa_debug::log_export($var, WATCHDOG_NOTICE, 'T - GUARDIAN' );
 
     // If the variable has not been set yet, scheduler has never started before.
-    if ($this->variable_get('time_last_update') == NULL){
+    if ($this->variable_get($drush_var) == NULL){
       mediamosa_debug::log('Scheduler has never started yet', array(), 'T - GUARDIAN');
-      $this->variable_set('time_last_update', $time_now);
+      $this->variable_set($drush_var, $time_now);
       $this->start_scheduler();
     } else {
       // Loop trough all the messages available in order to get the most recent message.
@@ -139,7 +151,7 @@ class scheduler_guardian extends mediamosa_rest_call
         // Receive a message and remove it from RabbitMQ.
 //        $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
 
-        $time_last_update = variable_get('time_last_update');
+        $time_last_update = variable_get($drush_var);
 
         // if: The timestamp in the message is more recent, update time_last_update.
         // else: Prevent updating of time_last_update with a value older than it is already.
@@ -147,7 +159,7 @@ class scheduler_guardian extends mediamosa_rest_call
         if ($time_last_update < $update_msg['timestamp']) {
 //          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'T - GUARDIAN');
           mediamosa_debug::log('New time received and set (' . $time_last_update . ' became ' . $update_msg['timestamp'] . ').', array(), 'T - GUARDIAN');
-          $this->variable_set('time_last_update', $update_msg['timestamp']);
+          $this->variable_set($drush_var, $update_msg['timestamp']);
         }
 
       }
