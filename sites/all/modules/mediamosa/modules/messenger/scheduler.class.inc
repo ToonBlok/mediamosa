@@ -156,7 +156,6 @@ class scheduler extends mediamosa_rest_call {
     $keepalive_callback = function($msg) {
       mediamosa_debug::log('aNew callback works', array(), 'T - SCHEDULER');
 
-      $update_message = unserialize($msg->body);
       $update_message['timestamp'] = microtime(true);
       $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);

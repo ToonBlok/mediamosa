@@ -63,7 +63,7 @@ class scheduler_guardian extends mediamosa_rest_call
     }
 
 
-    $this->send($queue);
+    $this->send($queue, $server_type);
     $this->peek($queue, $core_type);
 
     $mediamosa->add_item(
@@ -73,31 +73,8 @@ class scheduler_guardian extends mediamosa_rest_call
     );
   }
 
-  function call($path, $value = '') {
-    // Test REST CALL
-    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
-    if (isset($mediamosa_jobscheduler_uri)) {
 
-      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $path . $value;
-
-      // Log it.
-      mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
-
-      // Dont trigger in sandbox.
-      if (mediamosa::in_simpletest_sandbox()) {
-        // So we wait till finished.
-        MediaMosaTestCase::staticInternalRestCallGet($url);
-      } else {
-        // Trigger.
-        mediamosa_http::do_head_internal_call($url);
-      }
-    } else {
-      mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
-    }
-
-  }
-
-  function send($queue) {
+  function send($queue, $server_type) {
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -106,9 +83,16 @@ class scheduler_guardian extends mediamosa_rest_call
 
 //    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
 
-    $alive_message = [
-      "server_action" => "keepalive"
-    ];
+
+    $alive_message = [];
+//    if ($server_type == 'jobcore') {
+//      $alive_message = [
+//        "id" => $queue
+//      ];
+//    }
+//    $alive_message += array(
+//      "id" => ""
+//    );
 
     $msg = new AMQPMessage(
       serialize($alive_message),
@@ -263,13 +247,44 @@ class scheduler_guardian extends mediamosa_rest_call
 
   function start_scheduler() {
     mediamosa_debug::log('start_scheduler() iniated', array(), 'T - GUARDIAN');
-    $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
+
+    $query_data = [
+      'server_action' => 'listen'
+    ];
+    $location = '/jobscheduler/roundupjobs?' . http_build_query($query_data);
+
+
+    $this->call($location);
   }
 
   function start_jobcore($core_type) {
     mediamosa_debug::log('Booting up ' . $core_type . ' jobcore.', array(), 'T - GUARDIAN');
     $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
     $this->call('/jobcore/parsequeue?core_type=', $core_type);
+  }
+
+  function call($location) {
+    // Test REST CALL
+    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+    if (isset($mediamosa_jobscheduler_uri)) {
+
+      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
+
+      // Log it.
+      mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
+
+      // Dont trigger in sandbox.
+      if (mediamosa::in_simpletest_sandbox()) {
+        // So we wait till finished.
+        MediaMosaTestCase::staticInternalRestCallGet($url);
+      } else {
+        // Trigger.
+        mediamosa_http::do_head_internal_call($url);
+      }
+    } else {
+      mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
+    }
+
   }
 
   function open_connection() {
