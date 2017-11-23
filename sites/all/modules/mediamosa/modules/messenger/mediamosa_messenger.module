@@ -14,7 +14,6 @@ function mediamosa_messenger_cron()
 //
 //   if null dan niks doen
 //   ...
-//  mediamosa_debug::log('answer: ' . foo::is_scheduler($server_type), array(), 'T - CRON');
 
   $server_type = variable_get('mediamosa_server_type');
 
@@ -46,11 +45,6 @@ class foo {
     return ($server_type == 'jobcore') ? 1 : 0;
   }
 }
-        // ...
-  //}
-
-
-//  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 
 function call($location) {
   // Test REST CALL

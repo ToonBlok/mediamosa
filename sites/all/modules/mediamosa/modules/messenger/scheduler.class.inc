@@ -39,7 +39,6 @@ class scheduler extends mediamosa_rest_call {
     if($server_action == 'roundupjobs') {
       $this->round_up_jobs();
     } elseif ($server_action == 'listen') {
-      mediamosa_debug::log('STARTED!', array(), 'T - 1349');
       try {
         $this->listen();
       } catch (Exception $e) {
@@ -48,7 +47,6 @@ class scheduler extends mediamosa_rest_call {
       }
 
     }
-    mediamosa_debug::log('server action: ' . $server_action, array(), 'T - 1244');
 
 //    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
 
