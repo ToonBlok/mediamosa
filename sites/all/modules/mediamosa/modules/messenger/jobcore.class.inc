@@ -83,7 +83,6 @@ class jobcore extends mediamosa_rest_call {
     };
 
     $keepalive_callback = function($msg) {
-      mediamosa_debug::log('worked!!', array(), 'T - TEST');
 
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
 
@@ -181,7 +180,6 @@ class jobcore extends mediamosa_rest_call {
     } else {
       $queue = 'PROGRESSION';
     }
-    mediamosa_debug::log('Sent a message to ' . $queue, array(), 'T - TEST');
 
     //$this->open_connection();
 

@@ -34,7 +34,6 @@ class scheduler extends mediamosa_rest_call {
 
     $server_action = $this->get_param_value(self::SERVER_ACTION);
 
-    mediamosa_debug::log('Scheduler server action: ' . $server_action, array(), 'T - SCHEDULER');
 
     if($server_action == 'roundupjobs') {
       $this->round_up_jobs();

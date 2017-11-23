@@ -31,6 +31,7 @@ function mediamosa_messenger_cron()
         'core_types' => $core_types
       );
     }
+    mediamosa_debug::log('Slots requisted: ' . count($query_data['core_types']), array(),'T - MISC');
 
     $location = '/scheduler_guardian/check?' . http_build_query($query_data);
 
