@@ -26,7 +26,7 @@ class scheduler_guardian extends mediamosa_rest_call
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         ),
-        self::KEEPALIVE_QUEUE_NAME=> array(
+        self::KEEPALIVE_QUEUE_NAME => array(
         self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
         self::VAR_DESCRIPTION => "",
         )
@@ -44,15 +44,17 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
     mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
+
     $server_type = $this->get_param_value(self::SERVER_TYPE);
     $core_type = $this->get_param_value(self::CORE_TYPE);
-    $keepalive_queue_name = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
+    $jobcore_unique_queue = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
+
     mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
     if ($server_type == 'scheduler') {
       $queue = scheduler::QUEUE_KEEPALIVE;
     } elseif ($server_type == 'jobcore') {
-      $queue = jobcore::QUEUE_KEEPALIVE;
+      $queue = $jobcore_unique_queue;
     } else {
       mediamosa_debug::log('Something went wrong with passing along the $server_type', array(), 'T - GUARDIAN');
       exit();
@@ -122,7 +124,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
   function peek($queue) {
     if ($queue == scheduler::QUEUE_KEEPALIVE) {
-      $drush_var = 'time_last_update';
+      $drush_var = 'scheduler_time_last_update';
     }
 
     $this->open_connection();
