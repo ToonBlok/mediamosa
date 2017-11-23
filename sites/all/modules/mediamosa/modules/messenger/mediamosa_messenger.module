@@ -2,33 +2,53 @@
 
 function mediamosa_messenger_cron()
 {
-  mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - Messenger');
+  mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - MESSENGER');
 
-  // static van maken, voor herbruikbaarheid en leesbaarheid, zo zie je meteen wat de methode doe als je zegt is_scheduler() : bool
-  $var = variable_get('mediamosa_server_type'); // string jobcore of string scheduler of array waarin allebei zitten
+//   static van maken, voor herbruikbaarheid en leesbaarheid, zo zie je meteen wat de methode doe als je zegt is_scheduler() : bool
+//
+//   kijk if string, cast naar array en behandel hierna altijd als array/
+//   ...
+//
+//   vraag tools hier op
+//   ...
+//
+//   if null dan niks doen
+//   ...
+//  mediamosa_debug::log('answer: ' . foo::is_scheduler($server_type), array(), 'T - CRON');
 
-  // kijk if string, cast naar array en behandel hierna altijd als array/
-  // ...
+  $server_type = variable_get('mediamosa_server_type');
 
-  // vraag tools hier op
-  // ...
+  if (is_null($server_type)){
+    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+  } else {
+    $query_data = [
+      'server_type' => $server_type
+    ];
 
-  // if null dan niks doen
-  // ...
+    if (foo::is_jobcore($server_type)) {
+      $core_types = variable_get('mediamosa_cores_tools');
 
-  $server_type = 'jobcore';
-  $core_type = ['transcode'];
+      $query_data += array(
+        'core_types' => $core_types
+      );
+    }
 
-  $query_data = [
-    'server_type' => $server_type,
-    'core_type' => $core_type[0]
-  ];
+    $location = '/scheduler_guardian/check?' . http_build_query($query_data);
 
-  $location = '/scheduler_guardian/check?' . http_build_query($query_data);
+    call($location);
+    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+  }
 
-  call($location);
-  call('/jobscheduler/roundupjobs?server_action=roundupjobs');
 }
+
+class foo {
+  public static function is_jobcore($server_type) {
+    return ($server_type == 'jobcore') ? 1 : 0;
+  }
+}
+        // ...
+  //}
+
 
 //  call('/jobscheduler/roundupjobs?server_action=', 'listen');
 
