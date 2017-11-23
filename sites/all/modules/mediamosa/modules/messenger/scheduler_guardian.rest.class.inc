@@ -9,6 +9,8 @@ class scheduler_guardian extends mediamosa_rest_call
   const QUEUE_GUARDIAN = 'guardian';
   const SERVER_TYPE = 'server_type';
   const CORE_TYPE = 'core_type';
+  const KEEPALIVE_QUEUE_NAME = 'keepalive_queue_name';
+
   /*
    * Implements get_var_setup().
    */
@@ -23,6 +25,10 @@ class scheduler_guardian extends mediamosa_rest_call
         self::CORE_TYPE=> array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
+        ),
+        self::KEEPALIVE_QUEUE_NAME=> array(
+        self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+        self::VAR_DESCRIPTION => "",
         )
       )
     );
@@ -40,6 +46,7 @@ class scheduler_guardian extends mediamosa_rest_call
     mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
     $server_type = $this->get_param_value(self::SERVER_TYPE);
     $core_type = $this->get_param_value(self::CORE_TYPE);
+    $keepalive_queue_name = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
     mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
     if ($server_type == 'scheduler') {
