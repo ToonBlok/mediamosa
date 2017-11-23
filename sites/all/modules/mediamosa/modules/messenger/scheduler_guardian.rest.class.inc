@@ -42,14 +42,16 @@ class scheduler_guardian extends mediamosa_rest_call
    */
   public function do_call()
   {
+    mediamosa_debug::log('Class ' . __CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
+
     $mediamosa = mediamosa::get();
-    mediamosa_debug::log(__CLASS__ . ' iniated.', array(), 'T - GUARDIAN');
 
     $server_type = $this->get_param_value(self::SERVER_TYPE);
     $core_type = $this->get_param_value(self::CORE_TYPE);
     $jobcore_unique_queue = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
+    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'T - GUARDIAN');
 
-    mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
+//    mediamosa_debug::log('server type: ' . $server_type, array(), 'T - GUARDIAN');
 
     if ($server_type == 'scheduler') {
       $queue = scheduler::QUEUE_KEEPALIVE;
@@ -60,10 +62,9 @@ class scheduler_guardian extends mediamosa_rest_call
       exit();
     }
 
-    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type, array(), 'T - GUARDIAN');
 
     $this->send($queue);
-    $this->peek($queue);
+    $this->peek($queue, $core_type);
 
     $mediamosa->add_item(
       array(
@@ -122,9 +123,11 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-  function peek($queue) {
+  function peek($queue, $core_type = '') {
     if ($queue == scheduler::QUEUE_KEEPALIVE) {
       $drush_var = 'scheduler_time_last_update';
+    } else {
+      $drush_var = $queue . '_time_last_update';
     }
 
     $this->open_connection();
@@ -140,9 +143,15 @@ class scheduler_guardian extends mediamosa_rest_call
 
     // If the variable has not been set yet, scheduler has never started before.
     if ($this->variable_get($drush_var) == NULL){
-      mediamosa_debug::log('Scheduler has never started yet', array(), 'T - GUARDIAN');
+      mediamosa_debug::log($queue . ' has never started yet', array(), 'T - GUARDIAN');
       $this->variable_set($drush_var, $time_now);
-      $this->start_scheduler();
+
+      if (is_null($core_type)) {
+        $this->start_scheduler();
+      } else {
+        $this->start_jobcore($core_type);
+      }
+
     } else {
       // Loop trough all the messages available in order to get the most recent message.
 
@@ -175,16 +184,22 @@ class scheduler_guardian extends mediamosa_rest_call
       }
       mediamosa_debug::log($testvar, array(), 'T - GUARDIAN');
 
-      $time_last_update = variable_get('time_last_update');
+      $time_last_update = variable_get($drush_var);
 
       // Replace 300 with drush value with default 300
 
       // Scheduler has not responded in the last 5 minutes
       if (($time_last_update + 300) < ($time_now)) {
-        mediamosa_debug::log('Scheduler is offline. Iniating scheduler.', array(), 'T - GUARDIAN');
-        $this->start_scheduler();
+        mediamosa_debug::log($queue . ' is offline. Iniating scheduler.', array(), 'T - GUARDIAN');
+
+        if (is_null($core_type)) {
+          $this->start_scheduler();
+        } else {
+          $this->start_jobcore($core_type);
+        }
+
       } else { // Scheduler has responded in the last 5 minutes
-        mediamosa_debug::log('Scheduler is online. No further action undertaken.', array(), 'T - GUARDIAN');
+        mediamosa_debug::log($queue . ' is online. No further action undertaken.', array(), 'T - GUARDIAN');
       }
 
     }
@@ -249,6 +264,12 @@ class scheduler_guardian extends mediamosa_rest_call
   function start_scheduler() {
     mediamosa_debug::log('start_scheduler() iniated', array(), 'T - GUARDIAN');
     $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
+  }
+
+  function start_jobcore($core_type) {
+    mediamosa_debug::log('Booting up ' . $core_type . ' jobcore.', array(), 'T - GUARDIAN');
+    $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
+    $this->call('/jobcore/parsequeue?core_type=', $core_type);
   }
 
   function open_connection() {

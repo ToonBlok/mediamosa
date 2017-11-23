@@ -16,6 +16,7 @@ function mediamosa_messenger_cron()
 //   ...
 
   $server_type = variable_get('mediamosa_server_type');
+  $installation_id = variable_get('mediamosa_installation_id');
 
   $query_data = [
     'server_type' => $server_type
@@ -28,15 +29,20 @@ function mediamosa_messenger_cron()
     $core_types = variable_get('mediamosa_cores_tools');
 //    mediamosa_debug::log('Slots requisted: ' . count($query_data['core_types']), array(),'T - MISC');
 
-    foreach ($core_types as $core_type) {
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i];
+
       $query_data['core_type'] = $core_type;
-      $query_data['keepalive_queue_name'] = generate_unique_name($core_type);
+      $query_data['keepalive_queue_name'] = $installation_id . '_' . $i;
 
       $location = '/scheduler_guardian/check?' . http_build_query($query_data);
 
       call($location);
       mediamosa_debug::log('server type: ' . $query_data['server_type'] . ', unique id: ' . $query_data['keepalive_queue_name'] , array(), 'T - MISC');
     }
+
+//    foreach ($core_types as $core_type) {
+//    }
 
 
   } else {
@@ -47,24 +53,22 @@ function mediamosa_messenger_cron()
 
 }
 
-function generate_unique_name($core_type){
-  // Server with 1 responsibility
-  if (count($core_type) == 1) {
-    $core_type_name = $core_type[0];
-  } else { // Server with 2 responsibilities
-    $core_type_name = $core_type[0] . '_' . $core_type[1];
-  }
-  return  $core_type_name . '_' . uniqid();
-}
-
-function call_guardian(){
-
-}
-
 class foo {
+
   public static function is_jobcore($server_type) {
     return ($server_type == 'jobcore') ? 1 : 0;
   }
+
+//  public static function generate_unique_name($core_type){
+//    // Server with 1 responsibility
+//    if (count($core_type) == 1) {
+//      $core_type_name = $core_type[0];
+//    } else { // Server with 2 responsibilities
+//      $core_type_name = $core_type[0] . '_' . $core_type[1];
+//    }
+//    return  $core_type_name . '_' . uniqid();
+//  }
+
 }
 
 function call($location) {
