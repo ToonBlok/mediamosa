@@ -16,7 +16,7 @@ function mediamosa_messenger_cron()
   // if null dan niks doen
   // ...
 
-  $server_type = 'scheduler';
+  $server_type = 'jobcore';
   $core_type = ['transcode'];
 
   $query_data = [

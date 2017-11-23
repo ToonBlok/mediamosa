@@ -181,12 +181,11 @@ class jobcore extends mediamosa_rest_call {
     } else {
       $queue = 'PROGRESSION';
     }
+    mediamosa_debug::log('Sent a message to ' . $queue, array(), 'T - TEST');
 
     //$this->open_connection();
 
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
 
     $msg = new AMQPMessage(
       serialize($job),

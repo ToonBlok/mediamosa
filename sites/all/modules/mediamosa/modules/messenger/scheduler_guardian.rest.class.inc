@@ -91,9 +91,10 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-//    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
     $this->channel->queue_declare($queue, false, true, false, false);
     $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
+
+//    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
 
     $alive_message = [
       "server_action" => "keepalive"

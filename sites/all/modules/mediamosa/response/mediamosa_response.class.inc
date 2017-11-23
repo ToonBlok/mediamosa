@@ -144,6 +144,10 @@ class mediamosa_response extends mediamosa {
       return;
     }
 
+    if (substr(request_uri(),0 , 10) === '/cron.php?' ) {
+      return;
+    }
+
     // Fix hash_salt bug when running simpletest on multiple vhosts with
     // different filesystems for bootstart.inc.
     if (mediamosa::in_simpletest_sandbox()) {
@@ -204,6 +208,9 @@ class mediamosa_response extends mediamosa {
           }
         }
       }
+
+
+
 
       // At this point we take over the output from Drupal and will no longer
       // return to drupal.
