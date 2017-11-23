@@ -9,6 +9,7 @@ class jobcore extends mediamosa_rest_call {
   const CORE_TYPE = 'core_type';
   const EXCHANGE_JOBS = 'jobs';
   const QUEUE_KEEPALIVE = 'jobcore_keepalive';
+  const ID = 'id';
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().
@@ -17,6 +18,10 @@ class jobcore extends mediamosa_rest_call {
     $var_setup = array(
       self::VARS => array(
         self::CORE_TYPE => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::ID => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         )
@@ -34,12 +39,14 @@ class jobcore extends mediamosa_rest_call {
     $mediamosa = mediamosa::get();
 
     $core_type = $this->get_param_value(self::CORE_TYPE);
+    $id = $this->get_param_value(self::ID);
+
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
     $this->core_type = $core_type;
     mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
-    $this->listen($core_type);
+    $this->listen($core_type, $id);
 
     // Geef array terug van response
     // Geef steeds een regel terug die je in xml output terug krijgt
@@ -55,13 +62,13 @@ class jobcore extends mediamosa_rest_call {
 //    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
 //  }
 
-  function listen($core_type) {
+  function listen($core_type, $keep_alive_queue) {
     $this->open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($core_type, false, true, false, false);
-    $this->channel->queue_declare(self::QUEUE_KEEPALIVE, false, true, false, false);
+    $this->channel->queue_declare($keep_alive_queue, false, true, false, false);
     $this->channel->queue_bind($core_type, self::EXCHANGE_JOBS, $core_type);
-    $this->channel->queue_bind(self::QUEUE_KEEPALIVE, self::EXCHANGE_JOBS, self::QUEUE_KEEPALIVE);
+    $this->channel->queue_bind($keep_alive_queue, self::EXCHANGE_JOBS, $keep_alive_queue);
 
     if (mediamosa::in_simpletest_sandbox()) {
       mediamosa_debug::log('In sandbox...', array(), 'T - UNIT TESTS');
@@ -97,7 +104,7 @@ class jobcore extends mediamosa_rest_call {
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
     $this->channel->basic_consume($core_type, '', false, false, false, false, $callback);
-    $this->channel->basic_consume(self::QUEUE_KEEPALIVE, '', false, false, false, false, $keepalive_callback);
+    $this->channel->basic_consume($keep_alive_queue, '', false, false, false, false, $keepalive_callback);
 
     while(count($this->channel->callbacks)) {
       $this->channel->wait();

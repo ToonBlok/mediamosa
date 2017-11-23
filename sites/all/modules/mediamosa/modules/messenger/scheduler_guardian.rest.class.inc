@@ -133,7 +133,7 @@ class scheduler_guardian extends mediamosa_rest_call
       if (is_null($core_type)) {
         $this->start_scheduler();
       } else {
-        $this->start_jobcore($core_type);
+        $this->start_jobcore($core_type, $queue);
       }
 
     } else {
@@ -179,7 +179,7 @@ class scheduler_guardian extends mediamosa_rest_call
         if (is_null($core_type)) {
           $this->start_scheduler();
         } else {
-          $this->start_jobcore($core_type);
+          $this->start_jobcore($core_type, $queue);
         }
 
       } else { // Scheduler has responded in the last 5 minutes
@@ -257,10 +257,18 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->call($location);
   }
 
-  function start_jobcore($core_type) {
+  function start_jobcore($core_type, $id) {
     mediamosa_debug::log('Booting up ' . $core_type . ' jobcore.', array(), 'T - GUARDIAN');
-    $this->call('/jobscheduler/roundupjobs?server_action=', 'listen');
-    $this->call('/jobcore/parsequeue?core_type=', $core_type);
+
+    $query_data = [
+      'core_type' => $core_type,
+      'id' => $id
+    ];
+
+    $location = '/jobcore/parsequeue?' . http_build_query($query_data);
+
+
+    $this->call($location);
   }
 
   function call($location) {

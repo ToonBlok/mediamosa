@@ -124,6 +124,7 @@ class scheduler extends mediamosa_rest_call {
   }
 
   function listen() {
+    mediamosa_debug::log('STARTED LISTENING AGAIN', array(), 'T - SCHEDULER');
     $server_type = 'PROGRESSION';
     $this->open_connection();
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
