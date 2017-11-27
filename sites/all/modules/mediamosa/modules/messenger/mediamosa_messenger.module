@@ -2,19 +2,6 @@
 
 function mediamosa_messenger_cron()
 {
-  mediamosa_debug::log('Start ' . __METHOD__, array(), 'T - MESSENGER');
-
-//   static van maken, voor herbruikbaarheid en leesbaarheid, zo zie je meteen wat de methode doe als je zegt is_scheduler() : bool
-//
-//   kijk if string, cast naar array en behandel hierna altijd als array/
-//   ...
-//
-//   vraag tools hier op
-//   ...
-//
-//   if null dan niks doen
-//   ...
-
   $server_type = variable_get('mediamosa_server_type');
   $installation_id = variable_get('mediamosa_installation_id');
 
@@ -22,15 +9,15 @@ function mediamosa_messenger_cron()
     'server_type' => $server_type
   ];
 
+//  mediamosa_debug::log('Server type: ' . $query_data['server_type'], array(), 'T - CRON');
+
   if (is_null($server_type)){
     call('/jobscheduler/roundupjobs?server_action=roundupjobs');
   } elseif (foo::is_jobcore($server_type)){
-    //$queue = generate_unique_name();
     $core_types = variable_get('mediamosa_cores_tools');
-//    mediamosa_debug::log('Slots requisted: ' . count($query_data['core_types']), array(),'T - MISC');
 
     for ($i = 0; $i < count($core_types); $i++) {
-      $core_type = $core_types[$i];
+      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
 
       $query_data['core_type'] = $core_type;
       $query_data['keepalive_queue_name'] = $installation_id . '_' . $i;
@@ -38,13 +25,7 @@ function mediamosa_messenger_cron()
       $location = '/scheduler_guardian/check?' . http_build_query($query_data);
 
       call($location);
-      mediamosa_debug::log('server type: ' . $query_data['server_type'] . ', unique id: ' . $query_data['keepalive_queue_name'] , array(), 'T - MISC');
     }
-
-//    foreach ($core_types as $core_type) {
-//    }
-
-
   } else {
     $location = '/scheduler_guardian/check?' . http_build_query($query_data);
 
@@ -53,32 +34,13 @@ function mediamosa_messenger_cron()
 
 }
 
-class foo {
-
-  public static function is_jobcore($server_type) {
-    return ($server_type == 'jobcore') ? 1 : 0;
-  }
-
-//  public static function generate_unique_name($core_type){
-//    // Server with 1 responsibility
-//    if (count($core_type) == 1) {
-//      $core_type_name = $core_type[0];
-//    } else { // Server with 2 responsibilities
-//      $core_type_name = $core_type[0] . '_' . $core_type[1];
-//    }
-//    return  $core_type_name . '_' . uniqid();
-//  }
-
-}
 
 function call($location) {
-  // Test REST CALL
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
   if (isset($mediamosa_jobscheduler_uri)) {
 
     $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
 
-    // Log it.
     mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
 
     // Dont trigger in sandbox.
@@ -130,5 +92,11 @@ function mediamosa_messenger_mediamosa_register_rest_call()
   );
 
   return $rest_calls;
+}
+
+class foo {
+  public static function is_jobcore($server_type) {
+    return ($server_type == 'jobcore') ? 1 : 0;
+  }
 }
 

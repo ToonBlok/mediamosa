@@ -98,7 +98,7 @@ class jobcore extends mediamosa_rest_call {
 
       $this->send($update_message);
 
-      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
     };
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.

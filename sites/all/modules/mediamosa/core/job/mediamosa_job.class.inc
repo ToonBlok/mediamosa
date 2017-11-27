@@ -651,6 +651,7 @@ class mediamosa_job {
    *   The job ID or FALSE.
    */
   public static function create_job_media_upload($app_id, $user_id, $is_app_admin, $mediafile_id, $priority = 0) {
+
     // Create job.
     return self::create_job(
       mediamosa_job_db::JOB_TYPE_TRANSFER_MEDIA_UPLOAD,
@@ -870,6 +871,8 @@ class mediamosa_job {
     // Add created and changed value.
     $fields = mediamosa_db::db_insert_enrich($fields);
 
+
+    mediamosa_debug::log('PASSED HERE!!', array(), 'T - MISC');
     // Insert it.
     return mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)

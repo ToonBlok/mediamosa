@@ -160,7 +160,7 @@ class scheduler extends mediamosa_rest_call {
       $update_message['timestamp'] = microtime(true);
       $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
       $this->send($update_message);
     };
 
