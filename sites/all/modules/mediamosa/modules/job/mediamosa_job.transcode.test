@@ -34,7 +34,8 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $job_id = $this->createMediafileTranscode($mediafile_id, array('profile_id' => $this->getDefaultTranscodeProfile()));
 
     // Parse the queue.
-    $this->doQueueCycleAll();
+//    $this->doQueueCycleAll();
+    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);

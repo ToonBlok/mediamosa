@@ -215,7 +215,8 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     // Any options need job processing?
     if (!empty($options['create_still']) || !empty($options['transcode'])) {
       // Parse the queue.
-      $this->doQueueCycleAll();
+//      $this->doQueueCycleAll();
+      call('/jobscheduler/roundupjobs?server_action=roundupjobs');
     }
 
     return $result;
