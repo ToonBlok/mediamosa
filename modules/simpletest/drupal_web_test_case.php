@@ -137,6 +137,8 @@ abstract class DrupalTestCase {
       $caller = $this->getAssertionCall();
     }
 
+//    $this->testId = 1;
+
     // Creation assertion array that can be displayed while tests are running.
     $this->assertions[] = $assertion = array(
       'test_id' => $this->testId,

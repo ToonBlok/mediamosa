@@ -16,6 +16,7 @@ dependencies[] = image
 dependencies[] = simpletest
 dependencies[] = mediamosa_sdk (>=3.6)
 dependencies[] = mediamosa_connector
+dependencies[] = mediamosa_messenger
 
 ; Used files.
 

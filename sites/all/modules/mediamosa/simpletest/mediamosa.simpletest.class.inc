@@ -535,6 +535,19 @@ class MediaMosaTestCase extends DrupalWebTestCase {
    */
   protected function restCall($uri, $request_method = 'POST', array $parameters = array(), array $headers = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY), $do_internal = FALSE) {
 
+    // Toon: debug ***************************************************************************************
+    $foo = [
+      "var" => "nothing"
+    ];
+    $foo['var'] = '$uri in restCall ***********';
+    $this->var_export($foo);
+    $this->var_export($uri);
+
+    $foo['var'] = '$expected at start of restCall ***********';
+    $this->var_export($foo);
+    $this->var_export($expected_result_ids);
+    // Toon: debug ***************************************************************************************
+
     if ($do_internal) {
       // Set internal password.
       $headers[] = mediamosa_settings::X_MEDIAMOSA_INTERNAL_PASS . ': ' . mediamosa::get_internal_password();
@@ -591,6 +604,14 @@ class MediaMosaTestCase extends DrupalWebTestCase {
       }
       else {
         $parameters = http_build_query($parameters);
+        // Toon: debug ***************************************************************************************
+        $foo = [
+          "var" => "nothing"
+        ];
+        $foo['var'] = '$parameters ***********';
+        $this->var_export($foo);
+        $this->var_export($parameters);
+        // Toon: debug ***************************************************************************************
       }
 
       $curl_opts += array(
@@ -604,6 +625,19 @@ class MediaMosaTestCase extends DrupalWebTestCase {
 
     // Perform the CURL request.
     $result = $this->curlExec($curl_opts);
+
+    // Toon ************************************************
+    $foo = [
+      "var" => "nothing"
+    ];
+    $foo['var'] = 'Results ***********';
+    $this->var_export($foo);
+    $this->var_export($result);
+
+    $foo['var'] = '$curl_opts ***********';
+    $this->var_export($foo);
+    $this->var_export($curl_opts);
+    // Toon ************************************************
 
     $timer = timer_stop('simpletest');
     if (strlen($result) == 0) {
@@ -660,6 +694,14 @@ class MediaMosaTestCase extends DrupalWebTestCase {
       return;
     }
 
+    $foo['var'] = '$out variable***********';
+    $this->var_export($foo);
+    $this->var_export($out);
+
+    $foo['var'] = '$expected results id variable***********';
+    $this->var_export($foo);
+    $this->var_export($expected_result_ids);
+
     // Get the result ID.
     if (!empty($out['xml']->header)) {
       $result_id = empty($out['xml']->header->request_result_id) ? 0 : (int) $out['xml']->header->request_result_id;
@@ -695,6 +737,12 @@ class MediaMosaTestCase extends DrupalWebTestCase {
    * Wrapper for GET restCall
    */
   protected function restCallGet($uri, array $parameters = array(), array $headers = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)) {
+    $foo = [
+      "var" => "nothing"
+    ];
+    $foo['var'] = '$uri in restCallGet ***********';
+    $this->var_export($foo);
+    $this->var_export($uri);
     return $this->restCall($uri, 'GET', $parameters, $headers, $expected_result_ids);
   }
 

@@ -12,7 +12,9 @@ function mediamosa_messenger_cron()
 //  mediamosa_debug::log('Server type: ' . $query_data['server_type'], array(), 'T - CRON');
 
   if (is_null($server_type)){
-    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+//    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+//    $var = new MediaMosaJobTranscodeTestCaseEga();
+//    $var->testJobTranscode();
   } elseif (foo::is_jobcore($server_type)){
     $core_types = variable_get('mediamosa_cores_tools');
 

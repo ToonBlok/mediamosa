@@ -19,6 +19,25 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     );
   }
 
+  // Toon: helper function
+  protected function call($do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
+    $parameters += array(
+      mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
+      'server_action' => 'roundupjobs'
+    );
+
+    $options = [];
+//    $options = [
+//      'timeout' => 3
+//    ];
+
+    $uri = '/jobscheduler/roundupjobs';
+
+//    $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
+    $this->restCallGet($uri, $parameters, array(), $expected_result_ids);
+  }
+
+
   // -------------------------------------------------------------------- Tests.
   /**
    * Basic job transcode test.
@@ -30,19 +49,25 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $asset_id = $upload['asset_id'];
     $mediafile_id = $upload['mediafile_id'];
 
+//     Toon debug ******************************************************************************************************************
 //    $foo = ['*********** My debug ***********'];
 //    $this->var_export($foo);
 //    $this->var_export($upload);
 //    $this->var_export($asset_id);
 //    $this->var_export($mediafile_id);
-//     ----------------------------------------------------------------------------------------------------------------------------
+//     Toon debug ******************************************************************************************************************
 
     // Create transcode job.
     $job_id = $this->createMediafileTranscode($mediafile_id, array('profile_id' => $this->getDefaultTranscodeProfile()));
 
     // Parse the queue.
 //    $this->doQueueCycleAll();
-    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+//    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
+
+    // Toon ******************************************************************************************************************
+    $this->call();
+    // Toon ******************************************************************************************************************
+
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);
