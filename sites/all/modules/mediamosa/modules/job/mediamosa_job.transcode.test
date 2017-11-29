@@ -50,11 +50,12 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $mediafile_id = $upload['mediafile_id'];
 
 //     Toon debug ******************************************************************************************************************
-//    $foo = ['*********** My debug ***********'];
-//    $this->var_export($foo);
-//    $this->var_export($upload);
-//    $this->var_export($asset_id);
-//    $this->var_export($mediafile_id);
+    $foo = [
+      "var" => "nothing"
+    ];
+    $foo['var'] = '$upload ***********';
+    $this->var_export($foo);
+    $this->var_export($upload);
 //     Toon debug ******************************************************************************************************************
 
     // Create transcode job.
@@ -73,15 +74,45 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
 
+    // Toon: debug ***************************************************************************************
+    $foo = [
+      "var" => "nothing"
+    ];
+    $foo['var'] = '$asset in restCall ***********';
+    $this->var_export($foo);
+    $this->var_export($asset);
+
+    // Toon: debug ***************************************************************************************
+
     // Add mediafile clean up and get the first transcoded mediafile.
     $mediafile_id_transcoded = NULL;
     foreach ($asset['mediafiles'] as $mediafile) {
       if (isset($mediafile[0])) {
+
+        // Toon: debug ***************************************************************************************
+        $foo = [
+          "var" => "nothing"
+        ];
+        $foo['var'] = 'Eerste if is GEZET ***********';
+        $this->var_export($foo);
+
+        // Toon: debug ***************************************************************************************
+
         foreach ($mediafile as $mediafile_child) {
           $this->addToCleanUp($mediafile_child['mediafile_id']);
 
           if (!$mediafile_id_transcoded && $mediafile_child['mediafile_id'] != $mediafile_id) {
             $mediafile_id_transcoded = $mediafile_child['mediafile_id'];
+
+            // Toon: debug ***************************************************************************************
+            $foo = [
+              "var" => "nothing"
+            ];
+            $foo['var'] = '$Eerste if ***********';
+            $this->var_export($foo);
+            $this->var_export($mediafile_id_transcoded);
+
+            // Toon: debug ***************************************************************************************
           }
         }
       }
@@ -96,9 +127,28 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $mediafile_id_transcoded = NULL;
     foreach ($asset['mediafiles'] as $mediafile) {
       if (isset($mediafile[0])) {
+
+        // Toon: debug ***************************************************************************************
+        $foo = [
+          "var" => "nothing"
+        ];
+        $foo['var'] = 'Tweede if is GEZET ***********';
+        $this->var_export($foo);
+
+        // Toon: debug ***************************************************************************************
         foreach ($mediafile as $mediafile_child) {
           if ($mediafile_child['mediafile_id'] != $mediafile_id) {
             $mediafile_id_transcoded = $mediafile_child['mediafile_id'];
+
+            // Toon: debug ***************************************************************************************
+            $foo = [
+              "var" => "nothing"
+            ];
+            $foo['var'] = '$Tweede if ***********';
+            $this->var_export($foo);
+            $this->var_export($mediafile_id_transcoded);
+
+            // Toon: debug ***************************************************************************************
             break;
           }
         }
