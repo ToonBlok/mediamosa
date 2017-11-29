@@ -30,6 +30,13 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $asset_id = $upload['asset_id'];
     $mediafile_id = $upload['mediafile_id'];
 
+//    $foo = ['*********** My debug ***********'];
+//    $this->var_export($foo);
+//    $this->var_export($upload);
+//    $this->var_export($asset_id);
+//    $this->var_export($mediafile_id);
+//     ----------------------------------------------------------------------------------------------------------------------------
+
     // Create transcode job.
     $job_id = $this->createMediafileTranscode($mediafile_id, array('profile_id' => $this->getDefaultTranscodeProfile()));
 
