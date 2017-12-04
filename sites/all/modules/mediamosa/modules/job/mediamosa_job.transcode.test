@@ -82,6 +82,9 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $this->var_export($foo);
     $this->var_export($asset);
 
+    $foo['var'] = '$asset[mediafiles] in restCall ***********';
+    $this->var_export($foo);
+    $this->var_export($asset['mediafiles']);
     // Toon: debug ***************************************************************************************
 
     // Add mediafile clean up and get the first transcoded mediafile.
