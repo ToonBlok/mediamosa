@@ -8,7 +8,7 @@ function mediamosa_messenger_cron()
     call('/jobscheduler/roundupjobs?server_action=roundupjobs');
   } else {
     mediamosa_debug::log('Cron triggered', array(), 'T - MISC');
-//    call_scheduler();
+    call_scheduler();
     call_jobcores();
   }
 }
