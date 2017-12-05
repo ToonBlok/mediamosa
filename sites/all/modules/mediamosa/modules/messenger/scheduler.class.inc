@@ -132,9 +132,9 @@ class scheduler extends mediamosa_rest_call {
   function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
-//    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
-//    $this->open_connection();
-//    }
+    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
+      $this->open_connection();
+    }
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
@@ -150,9 +150,9 @@ class scheduler extends mediamosa_rest_call {
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
-//    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
-//    $this->close_connection();
-//    }
+    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
+      $this->close_connection();
+    }
   }
 
   function round_up_jobs(){
@@ -194,7 +194,6 @@ class scheduler extends mediamosa_rest_call {
 
     }
   }
-
 
   function update_progression($job) {
     $job_type = $job[mediamosa_job_server_db::JOB_TYPE];
