@@ -48,39 +48,40 @@ class scheduler_guardian extends mediamosa_rest_call
     $core_type = $this->get_param_value(self::CORE_TYPE);
     $jobcore_unique_queue = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
 
-//    mediamosa_debug::log('server type: ' . $server_type, array(), 'Tg - ' . $queue);
+//    mediamosa_debug::log('server type: ' . $server_type, array(), 'Tg - ' . $queue_keepalive_server);
 
     if ($server_type == 'scheduler') {
-      $queue = scheduler::QUEUE_KEEPALIVE;
+      $queue_keepalive_server = scheduler::QUEUE_KEEPALIVE;
     } elseif ($server_type == 'jobcore') {
-      $queue = $jobcore_unique_queue;
+      $queue_keepalive_server = $jobcore_unique_queue;
     } else {
       mediamosa_debug::log('Something went wrong with passing along the $server_type', array(), 'T - MISC');
       exit();
     }
 
-    mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue);
-    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'Tg - ' . $queue);
+    mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue_keepalive_server);
+    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'Tg - ' . $queue_keepalive_server);
 
+    $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
-    $this->send($queue, $server_type);
-    $this->peek($queue, $core_type);
+    $this->send($queue_keepalive_server, $server_type);
+    $this->peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
     $mediamosa->add_item(
       array(
         'version' => mediamosa_version::get_current_version_str(FALSE)
       )
     );
-    mediamosa_debug::log('** End guardian', array(), 'Tg - ' . $queue);
+    mediamosa_debug::log('** End guardian', array(), 'Tg - ' . $queue_keepalive_server);
   }
 
 
-  function send($queue, $server_type) {
+  function send($queue_keepalive_server, $server_type) {
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
+    $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
+    $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [];
     $msg = new AMQPMessage(
@@ -88,45 +89,45 @@ class scheduler_guardian extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue);
+    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $this->close_connection();
   }
 
-  function peek($queue, $core_type = '') {
-    if ($queue == scheduler::QUEUE_KEEPALIVE) {
+  function peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type = '') {
+    if ($queue_keepalive_server == scheduler::QUEUE_KEEPALIVE) {
       $drush_var = 'scheduler_time_last_update';
     } else {
-      $drush_var = $queue . '_time_last_update';
+      $drush_var = $queue_keepalive_server . '_time_last_update';
     }
 
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare(self::QUEUE_GUARDIAN, false, true, false, false);
-    $this->channel->queue_bind(self::QUEUE_GUARDIAN, jobcore::EXCHANGE_JOBS, self::QUEUE_GUARDIAN);
+    $this->channel->queue_declare($queue_keepalive_server_guardian, false, true, false, false);
+    $this->channel->queue_bind($queue_keepalive_server_guardian, jobcore::EXCHANGE_JOBS, $queue_keepalive_server_guardian);
 
     $time_now = microtime(true);
 
     // If the variable has not been set yet, scheduler has never started before.
     if ($this->variable_get($drush_var) == NULL){
-      mediamosa_debug::log($queue . ' has never started yet', array(), 'Tg - ' . $queue);
+      mediamosa_debug::log($queue_keepalive_server . ' has never started yet', array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_now);
 
       if (is_null($core_type)) {
-        mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue);
-        $this->start_scheduler();
+        mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
+        $this->start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian);
       } else {
-        mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue);
-        $this->start_jobcore($core_type, $queue);
+        mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue_keepalive_server);
+        $this->start_jobcore($core_type, $queue_keepalive_server);
       }
 
     } else {
-      while ($this->channel->basic_get(self::QUEUE_GUARDIAN) != NULL) {
-        $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
+      while ($this->channel->basic_get($queue_keepalive_server_guardian) != NULL) {
+        $msg = $this->channel->basic_get($queue_keepalive_server_guardian, 1);
         $update_msg = unserialize($msg->body);
 
-        $this->update_time($drush_var, $update_msg['timestamp'], $queue);
+        $this->update_time($drush_var, $update_msg['timestamp'], $queue_keepalive_server);
       }
 
       $time_last_update = variable_get($drush_var);
@@ -135,17 +136,17 @@ class scheduler_guardian extends mediamosa_rest_call
 
       // Scheduler has not responded in the last 5 minutes
       if (($time_last_update + 300) < ($time_now)) {
-        mediamosa_debug::log($queue . ' has been silent for 5 minutes. Booting up ' . $queue, array(), 'Tg - ' . $queue);
-        $this->update_time($drush_var, $time_now, $queue);
+        mediamosa_debug::log($queue_keepalive_server . ' has been silent for 5 minutes. Booting up ' . $queue_keepalive_server, array(), 'Tg - ' . $queue_keepalive_server);
+        $this->update_time($drush_var, $time_now, $queue_keepalive_server);
 
         if (is_null($core_type)) {
-          $this->start_scheduler();
+          $this->start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian);
         } else {
-          $this->start_jobcore($core_type, $queue);
+          $this->start_jobcore($core_type, $queue_keepalive_server);
         }
 
       } else { // Scheduler has responded in the last 5 minutes
-        mediamosa_debug::log($queue . ' is online. No further action undertaken.', array(), 'Tg - ' . $queue);
+        mediamosa_debug::log($queue_keepalive_server . ' is online. No further action undertaken.', array(), 'Tg - ' . $queue_keepalive_server);
       }
 
     }
@@ -154,80 +155,28 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->close_connection();
   }
 
-  function update_time($drush_var, $time_stamp, $queue) {
+  function update_time($drush_var, $time_stamp, $queue_keepalive_server) {
     $time_last_update = variable_get($drush_var);
 
     // if: The timestamp in the message is more recent, update time_last_update.
     // else: Prevent updating of time_last_update with a value older than it is already.
-//        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue);
+//        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue_keepalive_server);
     if ($time_last_update < $time_stamp) {
-//          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue);
-      mediamosa_debug::log($time_last_update . ' became ' . $time_stamp, array(), 'Tg - ' . $queue);
+//          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue_keepalive_server);
+      mediamosa_debug::log($time_last_update . ' became ' . $time_stamp, array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_stamp);
     }
 
   }
 
-
-//
-//  function listen() {
-//    $server_type = 'PROGRESSION';
-//    $this->open_connection();
-//    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-//    $this->channel->queue_declare('keep_alive', false, true, false, false);
-//    $this->channel->queue_bind('keep_alive', 'jobs', 'keep_alive');
-//
-//    $callback = function($msg){
-//      $job = unserialize($msg->body);
-////      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-//      mediamosa_debug::log(' [!] Job ' . $job['job_id'] . ' = ' . $job['new_job_status']['Progress'] . ' done.', array(), 'Tg - ' . $queue);
-//
-//      echo ' [x] Done', "\n";
-//      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-//    };
-//
-//    // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
-//    $this->channel->basic_qos(null, 1, null);
-//    $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
-//
-//    while(count($this->channel->callbacks)) {
-//      $this->channel->wait();
-//    }
-//
-//    $this->close_connection();
-//  }
-//
-//  function open_connection() {
-//
-//    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
-//    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
-//    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
-//    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
-//
-//    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
-//    $this->channel = $this->connection->channel();
-//  }
-//
-//  function close_connection() {
-//    $this->channel->close();
-//    $this->connection->close();
-//  }
-//
-//  function variable_get($name, $default = NULL) {
-//    return variable_get($name, $default);
-//  }
-//
-//  function variable_set($name, $value) {
-//    variable_set($name, $value);
-//  }
-
-  function start_scheduler() {
+  function start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian) {
 
     $query_data = [
-      'server_action' => 'listen'
+      'server_action' => 'listen',
+      'queue_keepalive_server_guardian' => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
+      'queue_keepalive_server' => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
     ];
     $location = '/jobscheduler/roundupjobs?' . http_build_query($query_data);
-
 
     $this->call($location);
   }
