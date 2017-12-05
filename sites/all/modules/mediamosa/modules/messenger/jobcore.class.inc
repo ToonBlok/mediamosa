@@ -62,6 +62,7 @@ class jobcore extends mediamosa_rest_call {
 //    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
 //  }
 
+  // Jobcore <- Scheduler, guardian
   function listen($core_type, $keep_alive_queue) {
     $this->open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -181,6 +182,7 @@ class jobcore extends mediamosa_rest_call {
     $this->connection->close();
   }
 
+  // Jobcore --> scheduler, guardian
   function send($job) {
     if ($job['job_type'] == scheduler_guardian::QUEUE_GUARDIAN) {
       $queue = scheduler_guardian::QUEUE_GUARDIAN;

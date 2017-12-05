@@ -82,30 +82,15 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->channel->queue_declare($queue, false, true, false, false);
     $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, $queue);
 
-//    $this->channel->queue_declare('PROGRESSION', false, true, false, false);
-
-
     $alive_message = [];
-//    if ($server_type == 'jobcore') {
-//      $alive_message = [
-//        "id" => $queue
-//      ];
-//    }
-//    $alive_message += array(
-//      "id" => ""
-//    );
-
     $msg = new AMQPMessage(
       serialize($alive_message),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-//    mediamosa_debug::log('sent keepalive message to queue ' . $queue, array(), 'Tg - ' . $queue);
-    // IF YOU ADD THE EXCHANGE IT DOESN'T WORK ANYMORE...
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue);
 
     $this->close_connection();
-
   }
 
   function peek($queue, $core_type = '') {
@@ -114,7 +99,6 @@ class scheduler_guardian extends mediamosa_rest_call
     } else {
       $drush_var = $queue . '_time_last_update';
     }
-    //mediamosa_debug::log('Drush var: ' . $drush_var . ', queue: ' . $queue, array(), 'Tg - ' . $queue);
 
     $this->open_connection();
 
@@ -123,9 +107,6 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->channel->queue_bind(self::QUEUE_GUARDIAN, jobcore::EXCHANGE_JOBS, self::QUEUE_GUARDIAN);
 
     $time_now = microtime(true);
-
-//    $var = unserialize($this->channel->basic_get(self::QUEUE_GUARDIAN)->body);
-//    mediamosa_debug::log_export($var, WATCHDOG_NOTICE, 'Tg - ' . $queue);
 
     // If the variable has not been set yet, scheduler has never started before.
     if ($this->variable_get($drush_var) == NULL){
@@ -141,27 +122,12 @@ class scheduler_guardian extends mediamosa_rest_call
       }
 
     } else {
-      // Loop trough all the messages available in order to get the most recent message.
-
-//      $testvar = 0;
-
       while ($this->channel->basic_get(self::QUEUE_GUARDIAN) != NULL) {
-//        $testvar += 1;
         $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
-//        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'Tg - ' . $queue) );
-
         $update_msg = unserialize($msg->body);
 
-        //mediamosa_debug::log('Received message with timestamp: ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue));
-
-
         $this->update_time($drush_var, $update_msg['timestamp'], $queue);
-        // Receive a message and remove it from RabbitMQ.
-//        $msg = $this->channel->basic_get(self::QUEUE_GUARDIAN, 1);
-
-
       }
-//      mediamosa_debug::log($testvar, array(), 'Tg - ' . $queue));
 
       $time_last_update = variable_get($drush_var);
 

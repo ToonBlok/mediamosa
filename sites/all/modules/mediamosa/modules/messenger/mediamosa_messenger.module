@@ -9,7 +9,7 @@ function mediamosa_messenger_cron()
   } else {
     mediamosa_debug::log('Cron triggered', array(), 'T - MISC');
     call_scheduler();
-    call_jobcores();
+//    call_jobcores();
   }
 }
 
