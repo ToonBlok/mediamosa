@@ -124,6 +124,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
     } else {
       while ($this->channel->basic_get($queue_keepalive_server_guardian) != NULL) {
+        mediamosa_debug::log('Received a message!', array(), 'T - GUARDIAN');
         $msg = $this->channel->basic_get($queue_keepalive_server_guardian, 1);
         $update_msg = unserialize($msg->body);
 
