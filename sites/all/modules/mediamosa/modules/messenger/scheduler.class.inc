@@ -140,7 +140,6 @@ class scheduler extends mediamosa_rest_call {
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
     $this->channel->queue_bind($job['job_type'], jobcore::EXCHANGE_JOBS, $job['job_type']);
 
-    mediamosa_debug::log('declare and bind on: ' . $job['job_type'], array(), 'T - SCHEDULER');
     $msg = new AMQPMessage(
       serialize($job),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)

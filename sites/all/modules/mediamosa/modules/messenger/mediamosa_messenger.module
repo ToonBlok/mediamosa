@@ -2,14 +2,14 @@
 
 function mediamosa_messenger_cron()
 {
-  $server_type = variable_get('mediamosa_server_type');
-  if ($server_type == 'refresh') {
+  $server_type = variable_get('mediamosa_server_type'); // Only for test environment
+  if ($server_type == 'refresh') { // Only for test environment
     mediamosa_debug::log('Refresh triggered', array(), 'T - MISC');
     call('/jobscheduler/roundupjobs?server_action=roundupjobs');
   } else {
     mediamosa_debug::log('Cron triggered', array(), 'T - MISC');
-    call_scheduler();
-//    call_jobcores();
+//    call_scheduler();
+    call_jobcores();
   }
 }
 

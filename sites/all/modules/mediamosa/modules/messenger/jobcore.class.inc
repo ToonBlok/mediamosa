@@ -9,7 +9,8 @@ class jobcore extends mediamosa_rest_call {
   const CORE_TYPE = 'core_type';
   const EXCHANGE_JOBS = 'jobs';
   const QUEUE_KEEPALIVE = 'jobcore_keepalive';
-  const ID = 'id';
+  const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
+  const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().
@@ -21,7 +22,11 @@ class jobcore extends mediamosa_rest_call {
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         ),
-        self::ID => array(
+        self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         )
@@ -39,14 +44,15 @@ class jobcore extends mediamosa_rest_call {
     $mediamosa = mediamosa::get();
 
     $core_type = $this->get_param_value(self::CORE_TYPE);
-    $id = $this->get_param_value(self::ID);
+    $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
+    $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
 
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
     $this->core_type = $core_type;
     mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
-    $this->listen($core_type, $id);
+    $this->listen($core_type, $queue_keepalive_server);
 
     // Geef array terug van response
     // Geef steeds een regel terug die je in xml output terug krijgt
@@ -92,12 +98,14 @@ class jobcore extends mediamosa_rest_call {
 
     $keepalive_callback = function($msg) {
 
+      mediamosa_debug::log('keepalive_callback triggered.', array(), 'T - MISC');
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
 
       $update_message['timestamp'] = microtime(true);
-      $update_message['job_type'] = scheduler_guardian::QUEUE_GUARDIAN;
+      $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 
-      $this->send($update_message);
+      mediamosa_debug::log('Sent message from keepalive callback', array(), 'T - MISC');
+      $this->send($update_message, $this->queue_keepalive_server_guardian);
 
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
     };
@@ -143,7 +151,7 @@ class jobcore extends mediamosa_rest_call {
       // Now take the time it took, and subtrac that from 10.
 
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-      $this->send($job);
+      $this->send($job, 'PROGRESSION');
 
       if ($job['new_job_status']['Status'] == 'done') {
         break;
@@ -183,13 +191,7 @@ class jobcore extends mediamosa_rest_call {
   }
 
   // Jobcore --> scheduler, guardian
-  function send($job) {
-    if ($job['job_type'] == scheduler_guardian::QUEUE_GUARDIAN) {
-      $queue = scheduler_guardian::QUEUE_GUARDIAN;
-    } else {
-      $queue = 'PROGRESSION';
-    }
-
+  function send($job, $job_type = '') {
     //$this->open_connection();
 
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -201,7 +203,8 @@ class jobcore extends mediamosa_rest_call {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $queue);
+    mediamosa_debug::log('Sent a msg to queue: ' . $job_type, array(), 'T - MISC');
+    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
     //$this->close_connection();
   }
