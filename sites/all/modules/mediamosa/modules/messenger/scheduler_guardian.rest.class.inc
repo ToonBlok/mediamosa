@@ -134,8 +134,10 @@ class scheduler_guardian extends mediamosa_rest_call
 
       // Replace 300 with drush value with default 300
 
+      $max_wait_time = $this->variable_get('max_wait_time', 300);
+
       // Scheduler has not responded in the last 5 minutes
-      if (($time_last_update + 30) < ($time_now)) {
+      if (($time_last_update + $max_wait_time) < ($time_now)) {
         mediamosa_debug::log($queue_keepalive_server . ' has been silent for 5 minutes. Booting up ' . $queue_keepalive_server, array(), 'Tg - ' . $queue_keepalive_server);
         $this->update_time($drush_var, $time_now, $queue_keepalive_server);
 
