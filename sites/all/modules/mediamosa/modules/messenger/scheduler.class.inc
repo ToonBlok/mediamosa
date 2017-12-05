@@ -48,9 +48,6 @@ class scheduler extends mediamosa_rest_call {
     $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
 
-    mediamosa_debug::log('queue_keepalive_server_guardian: ' . $this->queue_keepalive_server_guardian, array(), 'T - MISC');
-    mediamosa_debug::log('queue_keepalive_server: ' . $queue_keepalive_server, array(), 'T - MISC');
-
     if($server_action == 'roundupjobs') {
       $this->round_up_jobs();
     } elseif ($server_action == 'listen') {
@@ -108,7 +105,6 @@ class scheduler extends mediamosa_rest_call {
 
     $keepalive_callback = function($msg) {
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-      mediamosa_debug::log('5DEC works callback', array(), 'T - MISC');
 //
       $update_message['timestamp'] = microtime(true);
       $update_message['job_type'] = $this->queue_keepalive_server_guardian;

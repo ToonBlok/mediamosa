@@ -55,7 +55,6 @@ class scheduler_guardian extends mediamosa_rest_call
     } elseif ($server_type == 'jobcore') {
       $queue_keepalive_server = $jobcore_unique_queue;
     } else {
-      mediamosa_debug::log('Something went wrong with passing along the $server_type', array(), 'T - MISC');
       exit();
     }
 
@@ -136,7 +135,7 @@ class scheduler_guardian extends mediamosa_rest_call
       // Replace 300 with drush value with default 300
 
       // Scheduler has not responded in the last 5 minutes
-      if (($time_last_update + 300) < ($time_now)) {
+      if (($time_last_update + 30) < ($time_now)) {
         mediamosa_debug::log($queue_keepalive_server . ' has been silent for 5 minutes. Booting up ' . $queue_keepalive_server, array(), 'Tg - ' . $queue_keepalive_server);
         $this->update_time($drush_var, $time_now, $queue_keepalive_server);
 

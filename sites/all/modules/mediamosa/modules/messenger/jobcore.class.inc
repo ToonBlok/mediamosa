@@ -98,13 +98,11 @@ class jobcore extends mediamosa_rest_call {
 
     $keepalive_callback = function($msg) {
 
-      mediamosa_debug::log('keepalive_callback triggered.', array(), 'T - MISC');
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
 
       $update_message['timestamp'] = microtime(true);
       $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 
-      mediamosa_debug::log('Sent message from keepalive callback', array(), 'T - MISC');
       $this->send($update_message, $this->queue_keepalive_server_guardian);
 
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
@@ -203,7 +201,6 @@ class jobcore extends mediamosa_rest_call {
 
     # Send the message.
     //echo 'sent with routing_key: ' . $job['job_type'];
-    mediamosa_debug::log('Sent a msg to queue: ' . $job_type, array(), 'T - MISC');
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
     //$this->close_connection();
