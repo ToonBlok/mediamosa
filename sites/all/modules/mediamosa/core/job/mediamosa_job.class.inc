@@ -822,9 +822,13 @@ class mediamosa_job {
 
     // Insert it.
     //
-    return mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)
+    $id = mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
       ->execute();
+
+
+
+    return $id;
   }
 
   /**
