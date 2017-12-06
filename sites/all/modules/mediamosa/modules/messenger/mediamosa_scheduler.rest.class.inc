@@ -1002,7 +1002,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
  * URI: jobscheduler/roundupjobs
  * Method: GET
  */
-class scheduler_start extends mediamosa_scheduler {
+class mediamosa_scheduler_start extends mediamosa_scheduler {
 
   const SERVER_ACTION = 'server_action';
   const QUEUE_KEEPALIVE = 'scheduler_keepalive';

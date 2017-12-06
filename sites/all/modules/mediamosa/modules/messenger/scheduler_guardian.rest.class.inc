@@ -51,7 +51,7 @@ class scheduler_guardian extends mediamosa_rest_call
 //    mediamosa_debug::log('server type: ' . $server_type, array(), 'Tg - ' . $queue_keepalive_server);
 
     if ($server_type == 'scheduler_start') {
-      $queue_keepalive_server = scheduler_start::QUEUE_KEEPALIVE;
+      $queue_keepalive_server = mediamosa_scheduler_start::QUEUE_KEEPALIVE;
     } elseif ($server_type == 'jobcore') {
       $queue_keepalive_server = $jobcore_unique_queue;
     } else {
@@ -94,7 +94,7 @@ class scheduler_guardian extends mediamosa_rest_call
   }
 
   function peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type = '') {
-    if ($queue_keepalive_server == scheduler_start::QUEUE_KEEPALIVE) {
+    if ($queue_keepalive_server == mediamosa_scheduler_start::QUEUE_KEEPALIVE) {
       $drush_var = 'scheduler_time_last_update';
     } else {
       $drush_var = $queue_keepalive_server . '_time_last_update';
