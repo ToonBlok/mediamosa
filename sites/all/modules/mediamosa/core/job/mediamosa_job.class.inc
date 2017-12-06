@@ -821,6 +821,7 @@ class mediamosa_job {
     $fields = mediamosa_db::db_insert_enrich($fields);
 
     // Insert it.
+    //
     return mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
       ->execute();
