@@ -3,7 +3,7 @@ description = Description of what this module does
 core = 7.x
 
 ; Messenger (Toon).
-files[] = scheduler.class.inc
+files[] = scheduler.rest.class.inc
 files[] = server.class.inc
 files[] = jobcore.class.inc
 files[] = scheduler_guardian.rest.class.inc
