@@ -1009,7 +1009,6 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
   const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
   const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
 
-
   /**
    * Implements get_var_setup().
    */
@@ -1062,6 +1061,145 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
 
     // Geef array terug van response
     // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->add_item(
+      array(
+        'version' => mediamosa_version::get_current_version_str(FALSE)
+      )
+    );
+  }
+
+  function listen($queue_keepalive_server) {
+    $server_type = 'PROGRESSION';
+    $this->open_connection();
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+
+    $this->channel->queue_declare($server_type, false, true, false, false);
+    $this->channel->queue_bind($server_type, jobcore::EXCHANGE_JOBS, $server_type);
+
+    $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
+    $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
+
+    echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
+
+    $callback = function($msg) {
+      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'T - SCHEDULER');
+      $update_message = unserialize($msg->body);
+
+//      if (isset($update_message['server_action'])) {
+//        if ($update_message['server_action'] == 'keepalive') {
+//          $update_message['timestamp'] = microtime(true);
+//          $update_message['job_type'] = 'task_queue';
+//          $this->send($update_message);
+//        }
+//      } else {
+      mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - SCHEDULER');
+      $this->update_progression($update_message);
+//      }
+
+      echo ' [x] Done', "\n";
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+    };
+
+    $keepalive_callback = function($msg) {
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+//
+      $update_message['timestamp'] = microtime(true);
+      $update_message['job_type'] = $this->queue_keepalive_server_guardian;
+//      $update_message['job_type'] = 'bla';
+//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+      $this->send($update_message);
+    };
+
+    // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
+    $this->channel->basic_qos(null, 1, null);
+    $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume($queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
+
+    while(count($this->channel->callbacks)) {
+      $this->channel->wait();
+    }
+
+    $this->close_connection();
+  }
+
+
+}
+
+/**
+ * URI: jobscheduler/roundupjobs
+ * Method: GET
+ */
+class mediamosa_scheduler_job_start extends mediamosa_scheduler {
+
+  const JOB_ID = mediamosa_job_db::ID;
+  const JOB_TYPE = mediamosa_job_db::JOB_TYPE;
+  const JOB_STATUS = mediamosa_job_db::JOB_STATUS;
+  const ASSET_ID = mediamosa_job_db::ASSET_ID;
+  const MEDIAFILE_ID = mediamosa_job_db::ASSET_ID;
+  const APP_ID2 = mediamosa_job_db::APP_ID . '2';
+  const MEDIAFILE_DEST = mediamosa_job_db::MEDIAFILE_DEST;
+
+  /**
+   * Implements get_var_setup().
+   */
+  public function get_var_setup() {
+    $var_setup = array(
+      self::VARS => array(
+        self::JOB_ID=> array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_INT,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::JOB_STATUS => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::JOB_TYPE => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::ASSET_ID => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::MEDIAFILE_ID=> array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::APP_ID2 => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_INT,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::MEDIAFILE_DEST => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        )
+      )
+    );
+
+    // Enrich with required REST vars.
+    return self::get_var_setup_default($var_setup, FALSE);
+  }
+
+
+  /**
+   * Implements do_call().
+   */
+  public function do_call() {
+    $mediamosa = mediamosa::get();
+
+    mediamosa_debug::log('REACHED 06dec!', array(), 'T - MISC');
+    $job = [
+      mediamosa_job_db::ID => $this->get_param_value(self::JOB_ID),
+      mediamosa_job_db::JOB_TYPE => $this->get_param_value(self::JOB_TYPE),
+      mediamosa_job_db::JOB_STATUS => $this->get_param_value(self::JOB_STATUS),
+      mediamosa_job_db::ASSET_ID => $this->get_param_value(self::ASSET_ID),
+      mediamosa_job_db::MEDIAFILE_ID => $this->get_param_value(self::MEDIAFILE_ID),
+      mediamosa_job_db::APP_ID => $this->get_param_value(self::APP_ID2),
+      mediamosa_job_db::MEDIAFILE_DEST => $this->get_param_value(self::MEDIAFILE_DEST)
+    ];
+
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
+
     $mediamosa->add_item(
       array(
         'version' => mediamosa_version::get_current_version_str(FALSE)

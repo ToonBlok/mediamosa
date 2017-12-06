@@ -436,7 +436,6 @@ class mediamosa_rest_call_asset_mediafile_upload extends mediamosa_rest_call {
           $still_parameters,
           $use_filename_as_dctitle
         );
-        mediamosa_debug::log('DEFINITELY PASSED HERE 2', array(), 'T - MISC');
       }
     }
     catch (Exception $e) {

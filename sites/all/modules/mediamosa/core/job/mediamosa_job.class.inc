@@ -829,8 +829,26 @@ class mediamosa_job {
     $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $asset_id)->countQuery()->execute()->fetchField();
     // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
     if ($count == 2) {
-      mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
-//       call();gt
+//      mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
+//      mediamosa_debug::log('$id: ' . $id, array(), 'T - MISC');
+
+      // gather fields here
+//      job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
+
+      $query_data = [
+        mediamosa_job_db::ID => $id,
+        mediamosa_job_db::JOB_TYPE => $fields[mediamosa_job_db::JOB_TYPE],
+        mediamosa_job_db::JOB_STATUS => $fields[mediamosa_job_db::JOB_STATUS],
+        mediamosa_job_db::ASSET_ID => $fields[mediamosa_job_db::ASSET_ID],
+        mediamosa_job_db::MEDIAFILE_ID  => $fields[mediamosa_job_db::MEDIAFILE_ID],
+        mediamosa_job_db::APP_ID => $fields[mediamosa_job_db::APP_ID],
+        mediamosa_job_db::MEDIAFILE_DEST => $fields[mediamosa_job_db::MEDIAFILE_DEST],
+      ];
+
+//      mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC');
+
+      $location = '/scheduler/start_job?' . http_build_query($query_data);
+      call($location);
     }
 
     return $id;
