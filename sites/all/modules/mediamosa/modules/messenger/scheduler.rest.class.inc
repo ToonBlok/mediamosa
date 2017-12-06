@@ -4,135 +4,8 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-//class scheduler extends mediamosa_rest_call
-//{
-//}
-
-/**
- * URI: jobscheduler/roundupjobs
- * Method: GET
- */
-class scheduler_start extends mediamosa_rest_call {
-
-  const SERVER_ACTION = 'server_action';
-  const QUEUE_KEEPALIVE = 'scheduler_keepalive';
-  const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
-  const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
-
-
-  /**
-   * Implements get_var_setup().
-   */
-  public function get_var_setup() {
-    $var_setup = array(
-      self::VARS => array(
-        self::SERVER_ACTION => array(
-          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
-        ),
-        self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
-          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
-        ),
-        self::QUEUE_KEEPALIVE_SERVER => array(
-          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
-        )
-      )
-    );
-
-    // Enrich with required REST vars.
-    return self::get_var_setup_default($var_setup, FALSE);
-  }
-
-  /**
-   * Implements do_call().
-   */
-  public function do_call() {
-    $mediamosa = mediamosa::get();
-
-    $server_action = $this->get_param_value(self::SERVER_ACTION);
-
-    $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
-    $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
-
-    if($server_action == 'roundupjobs') {
-      $this->round_up_jobs();
-    } elseif ($server_action == 'listen') {
-      try {
-        $this->listen($queue_keepalive_server);
-        mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
-      } catch (Exception $e) {
-        mediamosa_debug::log($e, array(), 'T - SCHEDULER');
-        mediamosa_debug::log('Error while starting listening', array(), 'T - SCHEDULER');
-      }
-    }
-
-//    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
-
-    // Geef array terug van response
-    // Geef steeds een regel terug die je in xml output terug krijgt
-    $mediamosa->add_item(
-      array(
-        'version' => mediamosa_version::get_current_version_str(FALSE)
-      )
-    );
-  }
-
-  function listen($queue_keepalive_server) {
-    $server_type = 'PROGRESSION';
-    $this->open_connection();
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-
-    $this->channel->queue_declare($server_type, false, true, false, false);
-    $this->channel->queue_bind($server_type, jobcore::EXCHANGE_JOBS, $server_type);
-
-    $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-
-    echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
-
-    $callback = function($msg) {
-      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'T - SCHEDULER');
-      $update_message = unserialize($msg->body);
-
-//      if (isset($update_message['server_action'])) {
-//        if ($update_message['server_action'] == 'keepalive') {
-//          $update_message['timestamp'] = microtime(true);
-//          $update_message['job_type'] = 'task_queue';
-//          $this->send($update_message);
-//        }
-//      } else {
-      mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - SCHEDULER');
-      $this->update_progression($update_message);
-//      }
-
-      echo ' [x] Done', "\n";
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-    };
-
-    $keepalive_callback = function($msg) {
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-//
-      $update_message['timestamp'] = microtime(true);
-      $update_message['job_type'] = $this->queue_keepalive_server_guardian;
-//      $update_message['job_type'] = 'bla';
-//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
-      $this->send($update_message);
-    };
-
-    // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
-    $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
-    $this->channel->basic_consume($queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
-
-    while(count($this->channel->callbacks)) {
-      $this->channel->wait();
-    }
-
-    $this->close_connection();
-  }
-
+abstract class scheduler extends mediamosa_rest_call
+{
   function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
@@ -1123,5 +996,132 @@ class scheduler_start extends mediamosa_rest_call {
   function variable_set($name, $value) {
     variable_set($name, $value);
   }
+}
+
+/**
+ * URI: jobscheduler/roundupjobs
+ * Method: GET
+ */
+class scheduler_start extends scheduler {
+
+  const SERVER_ACTION = 'server_action';
+  const QUEUE_KEEPALIVE = 'scheduler_keepalive';
+  const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
+  const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
+
+
+  /**
+   * Implements get_var_setup().
+   */
+  public function get_var_setup() {
+    $var_setup = array(
+      self::VARS => array(
+        self::SERVER_ACTION => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::QUEUE_KEEPALIVE_SERVER => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        )
+      )
+    );
+
+    // Enrich with required REST vars.
+    return self::get_var_setup_default($var_setup, FALSE);
+  }
+
+  /**
+   * Implements do_call().
+   */
+  public function do_call() {
+    $mediamosa = mediamosa::get();
+
+    $server_action = $this->get_param_value(self::SERVER_ACTION);
+
+    $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
+    $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
+
+    if($server_action == 'roundupjobs') {
+      $this->round_up_jobs();
+    } elseif ($server_action == 'listen') {
+      try {
+        $this->listen($queue_keepalive_server);
+        mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
+      } catch (Exception $e) {
+        mediamosa_debug::log($e, array(), 'T - SCHEDULER');
+        mediamosa_debug::log('Error while starting listening', array(), 'T - SCHEDULER');
+      }
+    }
+
+//    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
+
+    // Geef array terug van response
+    // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->add_item(
+      array(
+        'version' => mediamosa_version::get_current_version_str(FALSE)
+      )
+    );
+  }
+
+  function listen($queue_keepalive_server) {
+    $server_type = 'PROGRESSION';
+    $this->open_connection();
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+
+    $this->channel->queue_declare($server_type, false, true, false, false);
+    $this->channel->queue_bind($server_type, jobcore::EXCHANGE_JOBS, $server_type);
+
+    $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
+    $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
+
+    echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
+
+    $callback = function($msg) {
+      mediamosa_debug::log('Message received in Listen() in class: ' . __CLASS__, array(), 'T - SCHEDULER');
+      $update_message = unserialize($msg->body);
+
+//      if (isset($update_message['server_action'])) {
+//        if ($update_message['server_action'] == 'keepalive') {
+//          $update_message['timestamp'] = microtime(true);
+//          $update_message['job_type'] = 'task_queue';
+//          $this->send($update_message);
+//        }
+//      } else {
+      mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - SCHEDULER');
+      $this->update_progression($update_message);
+//      }
+
+      echo ' [x] Done', "\n";
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+    };
+
+    $keepalive_callback = function($msg) {
+      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+//
+      $update_message['timestamp'] = microtime(true);
+      $update_message['job_type'] = $this->queue_keepalive_server_guardian;
+//      $update_message['job_type'] = 'bla';
+//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+      $this->send($update_message);
+    };
+
+    // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
+    $this->channel->basic_qos(null, 1, null);
+    $this->channel->basic_consume($server_type, '', false, false, false, false, $callback);
+    $this->channel->basic_consume($queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
+
+    while(count($this->channel->callbacks)) {
+      $this->channel->wait();
+    }
+
+    $this->close_connection();
+  }
+
 
 }
