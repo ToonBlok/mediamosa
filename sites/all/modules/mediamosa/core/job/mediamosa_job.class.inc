@@ -830,7 +830,7 @@ class mediamosa_job {
     // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
     if ($count == 2) {
       mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
-//       call();
+//       call();gt
     }
 
     return $id;
