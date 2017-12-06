@@ -86,6 +86,15 @@ function mediamosa_messenger_mediamosa_register_rest_call()
     mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
   );
 
+//  $rest_calls['scheduler/start'][mediamosa_rest_call::METHOD_GET] = array(
+//    mediamosa_rest_call::CLASS_NAME => 'mediamosa_scheduler_start',
+//    mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
+//    mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',
+//    mediamosa_rest_call::VERSION => mediamosa_version::MEDIAMOSA_VERSION_3_6_0,
+//    mediamosa_rest_call::BEHAVE_AS_EXTERNAL => TRUE,
+//    mediamosa_rest_call::ACCESS => mediamosa_rest_call::ACCESS_FOR_EXTERNAL,
+//  );
+
   $rest_calls['scheduler_guardian/check'][mediamosa_rest_call::METHOD_GET] = array(
     mediamosa_rest_call::CLASS_NAME => 'scheduler_guardian',
     mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
