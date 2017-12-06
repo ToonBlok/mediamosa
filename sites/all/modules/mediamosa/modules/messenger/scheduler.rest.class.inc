@@ -8,7 +8,7 @@ use PhpAmqpLib\Message\AMQPMessage;
  * URI: jobscheduler/roundupjobs
  * Method: GET
  */
-class scheduler extends mediamosa_rest_call {
+class scheduler_start extends mediamosa_rest_call {
 
   const SERVER_ACTION = 'server_action';
   const QUEUE_KEEPALIVE = 'scheduler_keepalive';

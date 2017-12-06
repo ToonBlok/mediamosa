@@ -1597,7 +1597,7 @@ function rules_external_help($topic = NULL) {
     'components' =>           'http://drupal.org/node/1300024',
     'component-types' =>      'http://drupal.org/node/1300024',
     'variables' =>            'http://drupal.org/node/1300024',
-    'scheduler' =>            'http://drupal.org/node/1300068',
+    'scheduler_start' =>            'http://drupal.org/node/1300068',
     'coding' =>               'http://drupal.org/node/878720',
   );
 
@@ -1620,7 +1620,7 @@ function rules_help($path, $arg) {
     // Build a list of essential Rules help pages, formatted as a bullet list.
     $link_list['rules'] = l(t('Rules introduction'), rules_external_help('rules'));
     $link_list['terminology'] = l(t('Rules terminology'), rules_external_help('terminology'));
-    $link_list['scheduler'] = l(t('Rules Scheduler'), rules_external_help('scheduler'));
+    $link_list['scheduler_start'] = l(t('Rules Scheduler'), rules_external_help('scheduler_start'));
     $link_list['coding'] = l(t('Coding for Rules'), rules_external_help('coding'));
 
     $output['topic-list'] = array(
