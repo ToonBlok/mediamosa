@@ -826,10 +826,39 @@ class mediamosa_job {
       ->fields($fields)
       ->execute();
 
-
+    $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $asset_id)->countQuery()->execute()->fetchField();
+    // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
+    if ($count == 2) {
+      mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
+//       call();
+    }
 
     return $id;
   }
+
+  // Toon:
+  function call($location) {
+    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+    if (isset($mediamosa_jobscheduler_uri)) {
+
+      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
+
+      mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
+
+      // Dont trigger in sandbox.
+      if (mediamosa::in_simpletest_sandbox()) {
+        // So we wait till finished.
+        MediaMosaTestCase::staticInternalRestCallGet($url);
+      } else {
+        // Trigger.
+        mediamosa_http::do_head_internal_call($url);
+      }
+    } else {
+      mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
+    }
+
+  }
+
 
   /**
    * Called after the job has been created.
