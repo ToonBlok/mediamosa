@@ -1075,6 +1075,7 @@ class scheduler_start extends mediamosa_rest_call {
       )
     )->fetchAll();
 
+
   }
 
   function get_job_where($job_id) {
