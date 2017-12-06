@@ -4,6 +4,10 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+//class scheduler extends mediamosa_rest_call
+//{
+//}
+
 /**
  * URI: jobscheduler/roundupjobs
  * Method: GET
