@@ -4,7 +4,7 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-abstract class scheduler extends mediamosa_rest_call
+abstract class mediamosa_scheduler extends mediamosa_rest_call
 {
   function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
@@ -1002,7 +1002,7 @@ abstract class scheduler extends mediamosa_rest_call
  * URI: jobscheduler/roundupjobs
  * Method: GET
  */
-class scheduler_start extends scheduler {
+class scheduler_start extends mediamosa_scheduler {
 
   const SERVER_ACTION = 'server_action';
   const QUEUE_KEEPALIVE = 'scheduler_keepalive';
