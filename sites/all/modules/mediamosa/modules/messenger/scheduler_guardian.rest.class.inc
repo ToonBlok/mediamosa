@@ -178,7 +178,7 @@ class scheduler_guardian extends mediamosa_rest_call
       'queue_keepalive_server_guardian' => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
       'queue_keepalive_server' => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
     ];
-    $location = '/jobscheduler/roundupjobs?' . http_build_query($query_data);
+    $location = '/scheduler/start?' . http_build_query($query_data);
 
     $this->call($location);
   }
