@@ -4,12 +4,12 @@ function mediamosa_messenger_cron()
 {
   $server_type = variable_get('mediamosa_server_type'); // Only for test environment
   if ($server_type == 'refresh') { // Only for test environment
-//    call('/scheduler/start?server_action=roundupjobs');
+    call('/scheduler/start?server_action=roundupjobs');
 
 
-    $testy = mediamosa_job_still::get(1225);
-    mediamosa_debug::log('Still job with id 1222 in database? :', array(), 'T - MISC2');
-    mediamosa_debug::log_export($testy, WATCHDOG_NOTICE, 'T - MISC2');
+//    $testy = mediamosa_job_still::get(1225);
+//    mediamosa_debug::log('Still job with id 1222 in database? :', array(), 'T - MISC2');
+//    mediamosa_debug::log_export($testy, WATCHDOG_NOTICE, 'T - MISC2');
 
 //    $query_data = [
 //      mediamosa_job_db::ID => 1,

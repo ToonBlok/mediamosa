@@ -33,6 +33,8 @@ class still
     $mediafile_id_source = $job['mediafile_id'];
     $execution_string = '';
 
+//    mediamosa_debug::log('Hello goddamned world ', array(), 'T - MISC5');
+
     $job_info = [];
     $job_info['jobserver_job_id'] = 13;
     $job_info['size'] = $job['size'];
@@ -65,9 +67,12 @@ class still
       }
     }
     // ############
+    mediamosa_debug::log('Contents of $job_info: ', array(), 'T - MISC5');
+    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'T - MISC5');
 
     // ????????
     if ($job_info['job_id']) {
+      mediamosa_debug::log('Entered this strange if statement', array(), 'T - MISC5');
       $frametime = (int) $job_info[mediamosa_job_server_still_db::FRAMETIME];
       $size = $job_info[mediamosa_job_server_still_db::SIZE];
       $h_padding = $job_info[mediamosa_job_server_still_db::H_PADDING];

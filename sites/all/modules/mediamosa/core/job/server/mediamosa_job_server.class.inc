@@ -903,7 +903,9 @@ class mediamosa_job_server {
     $mime_type = mediamosa_asset_mediafile_metadata::get_mediafile_metadata_char($mediafile_id_source, mediamosa_asset_mediafile_metadata::MIME_TYPE);
 
     $job_info = mediamosa_job_server_still::get($jobserver_job_id);
+    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'T - MISC7');
     $job_info += mediamosa_job_server::get($jobserver_job_id);
+    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'T - MISC7');
 //    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'Toon' );
 
 //    mediamosa_debug::log('De Mimetype is: ' . $mime_type, array(), 'Toon');

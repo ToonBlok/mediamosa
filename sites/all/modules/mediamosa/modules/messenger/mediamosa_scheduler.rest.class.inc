@@ -1147,10 +1147,13 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
   const JOB_ID = mediamosa_job_db::ID;
   const JOB_TYPE = mediamosa_job_db::JOB_TYPE;
   const JOB_STATUS = mediamosa_job_db::JOB_STATUS;
+  const STILL_PARAMETERS = mediamosa_job_db::STILL_PARAMETERS;
   const ASSET_ID = mediamosa_job_db::ASSET_ID;
   const MEDIAFILE_ID = mediamosa_job_db::ASSET_ID;
-  const APP_ID2 = mediamosa_job_db::APP_ID . '2';
+  const APP_ID2 = mediamosa_job_db::APP_ID;
   const MEDIAFILE_DEST = mediamosa_job_db::MEDIAFILE_DEST;
+  const BLACKSTILL_CHECK = mediamosa_job_still_db::BLACKSTILL_CHECK;
+  const SIZE = mediamosa_job_still_db::SIZE;
 
   /**
    * Implements get_var_setup().
@@ -1170,6 +1173,10 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         ),
+        self::STILL_PARAMETERS => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
         self::ASSET_ID => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
@@ -1183,6 +1190,14 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
           self::VAR_DESCRIPTION => "",
         ),
         self::MEDIAFILE_DEST => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::BLACKSTILL_CHECK => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::SIZE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         )
@@ -1204,11 +1219,15 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
       mediamosa_job_db::ID => $this->get_param_value(self::JOB_ID),
       mediamosa_job_db::JOB_TYPE => $this->get_param_value(self::JOB_TYPE),
       mediamosa_job_db::JOB_STATUS => $this->get_param_value(self::JOB_STATUS),
+      mediamosa_job_db::STILL_PARAMETERS => $this->get_param_value(self::STILL_PARAMETERS),
       mediamosa_job_db::ASSET_ID => $this->get_param_value(self::ASSET_ID),
       mediamosa_job_db::MEDIAFILE_ID => $this->get_param_value(self::MEDIAFILE_ID),
       mediamosa_job_db::APP_ID => $this->get_param_value(self::APP_ID2),
-      mediamosa_job_db::MEDIAFILE_DEST => $this->get_param_value(self::MEDIAFILE_DEST)
+      mediamosa_job_db::MEDIAFILE_DEST => $this->get_param_value(self::MEDIAFILE_DEST),
+      mediamosa_job_still_db::BLACKSTILL_CHECK => $this->get_param_value(self::BLACKSTILL_CHECK),
+      mediamosa_job_still_db::SIZE => $this->get_param_value(self::SIZE)
     ];
+
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
@@ -1217,13 +1236,20 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 
         break;
       case mediamosa_job_db::JOB_TYPE_STILL:
-        $job_parameters = $this->get_job_parameters($job);
-        mediamosa_debug::log_export($job_parameters, WATCHDOG_NOTICE, 'T - MISC');
+//        $job_parameters = $this->get_job_parameters($job);
+//        mediamosa_debug::log_export($job_parameters, WATCHDOG_NOTICE, 'T - MISC');
+
+//        $job += array(
+//          mediamosa_job_still_db::BLACKSTILL_CHECK => $job_parameters[mediamosa_job_still_db::BLACKSTILL_CHECK],
+//          mediamosa_job_db::STILL_PARAMETERS => $job_parameters[mediamosa_job_db::STILL_PARAMETERS],
+//          mediamosa_job_still_db::SIZE => $job_parameters[mediamosa_job_still_db::SIZE],
+//          'asset_link' => $this->get_asset_link($job['job_id'])
+//        );
 
         $job += array(
-          mediamosa_job_still_db::BLACKSTILL_CHECK => $job_parameters[mediamosa_job_still_db::BLACKSTILL_CHECK],
-          mediamosa_job_db::STILL_PARAMETERS => $job_parameters[mediamosa_job_db::STILL_PARAMETERS],
-          mediamosa_job_still_db::SIZE => $job_parameters[mediamosa_job_still_db::SIZE],
+          mediamosa_job_still_db::BLACKSTILL_CHECK => $job[mediamosa_job_still_db::BLACKSTILL_CHECK],
+          mediamosa_job_db::STILL_PARAMETERS => $job[mediamosa_job_db::STILL_PARAMETERS],
+          mediamosa_job_still_db::SIZE => $job[mediamosa_job_still_db::SIZE],
           'asset_link' => $this->get_asset_link($job['job_id'])
         );
 
@@ -1236,6 +1262,8 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
         );
         break;
     }
+
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC09');
 
     $this->send($job);
 
