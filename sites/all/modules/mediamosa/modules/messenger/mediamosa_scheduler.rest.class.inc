@@ -1149,7 +1149,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
   const JOB_STATUS = mediamosa_job_db::JOB_STATUS;
   const STILL_PARAMETERS = mediamosa_job_db::STILL_PARAMETERS;
   const ASSET_ID = mediamosa_job_db::ASSET_ID;
-  const MEDIAFILE_ID = mediamosa_job_db::ASSET_ID;
+  const MEDIAFILE_ID = mediamosa_job_db::MEDIAFILE_ID;
   const APP_ID2 = mediamosa_job_db::APP_ID;
   const MEDIAFILE_DEST = mediamosa_job_db::MEDIAFILE_DEST;
   const BLACKSTILL_CHECK = mediamosa_job_still_db::BLACKSTILL_CHECK;
