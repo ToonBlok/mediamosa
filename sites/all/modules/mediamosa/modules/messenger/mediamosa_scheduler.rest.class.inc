@@ -581,12 +581,22 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       $fields[mediamosa_job_db::ERROR_DESCRIPTION] = $error_description;
     }
 
-    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status . ' and progress to ' . $fields[mediamosa_job_db::PROGRESS], array(), 'T - TRANSCODE');
+    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status . ' and progress to ' . $fields[mediamosa_job_db::PROGRESS], array(), 'T - SCHEDULER');
+
     // Update.
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
       ->condition(mediamosa_job_db::ID, $job_id)
       ->execute();
+
+    // Job with asset ID ... and job ID ... was set to finish
+
+    // If this asset has more jobs, start the job of which its ID is 1 more than the previously completed jobs ID. And asset ID has to be the right one (same)
+    //
+
+//    $next_job = $this->get_job_where2($job_id, $)
+
+
   }
 
   /**
@@ -980,6 +990,27 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     return mediamosa_db::db_query($sql,
       array(
         ':id' => $job_id
+      )
+    )->fetch();
+
+  }
+
+  function get_job_where2($job_id, $asset_id) {
+    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
+            FROM {#mediamosa_job} AS mj
+            WHERE mj.#job_id = :id AND
+                  mj.#asset_id = :asset_id';
+
+    $sql = strtr($sql, array(
+      '#job_id' => mediamosa_job_db::ID,
+      '#asset_id' => mediamosa_job_db::ASSET_ID,
+      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
+    ));
+
+    return mediamosa_db::db_query($sql,
+      array(
+        ':id' => $job_id,
+        ':asset_id' => $asset_id
       )
     )->fetch();
 
