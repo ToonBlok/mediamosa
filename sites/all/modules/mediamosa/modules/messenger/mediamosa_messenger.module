@@ -10,7 +10,7 @@ function mediamosa_messenger_cron()
 //    $testy = mediamosa_job_still::get(1225);
 //    mediamosa_debug::log('Still job with id 1222 in database? :', array(), 'T - MISC2');
 //    mediamosa_debug::log_export($testy, WATCHDOG_NOTICE, 'T - MISC2');
-
+//
 //    $query_data = [
 //      mediamosa_job_db::ID => 1,
 //      mediamosa_job_db::JOB_STATUS => 1,
