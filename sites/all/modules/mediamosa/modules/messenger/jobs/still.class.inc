@@ -467,7 +467,7 @@ class still
       'frametime' => $frametime,
       'duration' => $duration
     ];
-    mediamosa_debug::log_export($arr, WATCHDOG_NOTICE, 'T - MISC11');
+//    mediamosa_debug::log_export($arr, WATCHDOG_NOTICE, 'T - MISC11');
     // Create execution string.
     // STILL_STRING_VFPAD = "' -s %s -vf
     // 'yadif,scale=%s,pad=%d:%d:%d:%d:black' -vframes %d -an -y -ss %s -t %s

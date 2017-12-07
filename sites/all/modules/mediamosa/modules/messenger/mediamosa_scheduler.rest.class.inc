@@ -81,6 +81,44 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     }
   }
 
+  // Just a reused round_up_jobs() for the new start job after first job is completed feature
+  function process_job($job){
+    mediamosa_debug::log('Entered process_job', array(), 'T - MISC12');
+
+    switch ($job[mediamosa_job_db::JOB_TYPE]) {
+      case mediamosa_job_db::JOB_TYPE_ANALYSE:
+        $job['asset_link'] = $this->get_asset_link($job['job_id']);
+
+        break;
+//      case mediamosa_job_db::JOB_TYPE_STILL:
+//        $job_parameters = $this->get_job_parameters($job);
+//
+//        $job += array(
+//          mediamosa_job_still_db::BLACKSTILL_CHECK => $job_parameters[mediamosa_job_still_db::BLACKSTILL_CHECK],
+//          mediamosa_job_db::STILL_PARAMETERS => $job_parameters[mediamosa_job_db::STILL_PARAMETERS],
+//          mediamosa_job_still_db::SIZE => $job_parameters[mediamosa_job_still_db::SIZE],
+//          'asset_link' => $this->get_asset_link($job['job_id'])
+//        );
+//
+////          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
+//
+//        break;
+      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+        $job += array(
+          'transcode_parameters' => serialize($this->get_job_parameters($job))
+        );
+        break;
+    }
+
+    try {
+      mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC12');
+//      $this->send($job);
+    } catch (Exception $e) {
+      mediamosa_debug::log($e, array(), 'T - Scheduler');
+    }
+
+
+  }
   function update_progression($job) {
     $job_type = $job[mediamosa_job_server_db::JOB_TYPE];
     $job_id = $job[mediamosa_job_server_db::JOB_ID];
@@ -594,9 +632,10 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // If this asset has more jobs, start the job of which its ID is 1 more than the previously completed jobs ID. And asset ID has to be the right one (same)
     //
 
-//    $next_job = $this->get_job_where2($job_id, $)
-
-
+    $next_job_id = $job_id + 1;
+    $next_job = $this->get_job_where2($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+    mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - MISC11');
+    $this->process_job($next_job);
   }
 
   /**
