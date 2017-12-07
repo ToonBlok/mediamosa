@@ -859,6 +859,8 @@ class mediamosa_job {
 //      job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
 
 
+      $still_parameters = unserialize($fields[mediamosa_job_db::STILL_PARAMETERS]);
+
       // We still dont have fps and video duration:
       $a_mediafile = mediamosa_asset_mediafile_metadata::get_with_mediafileid($fields[mediamosa_job_db::MEDIAFILE_ID], array(
         array(
@@ -878,14 +880,13 @@ class mediamosa_job {
         $actual_duration = mediamosa_unicode::substr($actual_duration, 0, 8);
         @list($uren, $minuten, $seconden) = explode(':', $actual_duration, 3);
         $video_duration = (($uren * 3600) + ($minuten * 60) + $seconden);
-        if ($video_duration < $fields[mediamosa_job_db::STILL_PARAMETERS]['frametime']) {
+        if ($video_duration < $still_parameters['frametime']) {
           // If the video duration is less than still picture time, we decrease
           // the still picture time to half of video duration.
-          $fields[mediamosa_job_db::STILL_PARAMETERS]['frametime'] = ($video_duration >> 1);
+          $still_parameters['frametime'] = ($video_duration >> 1);
         }
       }
 
-      $still_parameters = unserialize($fields[mediamosa_job_db::STILL_PARAMETERS]);
       $still_parameters += array(
         "fps" => $fps,
         "video_duration" => $video_duration
