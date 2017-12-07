@@ -6,9 +6,19 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 abstract class mediamosa_scheduler extends mediamosa_rest_call
 {
-  function send($job) {
+  /**
+   *
+   *
+   * @var
+   */
+  protected $queue_keepalive_server_guardian;
+
+  public function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
+
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC2' );
+
     if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
       $this->open_connection();
     }
@@ -773,6 +783,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
       case mediamosa_job_db::JOB_TYPE_STILL:
         $query_job = mediamosa_job_still::get($job_id);
+        mediamosa_debug::log('$job_id: ' . $job_id, array(), 'T - MISC2');
+        mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'T - MISC2');
 
         if ($query_job) {
           $result['blackstill_check'] = $query_job['blackstill_check'];
@@ -1043,6 +1055,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     $server_action = $this->get_param_value(self::SERVER_ACTION);
 
     $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
+
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
 
     if($server_action == 'roundupjobs') {
@@ -1187,7 +1200,6 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
   public function do_call() {
     $mediamosa = mediamosa::get();
 
-    mediamosa_debug::log('REACHED 06dec!', array(), 'T - MISC');
     $job = [
       mediamosa_job_db::ID => $this->get_param_value(self::JOB_ID),
       mediamosa_job_db::JOB_TYPE => $this->get_param_value(self::JOB_TYPE),
@@ -1197,8 +1209,35 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
       mediamosa_job_db::APP_ID => $this->get_param_value(self::APP_ID2),
       mediamosa_job_db::MEDIAFILE_DEST => $this->get_param_value(self::MEDIAFILE_DEST)
     ];
-
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
+
+    switch ($job[mediamosa_job_db::JOB_TYPE]) {
+      case mediamosa_job_db::JOB_TYPE_ANALYSE:
+        $job['asset_link'] = $this->get_asset_link($job['job_id']);
+
+        break;
+      case mediamosa_job_db::JOB_TYPE_STILL:
+        $job_parameters = $this->get_job_parameters($job);
+        mediamosa_debug::log_export($job_parameters, WATCHDOG_NOTICE, 'T - MISC');
+
+        $job += array(
+          mediamosa_job_still_db::BLACKSTILL_CHECK => $job_parameters[mediamosa_job_still_db::BLACKSTILL_CHECK],
+          mediamosa_job_db::STILL_PARAMETERS => $job_parameters[mediamosa_job_db::STILL_PARAMETERS],
+          mediamosa_job_still_db::SIZE => $job_parameters[mediamosa_job_still_db::SIZE],
+          'asset_link' => $this->get_asset_link($job['job_id'])
+        );
+
+//          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
+
+        break;
+      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+        $job += array(
+          'transcode_parameters' => serialize($this->get_job_parameters($job))
+        );
+        break;
+    }
+
+    $this->send($job);
 
     $mediamosa->add_item(
       array(
