@@ -7,19 +7,20 @@ class transcode
     $job_type = $job['job_type'];
     $mediafile_id = $job['mediafile_id'];
 
-    mediamosa_debug::log('Transcode started.', array(), 'T - Transcode');
+    mediamosa_debug::log('Transcode for job ' . $job[mediamosa_job_db::ID] . ' started.', array(), 'T - Transcode');
     $execution_string = $this->generate_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
+    mediamosa_debug::log('$execution_string for job ' . $job[mediamosa_job_db::ID] , array(), 'T - Transcode');
+    mediamosa_debug::log_export($execution_string, WATCHDOG_NOTICE, 'T - Transcode' );
 
     $exec_output = mediamosa_io::exec($execution_string);
-    mediamosa_debug::log_export($exec_output, WATCHDOG_NOTICE, 'T - Transcode' );
 
-    $link_asset = mediamosa_job_server::get_asset_link($job_id); // THIS GOES INTO DB!!!!!!!!!!!!!!!!!!
+//    $link_asset = mediamosa_job_server::get_asset_link($job_id); // THIS GOES INTO DB!!!!!!!!!!!!!!!!!!
     mediamosa_job_server::log_mediafile($mediafile_id, 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
       array(
         '@job_type' => $job_type,
         '@job_id' => $job_id,
         '@output' => implode("\n", $exec_output),
-        '@link' => $link_asset,
+        '@link' => $job['asset_link'],
       )
     );
   }

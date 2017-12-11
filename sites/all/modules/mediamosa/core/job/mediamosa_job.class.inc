@@ -827,8 +827,6 @@ class mediamosa_job {
     // Add created value.
     $fields = mediamosa_db::db_insert_enrich($fields);
 
-    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC3');
-
     $id = mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
       ->execute();

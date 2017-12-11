@@ -199,8 +199,9 @@ class jobcore extends mediamosa_rest_call {
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    # Send the message.
-    //echo 'sent with routing_key: ' . $job['job_type'];
+
+    mediamosa_debug::log('Jobcore sent to queue: ' . $job_type . ' this job: ', array(), 'T - SCHEDULER');
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER');
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
     //$this->close_connection();
