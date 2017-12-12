@@ -376,9 +376,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // Data to update.
     $fields = array(
       // Toon: Original
-      //mediamosa_job_server_db::MEDIAFILE_DEST => serialize($mediafile_dest),
+      mediamosa_job_server_db::MEDIAFILE_DEST => serialize($mediafile_dest),
       // Toon: Modified
-      mediamosa_job_db::MEDIAFILE_DEST => $mediafile_dest,
+//      mediamosa_job_db::MEDIAFILE_DEST => $mediafile_dest,
     );
     // Contents are fine
     //Omediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - STILL' );
@@ -387,10 +387,22 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // Add changed.
     $fields = mediamosa_db::db_update_enrich($fields);
 
+//    $a = mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//      ->fields($fields)
+//      ->condition(mediamosa_job_db::ID, $job_id);
+//    mediamosa_debug::log($a, array(), 'T - SCHEDULER');
+//    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - SCHEDULER');
+
     // Update mediafile_dest of the job
-    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//      ->fields($fields)
+//      ->condition(mediamosa_job_db::ID, $job_id)
+//      ->execute();
+//    mediamosa_debug::log('Crash before this', array(), 'T - SCHEDULER');
+
+    mediamosa_db::db_update(mediamosa_job_server_db::TABLE_NAME)
       ->fields($fields)
-      ->condition(mediamosa_job_db::ID, $job_id)
+      ->condition(mediamosa_job_server_db::JOB_ID, $job_id)
       ->execute();
 
     // Log it.
@@ -576,6 +588,12 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
     mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status . ' and progress to ' . $fields[mediamosa_job_db::PROGRESS], array(), 'T - SCHEDULER');
 
+
+//    $a = mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//      ->fields($fields)
+//      ->condition(mediamosa_job_db::ID, $job_id);
+//    mediamosa_debug::log($a, array(), 'T - SCHEDULER');
+
     // Update.
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
@@ -587,11 +605,13 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // If this asset has more jobs, start the job of which its ID is 1 more than the previously completed jobs ID. And asset ID has to be the right one (same)
     //
 
-    $next_job_id = $job_id + 1;
-    $next_job = $this->get_job_where2($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
-    mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
-    mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-    $this->process_job($next_job);
+//    if ($job_status == 'FINISHED') {
+      $next_job_id = $job_id + 1;
+      $next_job = $this->get_job_where2($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+      mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
+      mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
+      $this->process_job($next_job);
+//    }
   }
 
   /**

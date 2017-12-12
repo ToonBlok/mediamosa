@@ -379,7 +379,7 @@ class still
       1);
 
     // Dit wou robert voorkomen
-    //$execution_string .= ' > /dev/null &';
+    $execution_string .= ' > /dev/null &';
 
     return $execution_string;
   }
