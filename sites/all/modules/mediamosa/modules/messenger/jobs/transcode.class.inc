@@ -3,22 +3,17 @@
 class transcode
 {
   function start($job){
-    $job_id = $job['job_id'];
-    $job_type = $job['job_type'];
-    $mediafile_id = $job['mediafile_id'];
-
     mediamosa_debug::log('Transcode for job ' . $job[mediamosa_job_db::ID] . ' started.', array(), 'T - Transcode');
-    $execution_string = $this->generate_transcode_exec($job_id, $mediafile_id, unserialize($job['transcode_parameters']));
+    $execution_string = $this->generate_transcode_exec($job['job_id'], $job['mediafile_id'], unserialize($job['transcode_parameters']));
     mediamosa_debug::log('$execution_string for job ' . $job[mediamosa_job_db::ID] , array(), 'T - Transcode');
     mediamosa_debug::log_export($execution_string, WATCHDOG_NOTICE, 'T - Transcode' );
 
     $exec_output = mediamosa_io::exec($execution_string);
 
-//    $link_asset = mediamosa_job_server::get_asset_link($job_id); // THIS GOES INTO DB!!!!!!!!!!!!!!!!!!
-    mediamosa_job_server::log_mediafile($mediafile_id, 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
+    mediamosa_job_server::log_mediafile($job['mediafile_id'], 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
       array(
-        '@job_type' => $job_type,
-        '@job_id' => $job_id,
+        '@job_type' => $job['job_type'],
+        '@job_id' => $job['job_id'],
         '@output' => implode("\n", $exec_output),
         '@link' => $job['asset_link'],
       )
@@ -28,20 +23,10 @@ class transcode
   /**
    * Generate the string that is used for the vpx_transcode script.
    *
-   * @param string $jobserver_job_id
+   * @param string $job_id
    * @param string $mediafile_id
    */
-  function generate_transcode_exec($jobserver_job_id, $mediafile_id, $job_parameters) {
-
-//     Get it.
-//    $job_server_transcode = mediamosa_job_server_transcode::get($jobserver_job_id);
-//    mediamosa_debug::log_export($job_server_transcode, WATCHDOG_NOTICE, 'T - Transcode' );
-//
-//    if (empty($job_server_transcode)) {
-//      mediamosa_job_server::log_mediafile($mediafile_id, 'Transcode job not found, jobserver_id: @jobserver_id', array('@jobserver_id' => $jobserver_job_id));
-//      return '';
-//    }
-
+  function generate_transcode_exec($job_id, $mediafile_id, $job_parameters) {
     $tool = $job_parameters[mediamosa_job_server_transcode_db::TOOL];
     $file_extension = $job_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
     $command = $job_parameters[mediamosa_job_server_transcode_db::COMMAND];
@@ -64,13 +49,7 @@ class transcode
     // Rebuild.
     $parameter_string = implode(' ', $parameters);
 
-//     ### OLD
-//     The name of the status file is '<job_id>.status'.
-//    $job_server = mediamosa_job_server::get($jobserver_job_id);
-//    $status_file = mediamosa_storage::get_realpath_status_file($job_server[mediamosa_job_server_db::JOB_ID]);
-//     ### OLD
-
-    $status_file = mediamosa_storage::get_realpath_status_file($jobserver_job_id);
+    $status_file = mediamosa_storage::get_realpath_status_file($job_id);
 
     // Empty.
     $execution_string = '';
@@ -85,7 +64,7 @@ class transcode
         }
 
         // ORIGINAL
-        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $jobserver_job_id, $file_extension, $parameter_string);
+        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_id, $file_extension, $parameter_string);
         break;
 
       default:
@@ -103,7 +82,7 @@ class transcode
         if (class_exists($class_name) && method_exists($class_name, 'get_transcode_exec')) {
           $args = array(
             // Job ID.
-            'job_id' => $jobserver_job_id,
+            'job_id' => $job_id,
             // ID of mediafile to transcode.
             'mediafile_id' => $mediafile_id,
             // File extension of dest.
@@ -135,7 +114,7 @@ class transcode
     }
 
     return $execution_string;
-  } // End get_transcode_exec()
+  }
 
 }
 
