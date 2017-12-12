@@ -17,21 +17,6 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
   public function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
-    // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
-
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC2' );
-
-//    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
-//      $this->open_connection();
-//    }
-
-    if ($job['job_type'] == 'TRANSCODE') {
-      return;
-    }
-
-//    if ($job['job_type'] == 'STILL') {
-//      return;
-//    }
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
@@ -41,56 +26,10 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       serialize($job),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
-//    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
 
-    // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
-//    if ($job['job_type'] != $this->queue_keepalive_server_guardian) {
-//      $this->close_connection();
-//    }
   }
-
-
-//  function round_up_jobs(){
-//    $jobs = $this->get_jobs(mediamosa_job_db::JOB_STATUS_WAITING);
-//    mediamosa_debug::log(count($jobs) . ' jobs found with status \"WAITING\" ', array(), 'T - SCHEDULER');
-//
-//    foreach ($jobs as $job) {
-//
-//      switch ($job[mediamosa_job_db::JOB_TYPE]) {
-//        case mediamosa_job_db::JOB_TYPE_ANALYSE:
-//          $job['asset_link'] = $this->get_asset_link($job['job_id']);
-//
-//          break;
-//        case mediamosa_job_db::JOB_TYPE_STILL:
-//          $job_parameters = $this->get_job_parameters($job);
-//
-//          $job += array(
-//            mediamosa_job_still_db::BLACKSTILL_CHECK => $job_parameters[mediamosa_job_still_db::BLACKSTILL_CHECK],
-//            mediamosa_job_db::STILL_PARAMETERS => $job_parameters[mediamosa_job_db::STILL_PARAMETERS],
-//            mediamosa_job_still_db::SIZE => $job_parameters[mediamosa_job_still_db::SIZE],
-//            'asset_link' => $this->get_asset_link($job['job_id'])
-//          );
-//
-////          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
-//
-//          break;
-//        case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-//          $job += array(
-//            'transcode_parameters' => serialize($this->get_job_parameters($job))
-//          );
-//          break;
-//      }
-//
-//      try {
-//        $this->send($job);
-//      } catch (Exception $e) {
-//        mediamosa_debug::log($e, array(), 'T - Scheduler');
-//      }
-//
-//    }
-//  }
 
   // Just a reused round_up_jobs() for the new start job after first job is completed feature
   function process_job($job){
@@ -849,8 +788,6 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
       case mediamosa_job_db::JOB_TYPE_STILL:
         $query_job = mediamosa_job_still::get($job_id);
-        mediamosa_debug::log('$job_id: ' . $job_id, array(), 'T - MISC2');
-        mediamosa_debug::log_export($query_job, WATCHDOG_NOTICE, 'T - MISC2');
 
         if ($query_job) {
           $result['blackstill_check'] = $query_job['blackstill_check'];
@@ -1358,8 +1295,6 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
   public function send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
-
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC2' );
 
     $this->open_connection();
 

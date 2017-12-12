@@ -144,7 +144,9 @@ class jobcore extends mediamosa_rest_call {
 
   function loop($job){
     // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-    for ($x = 0; $x < 18; $x++) {
+    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
+
+    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
       $start_at = microtime(TRUE);
       // Now take the time it took, and subtrac that from 10.
 
@@ -155,6 +157,8 @@ class jobcore extends mediamosa_rest_call {
         break;
       }
 
+      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
+      // Sleep every 10 seconds unless time
       $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
       if ($time_to_sleep > 0) {
         sleep($time_to_sleep);
@@ -164,6 +168,48 @@ class jobcore extends mediamosa_rest_call {
     }
 
   }
+
+  // *************** NEW LOOP
+//  function loop($job){
+//    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
+//    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
+//
+//    // Get the time since this script has started
+//    if (isset($_SERVER['REQUEST_TIME'])) {
+//      $time_started = $_SERVER['REQUEST_TIME'];
+//    }
+//
+//    while(TRUE) {
+//
+//      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+//      $this->send($job, 'PROGRESSION');
+//
+//
+//      $time_now = microtime(TRUE);
+//
+//      if (($time_started + 172800) < ($time_now)) {
+//        // 2 days have passed
+//        break;
+//      }
+//
+//    }
+//
+//    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
+//      $start_at = microtime(TRUE);
+//      // Now take the time it took, and subtrac that from 10.
+//
+//
+//      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
+//      // Sleep every 10 seconds unless time
+//      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
+//      if ($time_to_sleep > 0) {
+//        sleep($time_to_sleep);
+//      }
+//
+//      // And repeat for 6 times = 1 minute = 1 cron run.
+//    }
+//
+//  }
 
   function variable_get($name, $default = NULL) {
     return variable_get($name, $default);

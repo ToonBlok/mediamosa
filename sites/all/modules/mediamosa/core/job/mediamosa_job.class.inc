@@ -523,7 +523,6 @@ class mediamosa_job {
     // Create sub transcode job.
     mediamosa_job_transcode::create($app_id, $job_id, $file_extension, $command, $tool, $profile_id, $completed_transcoding_url, $mediafile_id_source, $mediafile_dest);
 
-    mediamosa_debug::log_export(mediamosa_job_server_still::get($job_id), WATCHDOG_NOTICE, 'T - MISC6');
     return $job_id;
   }
 
@@ -795,7 +794,6 @@ class mediamosa_job {
     }
 
 
-//    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC3');
     $still_type = $still_parameters[mediamosa_asset_mediafile_metadata::STILL_TYPE];
     $size = $still_parameters[mediamosa_job_still_db::SIZE];
 
@@ -839,24 +837,9 @@ class mediamosa_job {
 
   public static function check_send($id, $still_type, $size, $fields) {
 
-//    if ($fields[mediamosa_job_db::JOB_TYPE] == 'STILL') {
-//      $testy = mediamosa_job_still::get($id);
-//      mediamosa_debug::log('Still job with id .  ' . $id . 'in database? :', array(), 'T - MISC2');
-//      mediamosa_debug::log_export($testy, WATCHDOG_NOTICE, 'T - MISC2');
-//    }
-
-    mediamosa_debug::log($fields[mediamosa_job_db::JOB_TYPE] . ' job with id ' . $id . ' was inserted', array(), 'T - MISC2');
     $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])->countQuery()->execute()->fetchField();
     // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
     if ($count == 2) {
-      mediamosa_debug::log($fields[mediamosa_job_db::JOB_TYPE] . ' job triggered my if', array(), 'T - MISC2');
-//      mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
-//      mediamosa_debug::log('$id: ' . $id, array(), 'T - MISC');
-
-      // gather fields here
-//      job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
-
-
       $still_parameters = unserialize($fields[mediamosa_job_db::STILL_PARAMETERS]);
 
       // We still dont have fps and video duration:
@@ -902,8 +885,6 @@ class mediamosa_job {
         mediamosa_job_still_db::SIZE => $size
       ];
 
-      mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC8');
-
       if (isset($mediafile_dest)) {
         $query_data += array(
           mediamosa_job_db::MEDIAFILE_DEST => $fields[mediamosa_job_db::MEDIAFILE_DEST],
@@ -933,52 +914,6 @@ class mediamosa_job {
 
     }
   }
-
-
-//  public static function check_send($id, $fields) {
-//
-//    if ($fields[mediamosa_job_db::JOB_TYPE] == 'STILL') {
-//      $testy = mediamosa_job_still::get($id);
-//      mediamosa_debug::log('Still job with id .  ' . $id . 'in database? :', array(), 'T - MISC2');
-//      mediamosa_debug::log_export($testy, WATCHDOG_NOTICE, 'T - MISC2');
-//    }
-//
-//    mediamosa_debug::log($fields[mediamosa_job_db::JOB_TYPE] . ' job with id ' . $id . ' was inserted', array(), 'T - MISC2');
-//    $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $asset_id)->countQuery()->execute()->fetchField();
-//    // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
-//    if ($count == 2) {
-//      mediamosa_debug::log($fields[mediamosa_job_db::JOB_TYPE] . ' job triggered my if', array(), 'T - MISC2');
-////      mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - MISC');
-////      mediamosa_debug::log('$id: ' . $id, array(), 'T - MISC');
-//
-//      // gather fields here
-////      job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
-//
-//      $query_data = [
-//        mediamosa_job_db::ID => $id,
-//        mediamosa_job_db::JOB_TYPE => $fields[mediamosa_job_db::JOB_TYPE],
-//        mediamosa_job_db::JOB_STATUS => '',
-//        mediamosa_job_db::ASSET_ID => $fields[mediamosa_job_db::ASSET_ID],
-//        mediamosa_job_db::MEDIAFILE_ID  => $fields[mediamosa_job_db::MEDIAFILE_ID],
-//        mediamosa_job_db::APP_ID => $fields[mediamosa_job_db::APP_ID],
-//        mediamosa_job_db::MEDIAFILE_DEST => ''
-//      ];
-//
-//      if (isset($mediafile_dest)) {
-//        $query_data += array(
-//          mediamosa_job_db::MEDIAFILE_DEST => $fields[mediamosa_job_db::MEDIAFILE_DEST],
-//        );
-//      }
-//
-////      mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC');
-//
-//      sleep(5);
-//      $location = '/scheduler/start_job?' . http_build_query($query_data);
-//
-////      call($location);
-//
-//    }
-//  }
 
   // Toon:
   function call($location) {

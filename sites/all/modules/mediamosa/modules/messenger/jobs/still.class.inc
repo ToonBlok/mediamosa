@@ -3,14 +3,11 @@
 class still
 {
 
-  // Can only handle video/mp4 at the moment due to the specific still exec
   function start($job) {
     $execution_string = $this->generate_still_exec($job);
     mediamosa_debug::log('Execution string received: ' . $execution_string, array(), 'T - STILL');
     $exec_output = mediamosa_io::exec($execution_string);
 
-
-//    $link_asset = $this->get_asset_link($job['job_id']);
     $link_asset = $job['asset_link'];
 
     mediamosa_job_server::log_mediafile($job['mediafile_id'], 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
@@ -21,11 +18,6 @@ class still
         '@link' => $link_asset,
       )
     );
-    // Upload to DB
-
-    // If the still job is completed, add the still to db.
-    // We serialize it, because of the multiple stills.
-    //self::add_still_to_db((string) $job['job_id'], unserialize((string) $response_data->items->item[$i]->mediafile_dest));
 
   }
 
@@ -33,99 +25,28 @@ class still
     $mediafile_id_source = $job['mediafile_id'];
     $execution_string = '';
 
-    mediamosa_debug::log('$job: ', array(), 'T - MISC10');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC10');
-
     $still_parameters = unserialize($job[mediamosa_job_server_still_db::STILL_PARAMETERS]);
 
-    $job_info = [];
-    $job_info['jobserver_job_id'] = 13;
-    $job_info['size'] = $job['size'];
-    $job_info['frametime'] = $still_parameters['frametime'];
-    $job_info['h_padding'] = $still_parameters['h_padding'];
-    $job_info['v_padding'] = $still_parameters['v_padding'];
-    $job_info['blackstill_check'] = $job['blackstill_check'];
-    $job_info[mediamosa_job_server_still_db::STILL_PARAMETERS] = $job[mediamosa_job_server_still_db::STILL_PARAMETERS];
-    $job_info['job_id'] = $job['job_id'];
-
-    $job_info['created'] = 13;
-    $job_info['changed'] = 13;
-    $job_info['install_id'] = 13;
-    $job_info['status'] = 13;
-    $job_info['progress'] = 13;
-    $job_info['job_type'] = 13;
-    $job_info['progress_id'] = 13;
-    $job_info['mediafile_src'] = 13;
-    $job_info['mediafile_dest'] = 13;
-    $job_info['started'] = 13;
-    $job_info['finished'] = 13;
-    $job_info['error_description'] = 13;
-
-//    $job_info = [];
-//    $job_info['jobserver_job_id'] = 13;
-//    $job_info['size'] = $job['size'];
-//    $job_info['frametime'] = $job['still_parameters']['frametime'];
-//    $job_info['h_padding'] = $job['still_parameters']['h_padding'];
-//    $job_info['v_padding'] = $job['still_parameters']['v_padding'];
-//    $job_info['blackstill_check'] = $job['h_padding'];
-//    $job_info[mediamosa_job_server_still_db::STILL_PARAMETERS] = $job[mediamosa_job_server_still_db::STILL_PARAMETERS];
-//    $job_info['job_id'] = $job['job_id'];
-//    $job_info['created'] = 13;
-//    $job_info['changed'] = 13;
-//    $job_info['install_id'] = 13;
-//    $job_info['status'] = 13;
-//    $job_info['progress'] = 13;
-//    $job_info['job_type'] = 13;
-//    $job_info['progress_id'] = 13;
-//    $job_info['mediafile_src'] = 13;
-//    $job_info['mediafile_dest'] = 13;
-//    $job_info['started'] = 13;
-//    $job_info['finished'] = 13;
-//    $job_info['error_description'] = 13;
-
-    mediamosa_debug::log('$job_info: ', array(), 'T - MISC10');
-    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'T - MISC10');
-
-    // ############
     // Section for files other than video
     $mime_type = mediamosa_asset_mediafile_metadata::get_mediafile_metadata_char($mediafile_id_source, mediamosa_asset_mediafile_metadata::MIME_TYPE);
     foreach (module_implements('mediamosa_tool_can_generate_still') as $module) {
       if (module_invoke($module, 'mediamosa_tool_can_generate_still', $mime_type)) {
         // Get generate still exec.
-        return module_invoke($module, 'mediamosa_tool_get_generate_still_exec', $job_info, $mediafile_id_source);
+        return module_invoke($module, 'mediamosa_tool_get_generate_still_exec', $job, $mediafile_id_source);
       }
     }
-    // ############
-    mediamosa_debug::log('Contents of $job_info: ', array(), 'T - MISC5');
-    mediamosa_debug::log_export($job_info, WATCHDOG_NOTICE, 'T - MISC5');
 
-    // ????????
-    if ($job_info['job_id']) {
-      mediamosa_debug::log('Entered this strange if statement', array(), 'T - MISC5');
-
-//      // maybe this?
-//      $frametime = (int) $job_info[mediamosa_job_server_still_db::frametime];
-//      $size = $job_info[mediamosa_job_server_still_db::size];
-//      $h_padding = $job_info[mediamosa_job_server_still_db::h_padding];
-//      $v_padding = $job_info[mediamosa_job_server_still_db::v_padding];
-
-      // maybe this?
+    if ($job['job_id']) {
       $frametime = (int) $still_parameters[mediamosa_job_server_still_db::FRAMETIME];
       $size = $still_parameters[mediamosa_job_server_still_db::SIZE];
       $h_padding = $still_parameters[mediamosa_job_server_still_db::H_PADDING];
       $v_padding = $still_parameters[mediamosa_job_server_still_db::V_PADDING];
-      mediamosa_debug::log('Reached1 15:31 ', array(), 'T - MISC10');
 
-      // gives errors: $still_parameters = unserialize($job_info[mediamosa_job_server_still_db::STILL_PARAMETERS]);
-//      $still_parameters = $job_info[mediamosa_job_server_still_db::STILL_PARAMETERS];
       $fps = (int) $still_parameters['fps'];
       $video_duration = (int) $still_parameters['video_duration'];
 
       // Video duration check, if still_type = scene.
       if (!$video_duration && $still_parameters['still_type'] == mediamosa_asset_mediafile_metadata::STILL_TYPE_SCENE) {
-
-        mediamosa_debug::log('Reached2 15:31 video dur: ' . $video_duration, array(), 'T - MISC10');
-
         // Some videos don't have video durations according to FFMpeg. If we
         // want to create multiple stills, we usually need this information
         // calculating other data.  But in case of scene detection we have a
@@ -136,7 +57,6 @@ class still
         $video_duration = mediamosa_tool_ffmpeg::VIDEO_DURATION_MAX;
       }
 
-      mediamosa_debug::log('Reached3 15:31 ', array(), 'T - MISC10');
 
       $start_frame = min(max(0, (int) $still_parameters['start_frame']), max(0, $video_duration - 1));
       if (isset($still_parameters['end_frame']) && (int) $still_parameters['end_frame']) {
@@ -161,7 +81,6 @@ class still
         )));
       }
 
-      mediamosa_debug::log('Reached4 15:31 ', array(), 'T - MISC10');
       // Make sure still_type is uppercase.
       $still_parameters['still_type'] = mediamosa_unicode::strtoupper($still_parameters['still_type']);
 
@@ -195,17 +114,15 @@ class still
           break;
       }
 
-      mediamosa_debug::log('Reached5 15:31 ', array(), 'T - MISC10');
-
       // Store error_description.
       if (!empty($error_description)) {
         mediamosa_job_server::log_mediafile($mediafile_id_source, $error_description);
-        if (isset($job_info['jobserver_job_id'])) {
+        if (isset($job[mediamosa_job_db::ID])) {
           mediamosa_db::db_update(mediamosa_job_server_db::TABLE_NAME)
             ->fields(array(
               mediamosa_job_server_db::ERROR_DESCRIPTION => $error_description,
             ))
-            ->condition(mediamosa_job_server_db::ID, $job_info['jobserver_job_id'])
+            ->condition(mediamosa_job_server_db::ID, $job[mediamosa_job_db::ID])
             ->execute();
         }
       }
@@ -215,14 +132,13 @@ class still
       if ($frametime < $start_frame || $frametime > $end_frame) {
         $frametime = (($end_frame - $start_frame) / 3) + $start_frame;
       }
-      mediamosa_debug::log('Reached6 15:31 ', array(), 'T - MISC10');
 
       $duration = $framerate = 1;
 
       switch (mediamosa_unicode::strtoupper($still_parameters['still_type'])) {
 
         case 'NONE':
-          if ($job_info[mediamosa_job_server_still_db::BLACKSTILL_CHECK] == mediamosa_job_server_still_db::BLACKSTILL_CHECK_FALSE || $video_duration <= 1) {
+          if ($job[mediamosa_job_server_still_db::BLACKSTILL_CHECK] == mediamosa_job_server_still_db::BLACKSTILL_CHECK_FALSE || $video_duration <= 1) {
             break;
           }
 
@@ -362,7 +278,7 @@ class still
 
           // Save the sec data (see: vpx_jobhandler.module)
           if (is_array($scenes) && $scenes != array()) {
-            $my_file = $destination_path . $job_info['job_id'] . '_ffmpeg_scene.txt';
+            $my_file = $destination_path . $job['job_id'] . '_ffmpeg_scene.txt';
             $fh = fopen($my_file, 'w') or $fh = NULL;
             if ($fh) {
               foreach ($scenes as $scene) {
@@ -388,7 +304,7 @@ class still
             mediamosa_io::unlink($destination_path . $mediafile_id_source . '_scene.avi');
 
             // It has to be the last, because it triggers the further processes.
-            $my_file = $destination_path . $job_info['job_id'] . '_scene.txt';
+            $my_file = $destination_path . $job['job_id'] . '_scene.txt';
             $fh = fopen($my_file, 'w') or $fh = NULL;
             if ($fh) {
               foreach ($scenes as $scene) {
@@ -415,10 +331,9 @@ class still
 
     }
     else {
-      mediamosa_job_server::log_mediafile($mediafile_id_source, 'Still job not found, jobserver_job_id: @jobserver_job_id', array('@jobserver_job_id' => $job_info['jobserver_job_id']));
+      mediamosa_job_server::log_mediafile($mediafile_id_source, 'Still job not found, jobserver_job_id: @jobserver_job_id', array('@jobserver_job_id' => $job[mediamosa_job_db::ID]));
       return $execution_string;
     }
-    mediamosa_debug::log('Reached7 15:31 ', array(), 'T - MISC10');
 
     $still_parameters['frametime'] = $frametime;
     $still_parameters['duration'] = $duration;
@@ -432,20 +347,8 @@ class still
     $fields = mediamosa_db::db_update_enrich($fields);
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
-      ->condition(mediamosa_job_db::ID, $job_info['job_id'])
+      ->condition(mediamosa_job_db::ID, $job['job_id'])
       ->execute();
-
-    mediamosa_debug::log('Reached8 15:31 ', array(), 'T - MISC10');
-    mediamosa_debug::log('Checkpoint1', array(), 'T - MISC10');
-    mediamosa_settings::lua_transcode_script();
-    mediamosa_debug::log('Checkpoint1 passed', array(), 'T - MISC10');
-    mediamosa_debug::log('Checkpoint2', array(), 'T - MISC10');
-    mediamosa_storage::get_local_mediafile_path($mediafile_id_source);
-    mediamosa_debug::log('Checkpoint2 passed', array(), 'T - MISC10');
-    mediamosa_debug::log('Checkpoint3', array(), 'T - MISC10');
-    mediamosa_storage::get_realpath_temporary();
-    mediamosa_debug::log('Checkpoint3 passed', array(), 'T - MISC10');
-
 
     // Prepare with and heigt variations.
     $size_explode = explode('x', $size);
@@ -454,20 +357,6 @@ class still
     $size_width = ($v_padding > 0) ? $size_explode[0] + (2 * $v_padding) : 0;
     $size_height = ($h_padding > 0) ? $size_explode[1] + (2 * $h_padding) : 0;
 
-    $arr = [
-      'med id source' => $mediafile_id_source,
-      'id' => $job['job_id'],
-      'size' => $size,
-      'size_semicolon' => $size_semicolon,
-      'size_width' => $size_width,
-      'size_height' => $size_height,
-      'v_padding' => $v_padding,
-      'h_padding' => $h_padding,
-      'something' => round($duration * $framerate),
-      'frametime' => $frametime,
-      'duration' => $duration
-    ];
-//    mediamosa_debug::log_export($arr, WATCHDOG_NOTICE, 'T - MISC11');
     // Create execution string.
     // STILL_STRING_VFPAD = "' -s %s -vf
     // 'yadif,scale=%s,pad=%d:%d:%d:%d:black' -vframes %d -an -y -ss %s -t %s
@@ -491,9 +380,6 @@ class still
 
     // Dit wou robert voorkomen
     //$execution_string .= ' > /dev/null &';
-
-    mediamosa_debug::log('Reached9 15:24', array(), 'T - MISC10');
-
 
     return $execution_string;
   }
