@@ -177,14 +177,16 @@ class jobcore extends mediamosa_rest_call {
 
     while(TRUE) {
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-      mediamosa_debug::log_export($job['new_job_status']['Progress'], WATCHDOG_NOTICE, 'T - LOOP');
+      mediamosa_debug::log_export($job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
       $this->send($job, 'PROGRESSION');
 
       $time_now = microtime(TRUE);
 
       // If $time_now is larger than what we calculate to be the time 2 days after the loop has started.
       if (($time_loop_started + 172800) < ($time_now)) {
-        // 2 days have passed
+        $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+        $job['new_job_status']['Status'] = 'error';
+        $this->send($job, 'PROGRESSION');
         break;
       }
       if ($job['new_job_status']['Status'] == 'done') {
