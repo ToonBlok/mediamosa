@@ -142,29 +142,55 @@ class jobcore extends mediamosa_rest_call {
 
   }
 
+//  function loop($job){
+//    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
+//    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
+//
+//    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
+//      $start_at = microtime(TRUE);
+//      // Now take the time it took, and subtrac that from 10.
+//
+//      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+//      $this->send($job, 'PROGRESSION');
+//
+//      if ($job['new_job_status']['Status'] == 'done') {
+//        break;
+//      }
+//
+//      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
+//      // Sleep every 10 seconds unless time
+//      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
+//      if ($time_to_sleep > 0) {
+//        sleep($time_to_sleep);
+//      }
+//
+//      // And repeat for 6 times = 1 minute = 1 cron run.
+//    }
+//
+//  }
+
+//   *************** NEW LOOP 2
   function loop($job){
     // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
 
-    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
-      $start_at = microtime(TRUE);
-      // Now take the time it took, and subtrac that from 10.
+    $time_loop_started = microtime(TRUE);
 
+    while(TRUE) {
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+      mediamosa_debug::log_export($job['new_job_status']['Progress'], WATCHDOG_NOTICE, 'T - LOOP');
       $this->send($job, 'PROGRESSION');
 
+      $time_now = microtime(TRUE);
+
+      // If $time_now is larger than what we calculate to be the time 2 days after the loop has started.
+      if (($time_loop_started + 172800) < ($time_now)) {
+        // 2 days have passed
+        break;
+      }
       if ($job['new_job_status']['Status'] == 'done') {
         break;
       }
 
-      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
-      // Sleep every 10 seconds unless time
-      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
-      if ($time_to_sleep > 0) {
-        sleep($time_to_sleep);
-      }
-
-      // And repeat for 6 times = 1 minute = 1 cron run.
     }
 
   }
