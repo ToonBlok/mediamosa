@@ -182,6 +182,10 @@ class jobcore extends mediamosa_rest_call {
 
       $time_now = microtime(TRUE);
 
+      if (($time_now % 10) == 0) {
+//        $this->peek();
+      }
+
       // If $time_now is larger than what we calculate to be the time 2 days after the loop has started.
       if (($time_loop_started + 172800) < ($time_now)) {
         $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
