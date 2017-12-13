@@ -1007,7 +1007,44 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     )->fetch();
 
   }
+//  function get_job_where2($job_id, $asset_id = '') {
+//
+//    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
+//            FROM {#mediamosa_job} AS mj
+//            WHERE mj.#job_id = :id';
+//
+//    $sql = strtr($sql, array(
+//      '#job_id' => mediamosa_job_db::ID,
+//      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
+//    ));
+//
+//    if (!empty($asset_id)) {
+//      $sql .= ' AND
+//                  mj.#asset_id = :asset_id';
+//
+//      $sql = strtr($sql, array(
+//        '#asset_id' => mediamosa_job_db::ASSET_ID,
+//      ));
+//
+//      return mediamosa_db::db_query($sql,
+//        array(
+//          ':id' => $job_id,
+//          ':asset_id' => $asset_id
+//        )
+//      )->fetch();
+//
+//    } else {
+//
+//      return mediamosa_db::db_query($sql,
+//        array(
+//          ':id' => $job_id
+//        )
+//      )->fetch();
+//    }
+//
+//  }
 
+  // BACKUP
   function get_job_where2($job_id, $asset_id) {
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
             FROM {#mediamosa_job} AS mj
@@ -1028,6 +1065,12 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     )->fetch();
 
   }
+
+//  function check_resume_jobs() {
+//    // Get jobs that are in progress
+//    $job_in_progress = $this->get_job_where2();
+//
+//  }
 
   function open_connection() {
 
@@ -1105,6 +1148,8 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       try {
         $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
         $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
+
+//        $this->check_resume_jobs();
 
         $this->listen($queue_keepalive_server);
         mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');

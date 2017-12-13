@@ -32,7 +32,7 @@ class transcode
     $command = $job_parameters[mediamosa_job_server_transcode_db::COMMAND];
 
     // Get the mediafile.
-    $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id);
+//    $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id); // GOES INTO DB!!!!!!!!!!!!!!!!!!!
 
     // Create parameter string from the command.
     $commands = mediamosa_transcode_profile::commandToArray($command);
