@@ -607,7 +607,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
     if ($job_status == 'FINISHED') {
       $next_job_id = $job_id + 1;
-      $next_job = $this->get_job_where2($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+      $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
       mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
       $this->process_job($next_job);
@@ -990,7 +990,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
   }
 
-  function get_job_where($job_id) {
+  function get_job_where($job_id, $asset_id = '') {
+
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
             FROM {#mediamosa_job} AS mj
             WHERE mj.#job_id = :id';
@@ -1000,77 +1001,56 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
     ));
 
-    return mediamosa_db::db_query($sql,
-      array(
-        ':id' => $job_id
-      )
-    )->fetch();
+    if (!empty($asset_id)) {
+      $sql .= ' AND
+                  mj.#asset_id = :asset_id';
+
+      $sql = strtr($sql, array(
+        '#asset_id' => mediamosa_job_db::ASSET_ID,
+      ));
+
+      mediamosa_debug::log('$sql: ' . $sql, array(), 'T - dec15');
+
+      return mediamosa_db::db_query($sql,
+        array(
+          ':id' => $job_id,
+          ':asset_id' => $asset_id
+        )
+      )->fetch();
+
+    } else {
+
+      return mediamosa_db::db_query($sql,
+        array(
+          ':id' => $job_id
+        )
+      )->fetch();
+    }
 
   }
-//  function get_job_where2($job_id, $asset_id = '') {
-//
+
+//  // BACKUP
+//  function get_job_where2($job_id, $asset_id) {
 //    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
 //            FROM {#mediamosa_job} AS mj
-//            WHERE mj.#job_id = :id';
+//            WHERE mj.#job_id = :id AND
+//                  mj.#asset_id = :asset_id';
 //
 //    $sql = strtr($sql, array(
 //      '#job_id' => mediamosa_job_db::ID,
+//      '#asset_id' => mediamosa_job_db::ASSET_ID,
 //      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
 //    ));
 //
-//    if (!empty($asset_id)) {
-//      $sql .= ' AND
-//                  mj.#asset_id = :asset_id';
-//
-//      $sql = strtr($sql, array(
-//        '#asset_id' => mediamosa_job_db::ASSET_ID,
-//      ));
-//
-//      return mediamosa_db::db_query($sql,
-//        array(
-//          ':id' => $job_id,
-//          ':asset_id' => $asset_id
-//        )
-//      )->fetch();
-//
-//    } else {
-//
-//      return mediamosa_db::db_query($sql,
-//        array(
-//          ':id' => $job_id
-//        )
-//      )->fetch();
-//    }
+//    return mediamosa_db::db_query($sql,
+//      array(
+//        ':id' => $job_id,
+//        ':asset_id' => $asset_id
+//      )
+//    )->fetch();
 //
 //  }
 
-  // BACKUP
-  function get_job_where2($job_id, $asset_id) {
-    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
-            FROM {#mediamosa_job} AS mj
-            WHERE mj.#job_id = :id AND
-                  mj.#asset_id = :asset_id';
-
-    $sql = strtr($sql, array(
-      '#job_id' => mediamosa_job_db::ID,
-      '#asset_id' => mediamosa_job_db::ASSET_ID,
-      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
-    ));
-
-    return mediamosa_db::db_query($sql,
-      array(
-        ':id' => $job_id,
-        ':asset_id' => $asset_id
-      )
-    )->fetch();
-
-  }
-
-//  function check_resume_jobs() {
-//    // Get jobs that are in progress
-//    $job_in_progress = $this->get_job_where2();
-//
-//  }
 
   function open_connection() {
 
@@ -1155,17 +1135,17 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       mediamosa_debug::log('Error while starting listening', array(), 'T - SCHEDULER');
     }
 
-
-//    mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
-
-    // Geef array terug van response
-    // Geef steeds een regel terug die je in xml output terug krijgt
     $mediamosa->add_item(
       array(
         'version' => mediamosa_version::get_current_version_str(FALSE)
       )
     );
   }
+
+//  function check_resume_jobs() {
+//    // Get jobs that are in progress
+//    $job_in_progress = $this->get_job_where2();
+//  }
 
   function listen($queue_keepalive_server) {
     $server_type = 'PROGRESSION';
