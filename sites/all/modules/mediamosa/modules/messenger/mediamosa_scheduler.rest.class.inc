@@ -1098,7 +1098,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 }
 
 /**
- * URI: jobscheduler/roundupjobs
+ * URI: scheduler/start
  * Method: GET
  */
 class mediamosa_scheduler_start extends mediamosa_scheduler {
@@ -1142,21 +1142,17 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     $server_action = $this->get_param_value(self::SERVER_ACTION);
 
 
-    if($server_action == 'roundupjobs') {
-//      $this->round_up_jobs();
-    } elseif ($server_action == 'listen') {
-      try {
-        $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
-        $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
+    try {
+      $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
+      $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
 
 //        $this->check_resume_jobs();
 
-        $this->listen($queue_keepalive_server);
-        mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
-      } catch (Exception $e) {
-        mediamosa_debug::log($e, array(), 'T - SCHEDULER');
-        mediamosa_debug::log('Error while starting listening', array(), 'T - SCHEDULER');
-      }
+      $this->listen($queue_keepalive_server);
+      mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
+    } catch (Exception $e) {
+      mediamosa_debug::log($e, array(), 'T - SCHEDULER');
+      mediamosa_debug::log('Error while starting listening', array(), 'T - SCHEDULER');
     }
 
 
@@ -1222,7 +1218,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
 }
 
 /**
- * URI: jobscheduler/roundupjobs
+ * URI: scheduler/start_job
  * Method: GET
  */
 class mediamosa_scheduler_job_start extends mediamosa_scheduler {
