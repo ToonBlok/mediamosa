@@ -608,9 +608,14 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     if ($job_status == 'FINISHED') {
       $next_job_id = $job_id + 1;
       $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
-      mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
-      mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-      $this->process_job($next_job);
+
+      // this if gives problems
+      //if (!empty($next_job)){
+        mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
+        mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
+        $this->process_job($next_job);
+      //}
+
     }
   }
 
@@ -971,7 +976,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     return $result;
   }
 
-  function get_jobs($status) {
+  function get_inprogress_jobs() {
     $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
             FROM {#mediamosa_job} AS mj
             WHERE mj.#job_status = :status';
@@ -983,11 +988,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
     return mediamosa_db::db_query($sql,
       array(
-        ':status' => $status
+        ':status' => mediamosa_job_db::JOB_STATUS_INPROGRESS
       )
     )->fetchAll();
-
-
   }
 
   function get_job_where($job_id, $asset_id = '') {
@@ -1126,7 +1129,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
       $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER); // Queue that scheduler needs to receive messages in from guardian.
 
-//        $this->check_resume_jobs();
+//      $this->check_resume_jobs();
 
       $this->listen($queue_keepalive_server);
       mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
@@ -1142,10 +1145,20 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     );
   }
 
-//  function check_resume_jobs() {
-//    // Get jobs that are in progress
-//    $job_in_progress = $this->get_job_where2();
-//  }
+  function check_resume_jobs() {
+    // Get jobs that are in progress
+    $jobs = $this->get_inprogress_jobs();
+    mediamosa_debug::log('Rounding up INPROGRESS jobs', array(), 'T - SCHEDULER');
+    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - SCHEDULER');
+
+    if (!empty($jobs)) {
+      $this->open_connection();
+      foreach ($jobs as $job) {
+        $this->send($job);
+      }
+      $this->close_connection();
+    }
+  }
 
   function listen($queue_keepalive_server) {
     $server_type = 'PROGRESSION';
@@ -1165,7 +1178,6 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
       $update_message = unserialize($msg->body);
 
-      mediamosa_debug::log(' [!] Job ' . $update_message['job_id'] . ' = ' . $update_message['new_job_status']['Progress'] . ' done.', array(), 'T - SCHEDULER');
       $this->update_progression($update_message);
 
       echo ' [x] Done', "\n";

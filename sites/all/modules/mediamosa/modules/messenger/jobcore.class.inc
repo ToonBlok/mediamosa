@@ -88,9 +88,15 @@ class jobcore extends mediamosa_rest_call {
     $callback = function($msg){
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-//      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
+      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - TRANSCODE');
 
-      $this->start_job($job);
+      if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+        // Resume job
+        mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
+        $this->loop($job);
+      } else {
+        $this->start_job($job);
+      }
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -142,6 +148,25 @@ class jobcore extends mediamosa_rest_call {
 
   }
 
+  function resume_job($job){
+
+    switch ($job['job_type']) {
+      case mediamosa_job_db::JOB_TYPE_ANALYSE:
+        mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
+        $this->analyze->start($job);
+//        $this->loop($job);
+        break;
+      case mediamosa_job_db::JOB_TYPE_STILL:
+        mediamosa_debug::log('STILL started.', array(), 'T - STILL');
+        $this->loop($job);
+        break;
+      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+        $this->loop($job);
+        break;
+    }
+
+  }
+
 //  function loop($job){
 //    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
 //    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
@@ -177,7 +202,8 @@ class jobcore extends mediamosa_rest_call {
 
     while(TRUE) {
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-      mediamosa_debug::log_export($job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+      mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] '. $job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+
       $this->send($job, 'PROGRESSION');
 
       $time_now = microtime(TRUE);
@@ -194,6 +220,8 @@ class jobcore extends mediamosa_rest_call {
         break;
       }
       if ($job['new_job_status']['Status'] == 'done') {
+        mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] done at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
         break;
       }
 
