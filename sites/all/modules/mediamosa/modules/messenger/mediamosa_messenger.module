@@ -2,17 +2,11 @@
 
 function mediamosa_messenger_cron()
 {
-  $server_type = variable_get('mediamosa_server_type'); // Only for test environment
-
-  if ($server_type == 'refresh') { // Only for test environment
-    call('/scheduler/start?server_action=roundupjobs');
-  } else {
-    call_scheduler();
-    call_jobcores();
-  }
+  call_guardian_scheduler();
+  call_guardian_jobcores();
 }
 
-function call_scheduler(){
+function call_guardian_scheduler(){
   $query_data = [
     'server_type' => 'scheduler_start'
   ];
@@ -20,7 +14,7 @@ function call_scheduler(){
   call($location);
 }
 
-function call_jobcores(){
+function call_guardian_jobcores(){
   $installation_id = variable_get('mediamosa_installation_id');
   $core_types = variable_get('mediamosa_cores_tools');
 
