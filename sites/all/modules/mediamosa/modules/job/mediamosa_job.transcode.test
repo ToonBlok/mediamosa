@@ -19,25 +19,6 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     );
   }
 
-  // Toon: helper function
-  protected function call($do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
-    $parameters += array(
-      mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
-      'server_action' => 'roundupjobs'
-    );
-
-    $options = [];
-//    $options = [
-//      'timeout' => 3
-//    ];
-
-    $uri = '/jobscheduler/roundupjobs';
-
-//    $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
-    $this->restCallGet($uri, $parameters, array(), $expected_result_ids);
-  }
-
-
   // -------------------------------------------------------------------- Tests.
   /**
    * Basic job transcode test.
@@ -49,73 +30,25 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $asset_id = $upload['asset_id'];
     $mediafile_id = $upload['mediafile_id'];
 
-//     Toon debug ******************************************************************************************************************
-    $foo = [
-      "var" => "nothing"
-    ];
-    $foo['var'] = '$upload ***********';
-    $this->var_export($foo);
-    $this->var_export($upload);
-//     Toon debug ******************************************************************************************************************
-
     // Create transcode job.
     $job_id = $this->createMediafileTranscode($mediafile_id, array('profile_id' => $this->getDefaultTranscodeProfile()));
 
     // Parse the queue.
-//    $this->doQueueCycleAll();
-//    call('/jobscheduler/roundupjobs?server_action=roundupjobs');
-
-    // Toon ******************************************************************************************************************
-    $this->call();
-    // Toon ******************************************************************************************************************
-
+    $this->doQueueCycleAll();
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
 
-    // Toon: debug ***************************************************************************************
-    $foo = [
-      "var" => "nothing"
-    ];
-    $foo['var'] = '$asset in restCall ***********';
-    $this->var_export($foo);
-    $this->var_export($asset);
-
-    $foo['var'] = '$asset[mediafiles] in restCall ***********';
-    $this->var_export($foo);
-    $this->var_export($asset['mediafiles']);
-    // Toon: debug ***************************************************************************************
-
     // Add mediafile clean up and get the first transcoded mediafile.
     $mediafile_id_transcoded = NULL;
     foreach ($asset['mediafiles'] as $mediafile) {
       if (isset($mediafile[0])) {
-
-        // Toon: debug ***************************************************************************************
-        $foo = [
-          "var" => "nothing"
-        ];
-        $foo['var'] = 'Eerste if is GEZET ***********';
-        $this->var_export($foo);
-
-        // Toon: debug ***************************************************************************************
-
         foreach ($mediafile as $mediafile_child) {
           $this->addToCleanUp($mediafile_child['mediafile_id']);
 
           if (!$mediafile_id_transcoded && $mediafile_child['mediafile_id'] != $mediafile_id) {
             $mediafile_id_transcoded = $mediafile_child['mediafile_id'];
-
-            // Toon: debug ***************************************************************************************
-            $foo = [
-              "var" => "nothing"
-            ];
-            $foo['var'] = '$Eerste if ***********';
-            $this->var_export($foo);
-            $this->var_export($mediafile_id_transcoded);
-
-            // Toon: debug ***************************************************************************************
           }
         }
       }
@@ -130,28 +63,9 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $mediafile_id_transcoded = NULL;
     foreach ($asset['mediafiles'] as $mediafile) {
       if (isset($mediafile[0])) {
-
-        // Toon: debug ***************************************************************************************
-        $foo = [
-          "var" => "nothing"
-        ];
-        $foo['var'] = 'Tweede if is GEZET ***********';
-        $this->var_export($foo);
-
-        // Toon: debug ***************************************************************************************
         foreach ($mediafile as $mediafile_child) {
           if ($mediafile_child['mediafile_id'] != $mediafile_id) {
             $mediafile_id_transcoded = $mediafile_child['mediafile_id'];
-
-            // Toon: debug ***************************************************************************************
-            $foo = [
-              "var" => "nothing"
-            ];
-            $foo['var'] = '$Tweede if ***********';
-            $this->var_export($foo);
-            $this->var_export($mediafile_id_transcoded);
-
-            // Toon: debug ***************************************************************************************
             break;
           }
         }
@@ -181,81 +95,81 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     }
   }
 
-//  /**
-//   * Basic job transcode test.
-//   */
-//  public function testJobTranscodeExtended() {
-//    // Create upload file.
-//    $upload = $this->uploadTestFile();
-//    $asset_id = $upload['asset_id'];
-//    $mediafile_id = $upload['mediafile_id'];
-//
-//    $default_profiles = array(
-//      array(
-//        'Test profile',
-//        'TRUE',
-//        'ffmpeg',
-//        'ogv',
-//        array(
-//          'audiocodec' => 'libvorbis',
-//          'audiobitrate' => '128000',
-//          'audiosamplingrate' => '44100',
-//          'audiochannels' => '2',
-//          'videocodec' => 'libtheora',
-//          'videobitrate' => '1000000',
-//          'fps' => '30',
-//          'size' => '640x360',
-//          'aspect' => '16:9',
-//        ),
-//      ),
-//    );
-//
-//    // Create new transcode profiles.
-//    foreach ($default_profiles as $default_profile) {
-//      $node = mediamosa_node::create_basic_node(mediamosa_node::MEDIAMOSA_NODE_TYPE_TRANSCODE_PROFILE, $default_profile[0]);
-//      $node->{mediamosa_transcode_profile_db::APP_ID} = 0;
-//      $node->{mediamosa_transcode_profile_db::VERSION} = 0;
-//      $node->{mediamosa_transcode_profile_db::PROFILE} = $default_profile[0];
-//      $node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} = $default_profile[1];
-//      $node->{mediamosa_transcode_profile_db::TOOL} = $default_profile[2];
-//      $node->{mediamosa_transcode_profile_db::FILE_EXTENSION} = $default_profile[3];
-//      $node->{mediamosa_transcode_profile_db::COMMAND} = mediamosa_transcode_profile::arrayToCommand($default_profile[4]);
-//
-//      if ($node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} == mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE_TRUE) {
-//        // Clear others, so mine will become default.
-//        _mediamosa_transcode_profile_update_isdefault($node);
-//      }
-//
-//      node_save($node);
-//    }
-//
-//    // Get the asset.
-//    $asset = $this->getAsset($asset_id);
-//    $this->var_export($asset);
-//
-//    // Create transcode job.
-//    $this->createMediafileTranscode($mediafile_id);
-//
-//    // Parse the queue.
-//    $this->doQueueCycleAll();
-//
-//    // Get the asset.
-//    $asset = $this->getAsset($asset_id);
-//    $this->var_export($asset);
-//
-//    // Might be swapped in results, so check what is the transcode.
-//    if ($asset['mediafiles']['mediafile'][0]['is_original_file'] == 'TRUE') {
-//      $metadata = $asset['mediafiles']['mediafile'][1]['metadata'];
-//    }
-//    else {
-//      $metadata = $asset['mediafiles']['mediafile'][0]['metadata'];
-//    }
-//
-//    // Must be converted to '640x360'.
-//    $this->assertTrue($metadata['width'] == 640, 'New transcoding is 640 wide.');
-//    $this->assertTrue($metadata['height'] == 360, 'New transcoding is 360 high.');
-//
-//    // Clean up.
-//    $this->addMediafilesToCleanUp($asset['mediafiles']);
-//  }
+  /**
+   * Basic job transcode test.
+   */
+  public function testJobTranscodeExtended() {
+    // Create upload file.
+    $upload = $this->uploadTestFile();
+    $asset_id = $upload['asset_id'];
+    $mediafile_id = $upload['mediafile_id'];
+
+    $default_profiles = array(
+      array(
+        'Test profile',
+        'TRUE',
+        'ffmpeg',
+        'ogv',
+        array(
+          'audiocodec' => 'libvorbis',
+          'audiobitrate' => '128000',
+          'audiosamplingrate' => '44100',
+          'audiochannels' => '2',
+          'videocodec' => 'libtheora',
+          'videobitrate' => '1000000',
+          'fps' => '30',
+          'size' => '640x360',
+          'aspect' => '16:9',
+        ),
+      ),
+    );
+
+    // Create new transcode profiles.
+    foreach ($default_profiles as $default_profile) {
+      $node = mediamosa_node::create_basic_node(mediamosa_node::MEDIAMOSA_NODE_TYPE_TRANSCODE_PROFILE, $default_profile[0]);
+      $node->{mediamosa_transcode_profile_db::APP_ID} = 0;
+      $node->{mediamosa_transcode_profile_db::VERSION} = 0;
+      $node->{mediamosa_transcode_profile_db::PROFILE} = $default_profile[0];
+      $node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} = $default_profile[1];
+      $node->{mediamosa_transcode_profile_db::TOOL} = $default_profile[2];
+      $node->{mediamosa_transcode_profile_db::FILE_EXTENSION} = $default_profile[3];
+      $node->{mediamosa_transcode_profile_db::COMMAND} = mediamosa_transcode_profile::arrayToCommand($default_profile[4]);
+
+      if ($node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} == mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE_TRUE) {
+        // Clear others, so mine will become default.
+        _mediamosa_transcode_profile_update_isdefault($node);
+      }
+
+      node_save($node);
+    }
+
+    // Get the asset.
+    $asset = $this->getAsset($asset_id);
+    $this->var_export($asset);
+
+    // Create transcode job.
+    $this->createMediafileTranscode($mediafile_id);
+
+    // Parse the queue.
+    $this->doQueueCycleAll();
+
+    // Get the asset.
+    $asset = $this->getAsset($asset_id);
+    $this->var_export($asset);
+
+    // Might be swapped in results, so check what is the transcode.
+    if ($asset['mediafiles']['mediafile'][0]['is_original_file'] == 'TRUE') {
+      $metadata = $asset['mediafiles']['mediafile'][1]['metadata'];
+    }
+    else {
+      $metadata = $asset['mediafiles']['mediafile'][0]['metadata'];
+    }
+
+    // Must be converted to '640x360'.
+    $this->assertTrue($metadata['width'] == 640, 'New transcoding is 640 wide.');
+    $this->assertTrue($metadata['height'] == 360, 'New transcoding is 360 high.');
+
+    // Clean up.
+    $this->addMediafilesToCleanUp($asset['mediafiles']);
+  }
 }

@@ -6,6 +6,10 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
 {
+
+  protected $channel;
+  protected $connection;
+
   public static function getInfo() {
     return array(
       'name' => 'Mediamosa messenger tests',
@@ -53,66 +57,84 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
    * the jobcore if it is alive and receiving back a confirmation.
    *
    **/
-  protected function are_jobcores_online(){
+  protected function test_are_jobcores_online()
+  {
     // Arrange
 
     // Act
-    //$online = $this->send(
-    //  [ "job_type" => "ANALYZE"]
-    //);
-    //mediamosa_debug::log('ANALYZE ONLINE: ' . $online, array(), 'T - TESTS');
 
-    //$installation_id = variable_get('mediamosa_installation_id');
-    //$core_types = variable_get('mediamosa_cores_tools');
-
-    //for ($i = 0; $i < count($core_types); $i++) {
-    //  $keepalive_queue_name = $installation_id . '_' . $i;
-    //
-    //  $job = [
-    //    "queue" => $keepalive_queue_name
-    //  ];
-
-    //  $this->send($job);
-    //}
-
-//    $online = $this->send(
-//      [ "job_type" => "STILL"]
-//    );
-//    mediamosa_debug::log('STILL ONLINE: ' . $online, array(), 'T - TESTS');
+    // REAL CODE
+//    $installation_id = variable_get('mediamosa_installation_id');
+//    $core_types = variable_get('mediamosa_cores_tools');
+//    $foo = '$installation_id ***********';
+//    $this->var_export($foo);
+//    $this->var_export($installation_id);
 //
-//    $online = $this->send(
-//      [ "job_type" => "TRANSCODE"]
-//    );
-//    mediamosa_debug::log('TRANSCODE ONLINE: ' . $online, array(), 'T - TESTS');
+//    $foo = '$core_types ***********';
+//    $this->var_export($foo);
+//    $this->var_export($core_types);
 
+    // FAKED CODE
+    $installation_id = 'job1';
+    $core_types = [
+      ['ANALYSE']
+      ['TRANSCODE']
+      ['STILL']
+    ];
 
+    $this->open_connection();
+    for ($i = 0; $i < count($core_types); $i++) {
+      $keepalive_queue_name = $installation_id . '_' . $i;
 
-    // Assert
-//    $this->assertTrue();
+      $job = [
+        "queue" => $keepalive_queue_name,
+        "sender" => "unit_tests"
+      ];
 
+      $foo = 'Sent to: ***********';
+      $this->var_export($foo);
+      $this->var_export($job['sender']);
 
+      $this->send($job);
+      sleep(5);
+      $this->peek();
+    }
+    $this->close_connection();
   }
-  
+
   public function send($job) {
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare($job['queue'], false, true, false, false);
-    $this->channel->queue_bind($job['queue'], jobcore::EXCHANGE_JOBS, $job['queue']);
+    $this->channel->queue_bind($job['queue'], 'jobs', $job['queue']);
 
     $msg = new AMQPMessage(
-      '',
+      serialize($job),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['queue']);
-    
-    return TRUE;
+    $this->channel->basic_publish($msg, 'jobs', $job['queue']);
+  }
+
+  public function peek() {
+    $this->open_connection();
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare('TESTS', false, true, false, false);
+    $this->channel->queue_bind('TESTS', 'jobs', 'TESTS');
+
+    while ($this->channel->basic_get('TESTS') != NULL) {
+      $this->var_export('########### Message received back');
+      $msg = $this->channel->basic_get('TESTS', 1);
+    }
+
+    $this->close_connection();
   }
 
   protected function open_connection() {
-    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
-    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
-    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
-    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
+    $host = variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = variable_get('mediamosa_scheduler_port', 5672);
+    $username = variable_get('mediamosa_scheduler_username', 'guest');
+    $password = variable_get('mediamosa_scheduler_password', 'guest');
 
     $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
     $this->channel = $this->connection->channel();
