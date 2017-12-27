@@ -4,7 +4,7 @@ class analyze {
 
   // modelled after mediamosa_job_server.class.inc line 440
   function start($job){
-    mediamosa_debug::log('Entered method: ' . __METHOD__, array(), 'Toon');
+    mediamosa_debug::log('Entered method: ' . __METHOD__, array(), 'T - ANALYZE');
 
     $analyse_result = array();
 
@@ -19,11 +19,16 @@ class analyze {
     // Based on the mime_type there might be a tool that can analyse.
     // Call the mediamosa_tool_can_analyse hook.
     // Toon: There are 4 modules apparently, and there is one that triggers the if in this statement
-    foreach (module_implements('mediamosa_tool_can_analyse') as $module) {
-      if (module_invoke($module, 'mediamosa_tool_can_analyse', $mime_type)) {
-        $analyse_result += module_invoke($module, 'mediamosa_tool_analyse', $job['mediafile_id']);
+    try {
+      foreach (module_implements('mediamosa_tool_can_analyse') as $module) {
+        if (module_invoke($module, 'mediamosa_tool_can_analyse', $mime_type)) {
+          $analyse_result += module_invoke($module, 'mediamosa_tool_analyse', $job['mediafile_id']);
+        }
       }
+    } catch (Exception $e) {
+      mediamosa_debug::log($e, array(), 'T - ANALYZE');
     }
+
 
 
     // Make an informative log entry.
