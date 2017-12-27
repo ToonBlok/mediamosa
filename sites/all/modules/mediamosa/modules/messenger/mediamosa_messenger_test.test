@@ -1,5 +1,9 @@
 <?php
 
+require_once DRUPAL_ROOT . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
 {
   public static function getInfo() {
@@ -43,18 +47,65 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
 //    }
 //  }
 
-  protected function testStartCore(){
+  /**
+   *
+   * Before we start a job we have to check if all jobcores are online. We do this by sending asking
+   * the jobcore if it is alive and receiving back a confirmation.
+   *
+   **/
+  protected function are_jobcores_online(){
     // Arrange
-//    $core_type = 'TRANSCODE';
 
     // Act
-//    $this->start_core('TRANSCODE');
+    //$online = $this->send(
+    //  [ "job_type" => "ANALYZE"]
+    //);
+    //mediamosa_debug::log('ANALYZE ONLINE: ' . $online, array(), 'T - TESTS');
+
+    //$installation_id = variable_get('mediamosa_installation_id');
+    //$core_types = variable_get('mediamosa_cores_tools');
+
+    //for ($i = 0; $i < count($core_types); $i++) {
+    //  $keepalive_queue_name = $installation_id . '_' . $i;
+    //
+    //  $job = [
+    //    "queue" => $keepalive_queue_name
+    //  ];
+
+    //  $this->send($job);
+    //}
+
+//    $online = $this->send(
+//      [ "job_type" => "STILL"]
+//    );
+//    mediamosa_debug::log('STILL ONLINE: ' . $online, array(), 'T - TESTS');
+//
+//    $online = $this->send(
+//      [ "job_type" => "TRANSCODE"]
+//    );
+//    mediamosa_debug::log('TRANSCODE ONLINE: ' . $online, array(), 'T - TESTS');
+
 
 
     // Assert
 //    $this->assertTrue();
 
 
+  }
+  
+  public function send($job) {
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->queue_declare($job['queue'], false, true, false, false);
+    $this->channel->queue_bind($job['queue'], jobcore::EXCHANGE_JOBS, $job['queue']);
+
+    $msg = new AMQPMessage(
+      '',
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['queue']);
+    
+    return TRUE;
   }
 
   protected function open_connection() {
@@ -89,21 +140,36 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     $this->close_connection();
   }
 
-  protected function start_core($core_type, $do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
-    $parameters += array(
-      mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
-      'core_type' => $core_type
-    );
+  protected function is_core_online($core_type, $do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
+    //$parameters += array(
+    //  mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
+    //  'core_type' => $core_type
+    //);
 
-    $options = [
-      'timeout' => 3
-    ];
+    //$options = [
+    //  'timeout' => 3
+    //];
 
     $uri = '/jobcore/parsequeue';
 
     $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
-
   }
+
+//  protected function start_core($core_type, $do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
+//    $parameters += array(
+//      mediamosa_rest_call_job_create_still_for_mediafile::USER_ID => self::SIMPLETEST_USER_ID,
+//      'core_type' => $core_type
+//    );
+//
+//    $options = [
+//      'timeout' => 3
+//    ];
+//
+//    $uri = '/jobcore/parsequeue';
+//
+//    $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
+//
+//  }
 
 //  /**
 //   * Do a REST call inside the sandbox.
