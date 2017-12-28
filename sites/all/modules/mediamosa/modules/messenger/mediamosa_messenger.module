@@ -2,7 +2,7 @@
 
 function mediamosa_messenger_cron()
 {
-  call_guardian_scheduler();
+//  call_guardian_scheduler();
   call_guardian_jobcores();
 }
 

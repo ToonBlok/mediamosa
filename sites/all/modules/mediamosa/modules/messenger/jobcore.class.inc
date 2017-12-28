@@ -15,6 +15,7 @@ class jobcore extends mediamosa_rest_call {
 
   private $queue_keepalive_server;
   private $queue_keepalive_server_guardian;
+  private $core_type;
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().
@@ -54,7 +55,9 @@ class jobcore extends mediamosa_rest_call {
     $this->analyze = new analyze();
     $this->still = new still();
     $this->transcode = new transcode();
+
     $this->core_type = $core_type;
+
     mediamosa_debug::log('Jobcore with core type ' . $core_type . ' was created', array(), 'T - ' . $core_type);
     $this->listen($core_type);
 
@@ -106,19 +109,28 @@ class jobcore extends mediamosa_rest_call {
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
     };
 
-    $keepalive_callback = function($msg) {
+    $keepalive_callback = function($rmq_msg) {
+      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      $msg = unserialize($rmq_msg->body);
 
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-      $job = unserialize($msg->body);
+      mediamosa_debug::log('[' . $msg['ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
-      if ((isset($job['sender'])) and ($job['sender'] == 'unit_tests')) {
+      if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
         //mediamosa_debug::log('Alternative send in $keepalive triggered', array(), 'T - MISC');
         $this->send([], self::QUEUE_TESTS);
       } else {
-        $update_message['timestamp'] = microtime(true);
-        $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 
-        $this->send($update_message, $this->queue_keepalive_server_guardian);
+        $msg["STATUS_REQUEST"] = "received";
+        $msg["STATUS"] = "online";
+        $msg['timestamp'] = microtime(true);
+        $msg['job_type'] = $this->queue_keepalive_server_guardian;
+
+        mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');
+//        mediamosa_debug::log('Received message and am now sending back ' . $update_message['timestamp'] . '. This is the message and secondly the job: ', array(), 'T - ');
+//        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ');
+//        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - ');
+
+        $this->send($msg, $this->queue_keepalive_server_guardian);
       }
 
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
@@ -177,34 +189,6 @@ class jobcore extends mediamosa_rest_call {
 
   }
 
-//  function loop($job){
-//    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-//    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
-//
-//    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
-//      $start_at = microtime(TRUE);
-//      // Now take the time it took, and subtrac that from 10.
-//
-//      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-//      $this->send($job, 'PROGRESSION');
-//
-//      if ($job['new_job_status']['Status'] == 'done') {
-//        break;
-//      }
-//
-//      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
-//      // Sleep every 10 seconds unless time
-//      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
-//      if ($time_to_sleep > 0) {
-//        sleep($time_to_sleep);
-//      }
-//
-//      // And repeat for 6 times = 1 minute = 1 cron run.
-//    }
-//
-//  }
-
-//   *************** NEW LOOP 2
   function loop($job){
     // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
 
@@ -226,6 +210,7 @@ class jobcore extends mediamosa_rest_call {
         $this->send($job, 'PROGRESSION');
         break;
       } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
+        $this->peek();
         mediamosa_debug::log('10 seconds went by. Peek() now.', array(), 'T - LOOP');
         // reset
         $time_last_peeked = $time_now;
@@ -240,10 +225,30 @@ class jobcore extends mediamosa_rest_call {
 
   }
 
+  /*
+   * Peek in it
+   */
   function peek() {
-//    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-//    $this->channel->queue_declare($this->, false, true, false, false);
-//    $this->channel->queue_bind($queue_keepalive_server_guardian, jobcore::EXCHANGE_JOBS, $queue_keepalive_server_guardian);
+    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
+    $this->channel->queue_bind($this->queue_keepalive_server, jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
+
+//    while ($this->channel->basic_get($this->queue_keepalive_server) != NULL) {
+//      $msg = $this->channel->basic_get($this->queue_keepalive_server, 1);
+//
+//      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+//      $job = unserialize($msg->body);
+//
+//      if ((isset($job['sender'])) and ($job['sender'] == 'unit_tests')) {
+//        //mediamosa_debug::log('Alternative send in $keepalive triggered', array(), 'T - MISC');
+//        $this->send([], self::QUEUE_TESTS);
+//      } else {
+//        $update_message['timestamp'] = microtime(true);
+//        $update_message['job_type'] = $this->queue_keepalive_server_guardian;
+//
+//        $this->send($update_message, $this->queue_keepalive_server_guardian);
+//      }
+//    }
 
   }
 
@@ -328,6 +333,7 @@ class jobcore extends mediamosa_rest_call {
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER');
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
+    mediamosa_debug::log( '[' . $job['ID'] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $this->queue_keepalive_server_guardian . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
     //$this->close_connection();
   }
 

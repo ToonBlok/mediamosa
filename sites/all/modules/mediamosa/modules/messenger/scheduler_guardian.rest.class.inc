@@ -82,18 +82,32 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
-    $alive_message = [];
+    $alive_message = [
+      "ID" => $this->variable_get("alive_message_unique_id", 1),
+      "STATUS_REQUEST" => "pending",
+      "STATUS" => "undetermined"
+    ];
+
+    $this->variable_set("alive_message_unique_id", $alive_message['ID'] + 1);
+
     $msg = new AMQPMessage(
       serialize($alive_message),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
+    mediamosa_debug::log('[' . $alive_message['ID'] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     $this->close_connection();
   }
 
   function peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type = '') {
+
+    $callback = function($rmq_msg) {
+      mediamosa_debug::log('STRANGE CALLBACK WORKED', array(), 'T - MISC');
+
+    };
+
     if ($queue_keepalive_server == mediamosa_scheduler_start::QUEUE_KEEPALIVE) {
       $drush_var = 'scheduler_time_last_update';
     } else {
@@ -123,11 +137,32 @@ class scheduler_guardian extends mediamosa_rest_call
 
     } else {
       while ($this->channel->basic_get($queue_keepalive_server_guardian) != NULL) {
-        mediamosa_debug::log('Received a message!', array(), 'T - GUARDIAN');
-        $msg = $this->channel->basic_get($queue_keepalive_server_guardian, 1);
+        //$msg = $this->channel->basic_get($queue_keepalive_server_guardian, 1);
+        $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+        mediamosa_debug::log('$msg->delivery_info:', array(), 'T - MISC');
+        mediamosa_debug::log_export($msg->delivery_info, WATCHDOG_NOTICE, 'T - MISC');
+        mediamosa_debug::log('$msg->delivery_info[delivery_tag]:', array(), 'T - MISC');
+        mediamosa_debug::log_export($msg->delivery_info['delivery_tag'], WATCHDOG_NOTICE, 'T - MISC');
+        mediamosa_debug::log('$msg->body:', array(), 'T - MISC');
+        mediamosa_debug::log_export($msg->body, WATCHDOG_NOTICE, 'T - MISC');
+        mediamosa_debug::log('$msg:', array(), 'T - MISC');
+        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
+
         $update_msg = unserialize($msg->body);
+        mediamosa_debug::log('[' . $update_msg['ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
         $this->update_time($drush_var, $update_msg['timestamp'], $queue_keepalive_server);
+
+        //$msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+
+        //$this->channel->basic_consume($queue_keepalive_server_guardian, '', false, false, false, false, $callback);
+
+//        if(count($this->channel->callbacks)) {
+//          $this->channel->wait();
+//        }
+        $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
+        $this->close_connection();
       }
 
       $time_last_update = variable_get($drush_var);
@@ -154,7 +189,6 @@ class scheduler_guardian extends mediamosa_rest_call
     }
 
 
-    $this->close_connection();
   }
 
   function update_time($drush_var, $time_stamp, $queue_keepalive_server) {

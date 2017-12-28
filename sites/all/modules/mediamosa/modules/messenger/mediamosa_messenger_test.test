@@ -77,8 +77,8 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     // FAKED CODE
     $installation_id = 'job1';
     $core_types = [
-      ['ANALYSE']
-      ['TRANSCODE']
+      ['ANALYSE'],
+      ['TRANSCODE'],
       ['STILL']
     ];
 
@@ -91,15 +91,17 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
         "sender" => "unit_tests"
       ];
 
-      $foo = 'Sent to: ***********';
-      $this->var_export($foo);
-      $this->var_export($job['sender']);
+//      $foo = '########## Test ' . $i . ', Sent to: ';
+//      $this->var_export($foo);
+//      $this->var_export($job['queue']);
 
       $this->send($job);
       sleep(5);
-      $this->peek();
+      $this->assert($this->peek(), $job['queue'] . ' is online.');
     }
+    $this->assert(TRUE, $job['queue'] . ' ##########is online.');
     $this->close_connection();
+
   }
 
   public function send($job) {
@@ -116,18 +118,24 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
   }
 
   public function peek() {
-    $this->open_connection();
 
     $this->channel->exchange_declare('jobs', 'direct', false, false, false);
     $this->channel->queue_declare('TESTS', false, true, false, false);
     $this->channel->queue_bind('TESTS', 'jobs', 'TESTS');
 
     while ($this->channel->basic_get('TESTS') != NULL) {
-      $this->var_export('########### Message received back');
-      $msg = $this->channel->basic_get('TESTS', 1);
+      $msg = $this->channel->basic_get('TESTS');
+      $this->var_export($msg);
+      if (!is_null($msg)) {
+        $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+      } else {
+        return FALSE;
+      }
+      return TRUE;
     }
 
-    $this->close_connection();
+    return FALSE;
+
   }
 
   protected function open_connection() {
@@ -146,7 +154,6 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
   }
 
   protected function send_message($job) {
-    $this->open_connection();
 
     $this->channel->exchange_declare('exchange', 'direct', false, false, false);
 
@@ -159,7 +166,6 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     //echo 'sent with routing_key: ' . $job['job_type'];
     $this->channel->basic_publish($msg, 'exchange', 'TRANSCODE');
 
-    $this->close_connection();
   }
 
   protected function is_core_online($core_type, $do_internal = FALSE, array $parameters = array(), array $expected_result_ids = array(mediamosa_error::ERRORCODE_OKAY)){
