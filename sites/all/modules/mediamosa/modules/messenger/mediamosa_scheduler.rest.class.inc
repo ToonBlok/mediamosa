@@ -32,8 +32,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   }
 
   // Just a reused round_up_jobs() for the new start job after first job is completed feature
-  function process_job($job){
-    mediamosa_debug::log('Entered process_job', array(), 'T - SCHEDULER');
+  function process_next_job($job){
+    mediamosa_debug::log('Entered process_next_job', array(), 'T - SCHEDULER');
 
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
@@ -613,7 +613,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       //if (!empty($next_job)){
         mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
         mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-        $this->process_job($next_job);
+        $this->process_next_job($next_job);
       //}
 
     }

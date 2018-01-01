@@ -107,6 +107,16 @@ class jobcore extends mediamosa_rest_call {
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+
+      // CRASH CODE
+//      $crash = $this->variable_get('crash');
+//
+//      if ($crash == 0) {
+//        $crash = $crash + 1;
+//        $crash = $this->variable_set('crash', $crash);
+//
+//        $this->crash_please(); // ATTEMPT TO CRASH MANUALLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+//      }
     };
 
     $keepalive_callback = function($rmq_msg) {
@@ -183,8 +193,8 @@ class jobcore extends mediamosa_rest_call {
         $this->loop($job);
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+        mediamosa_debug::log('TRANSCODE started.', array(), 'T - STILL');
         $this->loop($job);
-//        $this->close_connection(); // ATTEMPT TO CRASH MANUALLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         break;
     }
 
