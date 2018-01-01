@@ -178,7 +178,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     //  'timeout' => 3
     //];
 
-    $uri = '/jobcore/parsequeue';
+    $uri = '/jobcore/start';
 
     $this->restCallGet($uri, $parameters, array(), $options, $expected_result_ids, $do_internal);
   }

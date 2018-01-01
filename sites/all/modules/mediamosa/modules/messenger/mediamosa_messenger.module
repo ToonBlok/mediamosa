@@ -62,7 +62,7 @@ function mediamosa_messenger_mediamosa_register_rest_call()
 {
   $rest_calls = array();
 
-  $rest_calls['jobcore/parsequeue'][mediamosa_rest_call::METHOD_GET] = array(
+  $rest_calls['jobcore/start'][mediamosa_rest_call::METHOD_GET] = array(
     mediamosa_rest_call::CLASS_NAME => 'jobcore',
     mediamosa_rest_call::STATUS => mediamosa_rest_call::STATUS_ACTIVE,
     mediamosa_rest_call::MODULE_NAME => 'mediamosa_messenger',

@@ -4,6 +4,7 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+
 class jobcore extends mediamosa_rest_call {
 
   const CORE_TYPE = 'core_type';
@@ -42,6 +43,12 @@ class jobcore extends mediamosa_rest_call {
     return self::get_var_setup_default($var_setup, FALSE);
   }
 
+  /**
+   * URI: /jobcore/start
+   * Method: GET
+   *
+   * Start a jobcore
+   */
   /**
    * Implements do_call().
    */
@@ -244,22 +251,33 @@ class jobcore extends mediamosa_rest_call {
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
-//    while ($this->channel->basic_get($this->queue_keepalive_server) != NULL) {
-//      $msg = $this->channel->basic_get($this->queue_keepalive_server, 1);
-//
-//      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
-//      $job = unserialize($msg->body);
-//
-//      if ((isset($job['sender'])) and ($job['sender'] == 'unit_tests')) {
-//        //mediamosa_debug::log('Alternative send in $keepalive triggered', array(), 'T - MISC');
-//        $this->send([], self::QUEUE_TESTS);
-//      } else {
-//        $update_message['timestamp'] = microtime(true);
-//        $update_message['job_type'] = $this->queue_keepalive_server_guardian;
-//
-//        $this->send($update_message, $this->queue_keepalive_server_guardian);
-//      }
-//    }
+    $rmq_msg = $this->channel->basic_get($this->queue_keepalive_server);
+
+    // If there is a keepalive message it should have a value.
+    while (!is_null($rmq_msg)) {
+      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+
+      $msg = unserialize($rmq_msg->body);
+      mediamosa_debug::log('[' . $msg['ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+
+      if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
+        $this->send([], self::QUEUE_TESTS);
+      } else {
+
+        $msg["STATUS_REQUEST"] = "received";
+        $msg["STATUS"] = "online";
+        $msg['timestamp'] = microtime(true);
+        $msg['job_type'] = $this->queue_keepalive_server_guardian;
+
+        mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');
+
+        $this->send($msg, $this->queue_keepalive_server_guardian);
+      }
+
+      // Get keepalive message, and if there is one present the while loop will restart.
+      $rmq_msg = $this->channel->basic_get($this->queue_keepalive_server);
+
+    }
 
   }
 

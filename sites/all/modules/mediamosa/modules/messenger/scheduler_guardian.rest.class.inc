@@ -214,7 +214,7 @@ class scheduler_guardian extends mediamosa_rest_call
       'queue_keepalive_server' => $queue_keepalive_server // The jobcore needs this to know what to listen to for keepalive messages
     ];
 
-    $location = '/jobcore/parsequeue?' . http_build_query($query_data);
+    $location = '/jobcore/start?' . http_build_query($query_data);
 
 
     $this->call($location);
