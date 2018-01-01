@@ -64,6 +64,7 @@ class scheduler_guardian extends mediamosa_rest_call
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
     $this->send($queue_keepalive_server, $server_type);
+    sleep(3);
     $this->peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
     $mediamosa->add_item(
@@ -136,17 +137,10 @@ class scheduler_guardian extends mediamosa_rest_call
       }
 
     } else {
-      while ($this->channel->basic_get($queue_keepalive_server_guardian) != NULL) {
-        //$msg = $this->channel->basic_get($queue_keepalive_server_guardian, 1);
-        $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
-        mediamosa_debug::log('$msg->delivery_info:', array(), 'T - MISC');
-        mediamosa_debug::log_export($msg->delivery_info, WATCHDOG_NOTICE, 'T - MISC');
-        mediamosa_debug::log('$msg->delivery_info[delivery_tag]:', array(), 'T - MISC');
-        mediamosa_debug::log_export($msg->delivery_info['delivery_tag'], WATCHDOG_NOTICE, 'T - MISC');
-        mediamosa_debug::log('$msg->body:', array(), 'T - MISC');
-        mediamosa_debug::log_export($msg->body, WATCHDOG_NOTICE, 'T - MISC');
-        mediamosa_debug::log('$msg:', array(), 'T - MISC');
-        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
+
+      $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+      while (!is_null($msg)) {
+        $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
 
         $update_msg = unserialize($msg->body);
         mediamosa_debug::log('[' . $update_msg['ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
@@ -154,16 +148,12 @@ class scheduler_guardian extends mediamosa_rest_call
 
         $this->update_time($drush_var, $update_msg['timestamp'], $queue_keepalive_server);
 
-        //$msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+        $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
 
-        //$this->channel->basic_consume($queue_keepalive_server_guardian, '', false, false, false, false, $callback);
-
-//        if(count($this->channel->callbacks)) {
-//          $this->channel->wait();
-//        }
-        $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
-        $this->close_connection();
+        //$this->close_connection(); // Why was this here??????
       }
+
+      $this->close_connection(); // Why was this here??????
 
       $time_last_update = variable_get($drush_var);
 
@@ -199,7 +189,7 @@ class scheduler_guardian extends mediamosa_rest_call
 //        mediamosa_debug::log('If ' . $time_last_update . ' < ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue_keepalive_server);
     if ($time_last_update < $time_stamp) {
 //          mediamosa_debug::log('New time has been set. Old: ' . $time_last_update . ', new: ' . $update_msg['timestamp'], array(), 'Tg - ' . $queue_keepalive_server);
-      mediamosa_debug::log($time_last_update . ' became ' . $time_stamp, array(), 'Tg - ' . $queue_keepalive_server);
+      mediamosa_debug::log($time_last_update . ' became ' . $time_stamp . '. This action occurred at ' . microtime(TRUE), array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_stamp);
     }
 

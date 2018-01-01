@@ -184,6 +184,7 @@ class jobcore extends mediamosa_rest_call {
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $this->loop($job);
+//        $this->close_connection(); // ATTEMPT TO CRASH MANUALLY!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         break;
     }
 
