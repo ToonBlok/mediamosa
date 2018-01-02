@@ -337,6 +337,8 @@ class jobcore extends mediamosa_rest_call {
     $username = variable_get('mediamosa_scheduler_username', 'guest');
     $password = variable_get('mediamosa_scheduler_password', 'guest');
 
+    mediamosa_debug::log('Tried to open connection with credentials: ' . variable_get('mediamosa_scheduler_username', 'guest') . ', ' . variable_get('mediamosa_scheduler_password', 'guest')  , array(), 'T - MISC');
+
     $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
     $this->channel = $this->connection->channel();
   }

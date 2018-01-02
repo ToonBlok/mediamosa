@@ -19,6 +19,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     );
   }
 
+
   // -------------------------------------------------------------------- Tests.
   /**
    * Basic job transcode test.
