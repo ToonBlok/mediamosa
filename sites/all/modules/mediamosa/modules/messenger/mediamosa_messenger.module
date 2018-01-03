@@ -7,8 +7,9 @@ function mediamosa_messenger_cron() {
 //  call_guardian('jobcoresr);
 }
 
-function mediamosa_messenger_manualcron()
+function _mediamosa_messenger_cron()
 {
+  mediamosa_debug::log('SUCCESS', array(), 'T - MISC');
   call_guardian_jobcores();
 }
 
@@ -142,8 +143,9 @@ function mediamosa_messenger_menu() {
   $items['manualcron'] = array(
     'title' => 'Manual cron',
     'description' => '...',
-    'access arguments' => array('access site reports'),
-    'file' => 'mediamosa_messenger.module'
+    'access callback' => TRUE,
+    'page callback' => '_mediamosa_messenger_cron',
+    //'file' => 'mediamosa_messenger.module'
   );
   return $items;
 }
