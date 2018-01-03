@@ -1,11 +1,15 @@
 <?php
 
-function mediamosa_messenger_cron()
-{
+function mediamosa_messenger_cron() {
   call_guardian_scheduler();
   call_guardian_jobcores();
 //  call_guardian('scheduler_start');
 //  call_guardian('jobcoresr);
+}
+
+function mediamosa_messenger_manualcron()
+{
+  call_guardian_jobcores();
 }
 
 function call_guardian_scheduler(){
@@ -132,6 +136,18 @@ function mediamosa_messenger_mediamosa_register_rest_call()
 
   return $rest_calls;
 }
+
+function mediamosa_messenger_menu() {
+  $items = array();
+  $items['manualcron'] = array(
+    'title' => 'Manual cron',
+    'description' => '...',
+    'access arguments' => array('access site reports'),
+    'file' => 'mediamosa_messenger.module'
+  );
+  return $items;
+}
+
 
 //class foo {
 //  public static function is_jobcore($server_type) {
