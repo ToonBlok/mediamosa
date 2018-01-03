@@ -71,7 +71,7 @@ function call($location) {
 
     $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
 
-    mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
+    mediamosa_debug::log($url, array(), 'T - REST');
 
     // Dont trigger in sandbox.
     if (mediamosa::in_simpletest_sandbox()) {
