@@ -6,7 +6,7 @@ core = 7.x
 files[] = mediamosa_scheduler.rest.class.inc
 files[] = server.class.inc
 files[] = jobcore.class.inc
-files[] = scheduler_guardian.rest.class.inc
+files[] = mediamosa_guardian.rest.class.inc
 
 files[] = jobs/analyze.class.inc
 files[] = jobs/still.class.inc
