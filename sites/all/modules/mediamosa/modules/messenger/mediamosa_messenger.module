@@ -1,33 +1,23 @@
 <?php
 
 function mediamosa_messenger_cron() {
-//  call_guardian_scheduler();
   call_guardian();
-//  call_guardian('scheduler_start');
-//  call_guardian('jobcoresr);
 }
 
 function _mediamosa_messenger_cron()
 {
   mediamosa_debug::log('SUCCESS', array(), 'T - MISC');
-  //call_guardian_jobcores();
-}
-
-function call_guardian_scheduler(){
-  $query_data = [
-    'server_type' => 'scheduler_start'
-  ];
-  $location = '/scheduler_guardian/check?' . http_build_query($query_data);
-  call($location);
+  //call_guardian();
 }
 
 function call_guardian(){
   $installation_id = variable_get('mediamosa_installation_id');
   $core_types = variable_get('mediamosa_cores');
-
+  mediamosa_debug::log('Cores: ' . count($core_types), array(), 'T - MISC');
 
   for ($i = 0; $i < count($core_types); $i++) {
     $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+    mediamosa_debug::log('Core_type: ' . $core_type, array(), 'T - MISC');
 
     if ($core_type == 'SCHEDULER') {
       $query_data = [
@@ -40,6 +30,8 @@ function call_guardian(){
 
       $query_data['core_type'] = $core_type;
       $query_data['keepalive_queue_name'] = $installation_id . '_' . $i;
+
+      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
     }
 
 
@@ -48,36 +40,6 @@ function call_guardian(){
     call($location);
   }
 }
-
-//function call_guardian($server_type){
-//  $query_data = [
-//    'server_type' => $server_type
-//  ];
-//
-//  $location = '/scheduler_guardian/check?';
-//
-//  switch ($server_type) {
-//    case 'scheduler_start':
-//      $location .= http_build_query($query_data);
-//      call($location);
-//      break;
-//    case 'jobcores':
-//      $installation_id = variable_get('mediamosa_installation_id');
-//      $core_types = variable_get('mediamosa_cores_tools');
-//
-//      for ($i = 0; $i < count($core_types); $i++) {
-//        $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
-//
-//        $query_data['core_type'] = $core_type;
-//        $query_data['keepalive_queue_name'] = $installation_id . '_' . $i;
-//        $location .=  http_build_query($query_data);
-//
-//        call($location);
-//      }
-//      break;
-//  }
-//
-//}
 
 function call($location) {
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
@@ -160,8 +122,3 @@ function mediamosa_messenger_menu() {
 }
 
 
-//class foo {
-//  public static function is_jobcore($server_type) {
-//    return ($server_type == 'jobcore') ? 1 : 0;
-//  }
-//}
