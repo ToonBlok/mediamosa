@@ -41,6 +41,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     // ...
 
     // REST call to scheduler
+    // ...
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);

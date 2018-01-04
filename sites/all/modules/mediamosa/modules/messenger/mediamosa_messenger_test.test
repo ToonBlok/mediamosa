@@ -43,7 +43,9 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     // Act
     $this->open_connection();
     for ($i = 0; $i < count($core_types); $i++) {
-      $keepalive_queue_name = $installation_id . '_' . $i;
+      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+      $keepalive_queue_name = $core_type . '_' . $installation_id . '_' . $i;
+      // $test_queue_name = 'TESTS_' . $core_type . '_' . $installation_id . '_' . $i;
 
       $job = [
         "queue" => $keepalive_queue_name,
@@ -51,7 +53,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
       ];
 
       $this->send($job);
-      sleep(10);
+      sleep(5);
 
       // Assert
       $this->assert($this->peek(), $job['queue'] . ' is online.');
