@@ -1171,8 +1171,6 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
-    echo ' [*] Waiting for ' . $server_type . ' messages. To exit press CTRL+C', "\n";
-
     $callback = function($msg) {
       mediamosa_debug::log('Message received in Listen():', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
@@ -1351,10 +1349,6 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 
     $this->open_connection();
 
-    if ($job['job_type'] == 'TRANSCODE') {
-      return;
-    }
-
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
     $this->channel->queue_bind($job['job_type'], jobcore::EXCHANGE_JOBS, $job['job_type']);
@@ -1366,6 +1360,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 //    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
+    mediamosa_debug::log( '[' . $job['ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
     $this->close_connection();

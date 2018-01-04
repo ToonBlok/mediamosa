@@ -23,34 +23,6 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     parent::setUp();
   }
 
-//  // ---------------------------------------------------------------- Functions.
-//  /**
-//   * Implements setUp().
-//   */
-//  protected function setUp() {
-//    // Get from outside sandbox.
-//    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
-//
-//    // Run parent first so we are inside sandbox.
-//    // Call parent::setUp and preserve arguments.
-//    $args = func_get_args();
-//    mediamosa_debug::log_export($args, array(), 'T - UNIT TESTS');
-//
-//    // Create and setup the CORE module.
-//    $args = array_unique(array_merge(array('mediamosa_job', 'mediamosa_tool_ffmpeg'), $args));
-//    if (drupal_substr(phpversion(), 0, 3) < '5.3') {
-//      call_user_func_array(array($this, 'parent::setUp'), $args);
-//    }
-//    else {
-//      call_user_func_array('parent::setUp', $args);
-//    }
-//
-//    // Set jobserver selection.
-//    if (!empty($mediamosa_jobscheduler_uri)) {
-//      variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
-//    }
-//  }
-
   /**
    *
    * Before we start a job we have to check if all jobcores are online. We do this by sending asking
@@ -59,21 +31,6 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
    **/
   protected function test_are_jobcores_online()
   {
-    // Arrange
-
-    // Act
-
-    // REAL CODE
-//    $installation_id = variable_get('mediamosa_installation_id');
-//    $core_types = variable_get('mediamosa_cores_tools');
-//    $foo = '$installation_id ***********';
-//    $this->var_export($foo);
-//    $this->var_export($installation_id);
-//
-//    $foo = '$core_types ***********';
-//    $this->var_export($foo);
-//    $this->var_export($core_types);
-
     // Arrange
     $installation_id = 'job1';
     $core_types = [
@@ -92,19 +49,14 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
         "sender" => "unit_tests"
       ];
 
-//      $foo = '########## Test ' . $i . ', Sent to: ';
-//      $this->var_export($foo);
-//      $this->var_export($job['queue']);
-
       $this->send($job);
       sleep(10);
 
       // Assert
       $this->assert($this->peek(), $job['queue'] . ' is online.');
     }
-    //$this->assert(TRUE, $job['queue'] . ' ##########is online.');
-    $this->close_connection();
 
+    $this->close_connection();
   }
 
   public function send($job) {
@@ -132,7 +84,6 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     if (!is_null($rmq_msg)) {
       $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       return TRUE;
-
     } else {
       return FALSE;
     }

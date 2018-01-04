@@ -102,7 +102,7 @@ class jobcore extends mediamosa_rest_call {
     $callback = function($msg){
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - TRANSCODE');
+      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
       if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
         // Resume job
@@ -215,7 +215,10 @@ class jobcore extends mediamosa_rest_call {
 
     while(TRUE) {
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+
       mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] '. $job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+
+      //mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
 
       $this->send($job, 'PROGRESSION');
 
@@ -364,7 +367,7 @@ class jobcore extends mediamosa_rest_call {
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER');
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
-    mediamosa_debug::log( '[' . $job['ID'] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $this->queue_keepalive_server_guardian . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log( '[' . $job['ID'] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $job_type . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
     //$this->close_connection();
   }
 
