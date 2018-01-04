@@ -23,7 +23,7 @@ function call_guardian_scheduler(){
 
 function call_guardian_jobcores(){
   $installation_id = variable_get('mediamosa_installation_id');
-  $core_types = variable_get('mediamosa_cores_tools');
+  $core_types = variable_get('mediamosa_cores');
 
   $query_data = [
     'server_type' => 'jobcore'

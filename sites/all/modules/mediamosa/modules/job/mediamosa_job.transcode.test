@@ -37,6 +37,11 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     // Parse the queue.
     $this->doQueueCycleAll();
 
+    // Get the job from the database
+    // ...
+
+    // REST call to scheduler
+
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
