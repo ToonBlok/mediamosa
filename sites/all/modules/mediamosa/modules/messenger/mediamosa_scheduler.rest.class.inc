@@ -1183,14 +1183,21 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     };
 
     $keepalive_callback = function($msg) {
-      mediamosa_debug::log('Scheduler is responding to keepalive message.', array(), 'T - SCHEDULER');
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+      if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
+        $job = [
+          "job_type" => jobcore::QUEUE_TESTS
+        ];
+        $this->send($job);
+      } else {
+        mediamosa_debug::log('Scheduler is responding to keepalive message.', array(), 'T - SCHEDULER');
+        $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
 //
-      $update_message['timestamp'] = microtime(true);
-      $update_message['job_type'] = $this->queue_keepalive_server_guardian;
+        $update_message['timestamp'] = microtime(true);
+        $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 //      $update_message['job_type'] = 'bla';
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
-      $this->send($update_message);
+        $this->send($update_message);
+      }
     };
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.

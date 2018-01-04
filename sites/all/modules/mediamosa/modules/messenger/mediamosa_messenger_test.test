@@ -34,6 +34,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
     // Arrange
     $installation_id = 'job1';
     $core_types = [
+      ['SCHEDULER'],
       ['ANALYSE'],
       ['TRANSCODE'],
       ['STILL']
