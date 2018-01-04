@@ -44,26 +44,21 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
 
-    $server_type = $this->get_param_value(self::SERVER_TYPE);
+//    $server_type = $this->get_param_value(self::SERVER_TYPE);
     $core_type = $this->get_param_value(self::CORE_TYPE);
-    $jobcore_unique_queue = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
+    $queue_keepalive_server = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
 
 //    mediamosa_debug::log('server type: ' . $server_type, array(), 'Tg - ' . $queue_keepalive_server);
 
-    if ($server_type == 'scheduler_start') {
-      $queue_keepalive_server = mediamosa_scheduler_start::QUEUE_KEEPALIVE;
-    } elseif ($server_type == 'jobcore') {
-      $queue_keepalive_server = $jobcore_unique_queue;
-    } else {
-      exit();
-    }
+      //$queue_keepalive_server = mediamosa_scheduler_start::QUEUE_KEEPALIVE;
+    //$queue_keepalive_server = $jobcore_unique_queue;
 
     mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue_keepalive_server);
-    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'Tg - ' . $queue_keepalive_server);
+//    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'Tg - ' . $queue_keepalive_server);
 
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
-    $this->send($queue_keepalive_server, $server_type);
+    $this->send($queue_keepalive_server);
     sleep(3);
     $this->peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
@@ -76,7 +71,7 @@ class scheduler_guardian extends mediamosa_rest_call
   }
 
 
-  function send($queue_keepalive_server, $server_type) {
+  function send($queue_keepalive_server) {
     $this->open_connection();
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -106,14 +101,9 @@ class scheduler_guardian extends mediamosa_rest_call
 
     $callback = function($rmq_msg) {
       mediamosa_debug::log('STRANGE CALLBACK WORKED', array(), 'T - MISC');
-
     };
 
-    if ($queue_keepalive_server == mediamosa_scheduler_start::QUEUE_KEEPALIVE) {
-      $drush_var = 'scheduler_time_last_update';
-    } else {
-      $drush_var = $queue_keepalive_server . '_time_last_update';
-    }
+    $drush_var = $queue_keepalive_server . '_time_last_update';
 
     $this->open_connection();
 
@@ -128,7 +118,7 @@ class scheduler_guardian extends mediamosa_rest_call
       mediamosa_debug::log($queue_keepalive_server . ' has never started yet', array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_now);
 
-      if (is_null($core_type)) {
+      if ($core_type == 'SCHEDULER') {
         mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
         $this->start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian);
       } else {
@@ -198,7 +188,6 @@ class scheduler_guardian extends mediamosa_rest_call
   function start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian) {
 
     $query_data = [
-      'server_action' => 'listen',
       'queue_keepalive_server_guardian' => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
       'queue_keepalive_server' => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
     ];

@@ -220,7 +220,7 @@ class jobcore extends mediamosa_rest_call {
 
       //mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
 
-      $this->send($job, 'PROGRESSION');
+      $this->send($job, mediamosa_scheduler::QUEUE_NAME);
 
       $time_now = microtime(TRUE);
 
@@ -228,7 +228,7 @@ class jobcore extends mediamosa_rest_call {
       if (($time_loop_started + 172800) < ($time_now)) { // Set job on failed every two days.
         $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
         $job['new_job_status']['Status'] = 'error';
-        $this->send($job, 'PROGRESSION');
+        $this->send($job, mediamosa_scheduler::QUEUE_NAME);
         break;
       } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
         $this->peek();
