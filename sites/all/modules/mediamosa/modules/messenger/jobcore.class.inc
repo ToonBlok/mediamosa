@@ -130,7 +130,7 @@ class jobcore extends mediamosa_rest_call {
       $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       $msg = unserialize($rmq_msg->body);
 
-      mediamosa_debug::log('[' . $msg['ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+      mediamosa_debug::log('[' . $msg['MSG_ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
       if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
         //mediamosa_debug::log('Alternative send in $keepalive triggered', array(), 'T - MISC');
@@ -261,7 +261,7 @@ class jobcore extends mediamosa_rest_call {
       $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
 
       $msg = unserialize($rmq_msg->body);
-      mediamosa_debug::log('[' . $msg['ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+      mediamosa_debug::log('[' . $msg['MSG_ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
       if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
         $this->send([], self::QUEUE_TESTS);
@@ -367,7 +367,7 @@ class jobcore extends mediamosa_rest_call {
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER');
     $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
 
-    mediamosa_debug::log( '[' . $job['ID'] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $job_type . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log( '[' . $job['MSG_ID'] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $job_type . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
     //$this->close_connection();
   }
 

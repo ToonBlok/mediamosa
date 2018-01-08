@@ -6,8 +6,6 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 class scheduler_guardian extends mediamosa_rest_call
 {
-  const QUEUE_GUARDIAN = 'guardian';
-  const SERVER_TYPE = 'server_type';
   const CORE_TYPE = 'core_type';
   const KEEPALIVE_QUEUE_NAME = 'keepalive_queue_name';
 
@@ -18,10 +16,6 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $var_setup = array(
       self::VARS => array(
-        self::SERVER_TYPE=> array(
-          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "The type of server guardian will check this instance.",
-        ),
         self::CORE_TYPE=> array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "The jobcore type.",
@@ -44,17 +38,10 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
 
-//    $server_type = $this->get_param_value(self::SERVER_TYPE);
     $core_type = $this->get_param_value(self::CORE_TYPE);
     $queue_keepalive_server = $this->get_param_value(self::KEEPALIVE_QUEUE_NAME);
 
-//    mediamosa_debug::log('server type: ' . $server_type, array(), 'Tg - ' . $queue_keepalive_server);
-
-      //$queue_keepalive_server = mediamosa_scheduler_start::QUEUE_KEEPALIVE;
-    //$queue_keepalive_server = $jobcore_unique_queue;
-
     mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue_keepalive_server);
-//    mediamosa_debug::log('server type: ' . $server_type . ', core type: ' . $core_type . ', unique queue: ' . $jobcore_unique_queue, array(), 'Tg - ' . $queue_keepalive_server);
 
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
@@ -79,12 +66,12 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [
-      "ID" => $this->variable_get("alive_message_unique_id", 1),
+      "MSG_ID" => $this->variable_get("alive_message_unique_id", 1),
       "STATUS_REQUEST" => "pending",
       "STATUS" => "undetermined"
     ];
 
-    $this->variable_set("alive_message_unique_id", $alive_message['ID'] + 1);
+    $this->variable_set("alive_message_unique_id", $alive_message['MSG_ID'] + 1);
 
     $msg = new AMQPMessage(
       serialize($alive_message),
@@ -92,7 +79,7 @@ class scheduler_guardian extends mediamosa_rest_call
     );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-    mediamosa_debug::log('[' . $alive_message['ID'] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log('[' . $alive_message['MSG_ID'] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     $this->close_connection();
   }
@@ -133,7 +120,7 @@ class scheduler_guardian extends mediamosa_rest_call
         $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
 
         $update_msg = unserialize($msg->body);
-        mediamosa_debug::log('[' . $update_msg['ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+        mediamosa_debug::log('[' . $update_msg['MSG_ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
         mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
         $this->update_time($drush_var, $update_msg['timestamp'], $queue_keepalive_server);

@@ -829,7 +829,10 @@ class mediamosa_job {
       ->fields($fields)
       ->execute();
 
-    self::check_send($id, $still_type, $size, $fields);
+
+    if (!mediamosa::in_simpletest_sandbox()) {
+      self::check_send($id, $still_type, $size, $fields);
+    }
 
     // Insert it.
     return $id;

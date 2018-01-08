@@ -1300,9 +1300,11 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
    * Implements do_call().
    */
   public function do_call() {
+    mediamosa_debug::log('UNIT TEST TRIGGERED ME', array(), 'T - MISC2');
     $mediamosa = mediamosa::get();
 
     $job = [
+      'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
       mediamosa_job_db::ID => $this->get_param_value(self::JOB_ID),
       mediamosa_job_db::JOB_TYPE => $this->get_param_value(self::JOB_TYPE),
       mediamosa_job_db::JOB_STATUS => $this->get_param_value(self::JOB_STATUS),
@@ -1314,6 +1316,8 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
       mediamosa_job_still_db::BLACKSTILL_CHECK => $this->get_param_value(self::BLACKSTILL_CHECK),
       mediamosa_job_still_db::SIZE => $this->get_param_value(self::SIZE)
     ];
+
+    $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
 
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
@@ -1347,6 +1351,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
         $job += array(
           'transcode_parameters' => serialize($this->get_job_parameters($job))
         );
+        $job['asset_link'] = $this->get_asset_link($job['job_id']);
         break;
     }
 
@@ -1378,7 +1383,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 //    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
-    mediamosa_debug::log( '[' . $job['ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log( '[' . $job['MSG_ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
     $this->close_connection();
