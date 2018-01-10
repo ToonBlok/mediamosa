@@ -118,6 +118,8 @@ class mediamosa_job_transcode {
 
     // Add changed/created values.
     $fields = mediamosa_db::db_insert_enrich($fields);
+    mediamosa_debug::log('[UT] This got inserted into the mediamosa_job_transcode table:', array(), 'T - UT');
+    mediamosa_debug::log_export($fields, WATCHDOG_NOTICE, 'T - UT');
 
     // Insert it.
     mediamosa_db::db_insert(mediamosa_job_transcode_db::TABLE_NAME)

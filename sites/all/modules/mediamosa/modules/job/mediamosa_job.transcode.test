@@ -50,7 +50,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     // REST call to scheduler
     // Heb nu $job_id, $job_type, $mediafile_id
     $query_data = [
-      "job_id" => (int)$job_id,
+      "job_id" => (string)$job_id['job_id'],
       "job_type" => $job_type,
       "mediafile_id" => $mediafile_id,
       "asset_id" => $asset_id
@@ -59,11 +59,15 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $location = 'scheduler/start_job';
     $this->restCallGet($location, $query_data);
 
-    // this is not sufficient
-    sleep(5);
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
+
+    // T fix
+    // Get simpletest id to check on later
+    //$test_info = &$GLOBALS['drupal_test_info'];
+
+    $this->cycle($query_data[mediamosa_job_db::ID]);
 
     // Add mediafile clean up and get the first transcoded mediafile.
     $mediafile_id_transcoded = NULL;
@@ -118,6 +122,100 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
 //    else {
 //      $this->fail('Expected to find transcoded file!');
 //    }
+  }
+
+
+//  // Really need other solution
+//  /**
+//   * Check status if a job, allow 20*5 seconds of wait time for this ID until we cancel the job.
+//   *
+//   * @param int $job_id
+//   */
+//  protected function cycle($job_id) {
+//
+//    // Keep in mind that with less slots, this needs to be 18.
+//    $max_runs = 20;
+//    $runs = 0;
+//    while ($runs < $max_runs) {
+//
+//      $job = mediamosa_job::get($job_id);
+//
+//      if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+//
+//        mediamosa_debug::log('Waiting 5 seconds...', array(), 'T - UT');
+//        $this->pass('[' . $job_id . '] still waiting.');
+//        $runs++;
+//        Sleep(5);
+//      } else {
+//        mediamosa_debug::log('Job has not started yet...', array(), 'T - UT');
+//        $runs++;
+//        Sleep(5);
+//      }
+//
+//    }
+//
+//    if ($runs == $max_runs) {
+//      $this->fail('Job scheduler deadlock');
+//    }
+//  }
+
+  /**
+   * Run and execute the current jobs (one cycle).
+   *
+   * @param bool $trigger_scheduler
+   *   Trigger the scheduler, to handout and start new jobs.
+   */
+  protected function cycle($trigger_scheduler = true) {
+
+    // Keep in mind that with less slots, this needs to be 18.
+    $max_runs = 20;
+    $running_jobs = 1;
+    while ($max_runs-- && $running_jobs) {
+      // Run one job cycle.
+//      self::doQueueCycle($trigger_scheduler);
+
+      // Set flag to know if all jobs are finished or failed.
+      $running_jobs = 0;
+      $waiting_jobs = 0;
+
+      // Get all jobs.
+      $jobs = mediamosa_job::get_job_list(0, '', TRUE);
+
+      // Check if the jobs are all done.
+      foreach ($jobs as $job) {
+        if (!in_array($job[mediamosa_job_db::JOB_STATUS],
+          array(
+            mediamosa_job_db::JOB_STATUS_FINISHED,
+            mediamosa_job_db::JOB_STATUS_FAILED,
+            mediamosa_job_db::JOB_STATUS_CANCELLED,
+          )
+        )) {
+          $running_jobs++;
+
+          if ($job[mediamosa_job_db::JOB_STATUS] === mediamosa_job_db::JOB_STATUS_WAITING) {
+            // Waiting jobs stay waiting when trigger scheduler is off.
+            if (!$trigger_scheduler) {
+              $running_jobs--;
+            }
+            $waiting_jobs++;
+          }
+        }
+      }
+
+      if ($running_jobs) {
+        $this->pass(strtr('Found @running running jobs of which where @waiting waiting jobs, waiting for next cycle.', array('@running' => $running_jobs, '@waiting' => $waiting_jobs)));
+        // Wait 5 seconds.
+        Sleep(5);
+      }
+      else {
+        $this->pass('No more running jobs found, exiting job cycle.');
+      }
+    }
+
+    // If we are dead locked, we need to know.
+    if ($max_runs < 0) {
+      $this->fail(strtr('Job scheduler deadlock; Failed to complete all jobs. Jobs waiting for: @running', array('@running' => $running_jobs)));
+    }
   }
 
 

@@ -173,35 +173,37 @@ class scheduler_guardian extends mediamosa_rest_call
   }
 
   function start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian) {
+    $uri = '/jobcore/start';
 
     $query_data = [
-      'queue_keepalive_server_guardian' => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
-      'queue_keepalive_server' => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
+      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
+      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
     ];
-    $location = '/scheduler/start?' . http_build_query($query_data);
 
-    $this->call($location);
+
+    $this->call($uri, $query_data);
   }
 
   function start_jobcore($core_type, $queue_keepalive_server, $queue_keepalive_server_guardian) {
+    $uri = '/jobcore/start';
+
     $query_data = [
-      'core_type' => $core_type,
-      'queue_keepalive_server_guardian' => $queue_keepalive_server_guardian, // The jobcore needs this to know where to send keepalive messages back to
-      'queue_keepalive_server' => $queue_keepalive_server // The jobcore needs this to know what to listen to for keepalive messages
+      jobcore::CORE_TYPE => $core_type,
+      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The jobcore needs this to know where to send keepalive messages back to
+      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server // The jobcore needs this to know what to listen to for keepalive messages
     ];
 
-    $location = '/jobcore/start?' . http_build_query($query_data);
-
-
-    $this->call($location);
+    $this->call($uri, $query_data);
   }
 
-  function call($location) {
+  function call($uri, $query_data) {
+    $uri = $uri . '?' . http_build_query($query_data);
+
     // Test REST CALL
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
     if (isset($mediamosa_jobscheduler_uri)) {
 
-      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
+      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
 
       // Log it.
       mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));

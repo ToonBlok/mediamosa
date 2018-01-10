@@ -603,6 +603,14 @@ class MediaMosaTestCase extends DrupalWebTestCase {
     timer_start('simpletest');
 
     // Perform the CURL request.
+
+    // My temp code
+    $test_info = &$GLOBALS['drupal_test_info'];
+    if (!empty($test_info['test_run_id'])) {
+      $options['headers']['User-Agent'] = drupal_generate_test_ua($test_info['test_run_id']);
+    }
+    mediamosa_debug::log('[UT] ' . $uri. ', UA: ' . $options['headers']['User-Agent'], array(), 'T - UT');
+
     $result = $this->curlExec($curl_opts);
 
     $timer = timer_stop('simpletest');

@@ -99,6 +99,13 @@ class jobcore extends mediamosa_rest_call {
     echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $core_type);
 
+    /**
+     * Callback used for the communication between this jobcore and the scheduler. Starts jobs specified in the messages it receives.
+     *
+     * @param $rmq_msg
+     *   RabbitMQ message received from the server.
+     *
+     */
     $callback = function($msg){
       $job = unserialize($msg->body);
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
@@ -109,6 +116,11 @@ class jobcore extends mediamosa_rest_call {
         mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
         $this->loop($job);
       } else {
+        if (isset($job['test_run_id'])) {
+          // forgot to switch back too after this
+          $this->switch_db($job['test_run_id']);
+          unset($job['test_run_id']);
+        }
         $this->start_job($job);
       }
 
@@ -126,6 +138,13 @@ class jobcore extends mediamosa_rest_call {
 //      }
     };
 
+    /**
+     * Callback used for the communication between the guardian class and this jobcore to keep this jobcore alive.
+     *
+     * @param $rmq_msg
+     *   RabbitMQ message received from the server.
+     *
+     */
     $keepalive_callback = function($rmq_msg) {
       $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       $msg = unserialize($rmq_msg->body);
@@ -165,6 +184,46 @@ class jobcore extends mediamosa_rest_call {
     $this->close_connection();
   }
 
+  function switch_db($test_run_id){
+    mediamosa_debug::log('Entered switch_db', array(), 'T - UT');
+
+//    $test_info = &$GLOBALS['drupal_test_info'];
+    $GLOBALS['drupal_test_info']['test_run_id'] = $test_run_id;
+    $GLOBALS['drupal_test_info']['in_child_site'] = TRUE;
+
+//    $test_info['test_run_id'] = $test_run_id;
+//    $test_info['in_child_site'] = TRUE;
+
+    foreach ($GLOBALS['databases']['default'] as &$value) {
+
+      // Extract the current default database prefix.
+      if (!isset($value['prefix'])) {
+        $current_prefix = '';
+      }
+      elseif (is_array($value['prefix'])) {
+        $current_prefix = $value['prefix']['default'];
+      }
+      else {
+        $current_prefix = $value['prefix'];
+      }
+
+      mediamosa_debug::log('Value changed to: ' . $current_prefix . $test_run_id, array(), 'T - UT');
+      // Remove the current database prefix and replace it by our own.
+      $value['prefix'] = array(
+        'default' => $current_prefix . $test_run_id,
+      );
+    }
+
+    foreach ($GLOBALS['databases']['default'] as &$value) {
+      mediamosa_debug::log_export($value['prefix'], WATCHDOG_NOTICE, 'T - UT');
+    }
+
+    $test_info = $GLOBALS['drupal_test_info'];
+    mediamosa_debug::log('$test_info AFTER change:', array(), 'T - UT');
+    mediamosa_debug::log_export($test_info, WATCHDOG_NOTICE, 'T - UT');
+
+  }
+
   function start_job($job){
 
     switch ($job['job_type']) {
@@ -181,7 +240,7 @@ class jobcore extends mediamosa_rest_call {
         break;
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $this->transcode->start($job);
-        $this->loop($job);
+//        $this->loop($job);
         break;
     }
 

@@ -13,7 +13,7 @@ class MediaMosaTestCaseMessenger extends MediaMosaTestCaseEgaJob
   public static function getInfo() {
     return array(
       'name' => 'Mediamosa messenger tests',
-      'description' => '...',
+      'description' => 'Evaluate online status of jobcores',
       'group' => 'MediaMosa Jobs'
     );
   }
