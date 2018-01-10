@@ -173,7 +173,7 @@ class scheduler_guardian extends mediamosa_rest_call
   }
 
   function start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian) {
-    $uri = '/jobcore/start';
+    $uri = '/scheduler/start?';
 
     $query_data = [
       jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
@@ -185,7 +185,7 @@ class scheduler_guardian extends mediamosa_rest_call
   }
 
   function start_jobcore($core_type, $queue_keepalive_server, $queue_keepalive_server_guardian) {
-    $uri = '/jobcore/start';
+    $uri = '/jobcore/start?';
 
     $query_data = [
       jobcore::CORE_TYPE => $core_type,
@@ -193,11 +193,12 @@ class scheduler_guardian extends mediamosa_rest_call
       jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server // The jobcore needs this to know what to listen to for keepalive messages
     ];
 
+
     $this->call($uri, $query_data);
   }
 
   function call($uri, $query_data) {
-    $uri = $uri . '?' . http_build_query($query_data);
+    $uri = $uri . http_build_query($query_data);
 
     // Test REST CALL
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);

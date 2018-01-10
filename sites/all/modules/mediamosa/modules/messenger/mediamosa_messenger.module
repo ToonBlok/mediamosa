@@ -26,7 +26,7 @@ function call_guardian(){
     mediamosa_debug::log('Core_type: ' . $core_type, array(), 'T - MISC');
 
 //    $query_data[jobcore::CORE_TYPE] = $core_type;
-    $query_data['core_type'] = $core_type;
+    $query_data[jobcore::CORE_TYPE] = $core_type;
     $query_data['keepalive_queue_name'] = $core_type . '_' . $installation_id . '_' . $i;
 
     mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
