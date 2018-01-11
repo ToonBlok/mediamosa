@@ -379,9 +379,7 @@ abstract class mediamosa_storage {
    */
   public static function get_local_mediafile_path($mediafile) {
     // Get the mediafile uri.
-    mediamosa_debug::log('[3.1.1]Reached', array(), 'T - TRANSCODE');
     $source_uri = self::get_uri_mediafile($mediafile);
-    mediamosa_debug::log('[3.1.2]Reached', array(), 'T - TRANSCODE');
 
     // Build up the stream wrapper.
     $source_streamwrapper = mediamosa_io::require_stream_wrapper_instance_by_uri($source_uri);
@@ -391,7 +389,6 @@ abstract class mediamosa_storage {
     if (!$source_streamwrapper->is_local()) {
       return self::get_realpath_transition_links();
     }
-    mediamosa_debug::log('[3.1.3]Reached', array(), 'T - TRANSCODE');
 
     // LUA can use the transition location (mediafile_id[0]/mediafile_id/md5) so
     // use links version instead. Although it will point to the latest
@@ -400,7 +397,6 @@ abstract class mediamosa_storage {
       return mediamosa_storage::get_realpath_transition_links();
     }
 
-    mediamosa_debug::log('[3.1.4]Reached', array(), 'T - TRANSCODE');
     return $source_streamwrapper->get_realpath_mount_point();
   }
 
@@ -483,25 +479,21 @@ abstract class mediamosa_storage {
    */
   public static function get_uri_mediafile($mediafile) {
     // MediaFile ID?
-    mediamosa_debug::log('[3.1.1.1]Reached', array(), 'T - TRANSCODE');
     if (is_string($mediafile)) {
       $mediafile = mediamosa_asset_mediafile::must_exists($mediafile);
     }
-    mediamosa_debug::log('[3.1.1.2]Reached', array(), 'T - TRANSCODE');
 
     // If no mount point, then always assign default.
     if (empty($mediafile[mediamosa_asset_mediafile_db::SANNAS_MOUNT_POINT])) {
       $mediafile[mediamosa_asset_mediafile_db::SANNAS_MOUNT_POINT] = self::get_uri_data();
     }
 
-    mediamosa_debug::log('[3.1.1.3]Reached', array(), 'T - TRANSCODE');
     // Create tmp wrapper.
     $wrapper = mediamosa_io::require_stream_wrapper_instance_by_uri($mediafile[mediamosa_asset_mediafile_db::SANNAS_MOUNT_POINT]);
     if ($wrapper instanceof mediamosa_io_streamwrapper) {
       return $wrapper->get_uri_mediafile($mediafile);
     }
 
-    mediamosa_debug::log('[3.1.1.4]Reached', array(), 'T - TRANSCODE');
     return self::trim_uri($mediafile[mediamosa_asset_mediafile_db::SANNAS_MOUNT_POINT], '') . mediamosa_io_streamwrapper::create_mediafile_path($mediafile[mediamosa_asset_mediafile_db::ID]);
   }
 

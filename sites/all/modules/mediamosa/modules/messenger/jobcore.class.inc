@@ -4,6 +4,13 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+/**
+ * Class jobcore
+ *
+ * REMINDERS
+ * -Dont forget to add teardown() later
+ *
+ */
 
 class jobcore extends mediamosa_rest_call {
 
@@ -70,9 +77,10 @@ class jobcore extends mediamosa_rest_call {
 
     // Geef array terug van response
     // Geef steeds een regel terug die je in xml output terug krijgt
+    $mediamosa->set_result(mediamosa_response::ERROR, mediamosa_error::ERRORCODE_UNEXPECTED_ERROR, $this->core_type . ' listen failed.');
+
     $mediamosa->add_item(
       array(
-        'version' => mediamosa_version::get_current_version_str(FALSE),
         'server_type' => $core_type,
       )
     );
@@ -84,17 +92,17 @@ class jobcore extends mediamosa_rest_call {
 
   // Jobcore <- Scheduler, guardian
   function listen($core_type) {
-    $this->open_connection();
+    $connection_success = $this->open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($core_type, false, true, false, false);
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($core_type, self::EXCHANGE_JOBS, $core_type);
     $this->channel->queue_bind($this->queue_keepalive_server, self::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
-    if (mediamosa::in_simpletest_sandbox()) {
-      mediamosa_debug::log('In sandbox...', array(), 'T - UNIT TESTS');
-      return;
-    }
+//    if (mediamosa::in_simpletest_sandbox()) {
+//      mediamosa_debug::log('In sandbox...', array(), 'T - UT');
+//      return;
+//    }
 
     echo ' [*] Waiting for ' . $core_type . ' messages. To exit press CTRL+C', "\n";
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $core_type);
@@ -111,16 +119,26 @@ class jobcore extends mediamosa_rest_call {
 //      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
       mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
+      $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
+      mediamosa_debug::log('[STEP4] Received in jobcore with: ' . $checkvar . ' and int the message it is: ' . $job['test_run_id'], array(), 'T - MISC2');
+
+
       if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+        mediamosa_debug::log('[STEP5] Goes into if it shouldnt', array(), 'T - MISC2');
         // Resume job
         mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
         $this->loop($job);
       } else {
-        if (isset($job['test_run_id'])) {
-          // forgot to switch back too after this
-          $this->switch_db($job['test_run_id']);
-          unset($job['test_run_id']);
-        }
+//        if (isset($job['test_run_id'])) {
+//          // forgot to switch back too after this
+////          try {
+////            $this->switch_db($job['test_run_id']);
+////          } catch (Exception $e) {
+////            mediamosa_debug::log('.', array(), 'T - ERROR');
+////          }
+////          unset($job['test_run_id']);
+//        }
+        mediamosa_debug::log('[STEP5] Goes into the right else', array(), 'T - MISC2');
         $this->start_job($job);
       }
 
@@ -182,10 +200,17 @@ class jobcore extends mediamosa_rest_call {
     }
 
     $this->close_connection();
+    return $connection_success;
   }
 
-  function switch_db($test_run_id){
-    mediamosa_debug::log('Entered switch_db', array(), 'T - UT');
+  function switch_db($test_run_id) {
+    mediamosa_debug::log('1 DB check!', array(), 'T - JAN10');
+
+    $databases_old = &drupal_static('databases_old');
+    $databases_old = $GLOBALS['databases'];
+
+
+//    mediamosa_debug::log('Entered switch_db', array(), 'T - UT');
 
 //    $test_info = &$GLOBALS['drupal_test_info'];
     $GLOBALS['drupal_test_info']['test_run_id'] = $test_run_id;
@@ -214,33 +239,57 @@ class jobcore extends mediamosa_rest_call {
       );
     }
 
-    foreach ($GLOBALS['databases']['default'] as &$value) {
-      mediamosa_debug::log_export($value['prefix'], WATCHDOG_NOTICE, 'T - UT');
-    }
+    global $conf;
+    $conf_backup = &drupal_static('conf_backup');
+    $conf_backup = $conf;
 
-    $test_info = $GLOBALS['drupal_test_info'];
-    mediamosa_debug::log('$test_info AFTER change:', array(), 'T - UT');
-    mediamosa_debug::log_export($test_info, WATCHDOG_NOTICE, 'T - UT');
+    mediamosa_debug::log('.', array(), 'T - JAN10');
+
+    $conf = variable_initialize();
+
+    Database::parseConnectionInfo();
+
+    mediamosa_debug::log('2 DB check!', array(), 'T - JAN10');
 
   }
 
+//  function unswitch_db() {
+//    // Switch database back
+//    $GLOBALS['databases'] = &drupal_static('databases_old');
+//
+//    // Switch variables back
+//    global $conf;
+//    $conf = &drupal_static('conf_backup');
+//    $conf = variable_initialize();
+//
+//    Database::parseConnectionInfo();
+//  }
+
   function start_job($job){
 
+    $unit_test_prefix = '';
+    if (mediamosa::in_simpletest_sandbox()) {
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+      mediamosa_debug::log('[STEP6] new prefix is: ' . $unit_test_prefix, array(), 'T - MISC2');
+      $unit_test_prefix .= '_';
+    }
+
     switch ($job['job_type']) {
-      case mediamosa_job_db::JOB_TYPE_ANALYSE:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
 //        $this->loop($job);
         break;
-      case mediamosa_job_db::JOB_TYPE_STILL:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_STILL:
         mediamosa_debug::log('STILL started.', array(), 'T - STILL');
         $this->still->start($job);
         $this->loop($job);
 //        $this->still->update($job);
         break;
-      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $this->transcode->start($job);
-//        $this->loop($job);
+        $this->loop($job);
+
         break;
     }
 
@@ -273,21 +322,35 @@ class jobcore extends mediamosa_rest_call {
     $time_last_peeked = microtime(TRUE);
 
     while(TRUE) {
+      mediamosa_debug::log('get status content with ' . $job['job_id'], array(), 'T - JAN10');
       $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+      mediamosa_debug::log('new_job_status', array(), 'T - JAN10');
+      mediamosa_debug::log_export($job['new_job_status'], WATCHDOG_NOTICE, 'T - JAN10');
 
       mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] '. $job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
 
       //mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
 
-      $this->send($job, mediamosa_scheduler::QUEUE_NAME);
+      $scheduler_queue_name = mediamosa_scheduler::QUEUE_NAME;
+
+      if (mediamosa::in_simpletest_sandbox()) {
+        $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+        $scheduler_queue_name = $unit_test_prefix . '_' . $scheduler_queue_name;
+      }
+
+      $this->send($job, $scheduler_queue_name);
 
       $time_now = microtime(TRUE);
 
       // If $time_now is larger than what we calculate to be the time 2 days after the loop has started.
-      if (($time_loop_started + 172800) < ($time_now)) { // Set job on failed every two days.
+
+      //                2 days: 172800
+      //                Temp for unit test:
+      if (($time_loop_started + 290) < ($time_now)) { // Set job on failed every two days.
         $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
         $job['new_job_status']['Status'] = 'error';
         $this->send($job, mediamosa_scheduler::QUEUE_NAME);
+//        $this->unswitch_db();
         break;
       } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
         $this->peek();
@@ -296,8 +359,10 @@ class jobcore extends mediamosa_rest_call {
         $time_last_peeked = $time_now;
       }
       if ($job['new_job_status']['Status'] == 'done') {
+
         mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] done at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
         mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
+        //$this->unswitch_db();
         break;
       }
 
@@ -403,6 +468,8 @@ class jobcore extends mediamosa_rest_call {
 
     $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
     $this->channel = $this->connection->channel();
+//    $var = $this->channel->open();
+//    mediamosa_debug::log('$var: ' . $var, array(), 'T - MISC11');
   }
 
   function close_connection() {

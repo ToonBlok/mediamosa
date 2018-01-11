@@ -329,6 +329,8 @@ class mediamosa_http {
       'do_internal' => FALSE,
       'do_head' => FALSE,
     );
+    mediamosa_debug::log('step2', array(), 't - jan10 2');
+    mediamosa_debug::log($options['do_internal'], array(), 'T - JAN10 2');
 
     $curlproxy_http = NULL;
     if ($options['use_curlproxy']) {
@@ -394,6 +396,9 @@ class mediamosa_http {
       curl_setopt($curl_handle, CURLOPT_PROXYTYPE, CURLPROXY_HTTP);
       curl_setopt($curl_handle, CURLOPT_PROXY, $curlproxy_http);
     }
+
+    mediamosa_debug::log('curl_handle:', array(), 'T - JAN10 2');
+    mediamosa_debug::log_export($curl_handle, WATCHDOG_NOTICE, 'T - JAN10 2');
 
     $result = curl_exec($curl_handle);
     curl_close($curl_handle);

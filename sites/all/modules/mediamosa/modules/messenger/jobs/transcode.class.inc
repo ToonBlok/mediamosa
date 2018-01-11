@@ -6,13 +6,12 @@ class transcode
     mediamosa_debug::log('Transcode for job ' . $job[mediamosa_job_db::ID] . ' started.', array(), 'T - TRANSCODE');
     mediamosa_debug::log('$job:', array(), 'T - TRANSCODE');
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - TRANSCODE');
-    $execution_string = $this->generate_transcode_exec($job['job_id'], $job['mediafile_id'], unserialize($job['transcode_parameters']), $job['mediafile_path']);
+    $execution_string = $this->generate_transcode_exec($job['job_id'], $job['mediafile_id'], unserialize($job['transcode_parameters']));
     mediamosa_debug::log('$execution_string for job ' . $job[mediamosa_job_db::ID] , array(), 'T - TRANSCODE');
     mediamosa_debug::log_export($execution_string, WATCHDOG_NOTICE, 'T - TRANSCODE' );
 
-    mediamosa_debug::log('step 10.1', array(), 'T - TRANSCODE');
     $exec_output = mediamosa_io::exec($execution_string);
-    mediamosa_debug::log('step 10.2', array(), 'T - TRANSCODE');
+
 
     mediamosa_job_server::log_mediafile($job['mediafile_id'], 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
       array(
@@ -22,7 +21,6 @@ class transcode
         '@link' => $job['asset_link'],
       )
     );
-    mediamosa_debug::log('step 10.3', array(), 'T - TRANSCODE');
   }
 
   /**
@@ -31,13 +29,12 @@ class transcode
    * @param string $job_id
    * @param string $mediafile_id
    */
-  function generate_transcode_exec($job_id, $mediafile_id, $job_parameters, $mediafile_path) {
+  function generate_transcode_exec($job_id, $mediafile_id, $job_parameters) {
     $tool = $job_parameters[mediamosa_job_server_transcode_db::TOOL];
     $file_extension = $job_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
     $command = $job_parameters[mediamosa_job_server_transcode_db::COMMAND];
 
 
-    mediamosa_debug::log('[1]Reached', array(), 'T - TRANSCODE');
     // Get the mediafile.
 //    $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id); // GOES INTO DB!!!!!!!!!!!!!!!!!!!
 
@@ -60,7 +57,6 @@ class transcode
 
     // Empty.
     $execution_string = '';
-    mediamosa_debug::log('[2]Reached', array(), 'T - TRANSCODE');
 
     // Combine based on selection.
     switch ($tool) {
@@ -72,13 +68,9 @@ class transcode
         }
 
         // ORIGINAL
-        mediamosa_debug::log('[3]Reached', array(), 'T - TRANSCODE');
-        mediamosa_debug::log('[3.1]Reached', array(), 'T - TRANSCODE');
         //$varA = mediamosa_storage::get_local_mediafile_path($mediafile_id);
-        mediamosa_debug::log('[3.2]Reached', array(), 'T - TRANSCODE');
-        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), $mediafile_path, mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_id, $file_extension, $parameter_string);
-        //$execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile_id), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_id, $file_extension, $parameter_string);
-        mediamosa_debug::log('[4]Reached', array(), 'T - TRANSCODE');
+//        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), $mediafile_path, mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_id, $file_extension, $parameter_string);
+        $execution_string = sprintf('%s %s %s %s %s %s %s > /dev/null &', mediamosa_settings::lua_transcode_script(), mediamosa_storage::get_local_mediafile_path($mediafile_id), mediamosa_storage::get_realpath_temporary(), $mediafile_id, $job_id, $file_extension, $parameter_string);
         break;
 
       default:
@@ -93,7 +85,6 @@ class transcode
         // soon.
 
         // Now see if transcode function is found.
-        mediamosa_debug::log('[5]Reached', array(), 'T - TRANSCODE');
         if (class_exists($class_name) && method_exists($class_name, 'get_transcode_exec')) {
           $args = array(
             // Job ID.
@@ -105,8 +96,8 @@ class transcode
             // Parameter string for cmd.
             'parameter_string' => $parameter_string,
             // the data dir in sannas (extra).
-            //'path_mount_point_data' => mediamosa_storage::get_local_mediafile_path($mediafile_id),
-            'path_mount_point_data' => $mediafile_path,
+            'path_mount_point_data' => mediamosa_storage::get_local_mediafile_path($mediafile_id),
+//            'path_mount_point_data' => $mediafile_path,
             // Path to the transcode file.
             'location_dest_file' => mediamosa_storage::get_realpath_temporary_file($job_id),
             // Location of source mediafile.
@@ -114,7 +105,6 @@ class transcode
             // Location of the status_file.
             'status_file' => $status_file,
           );
-          mediamosa_debug::log('[6]Reached', array(), 'T - TRANSCODE');
 
           // PHP 5.2.3 or higher.
           $execution_string = call_user_func($class_name . '::get_transcode_exec', $args);
@@ -130,7 +120,6 @@ class transcode
       // One tool has been found. Process started. Return now.
     }
 
-    mediamosa_debug::log('[7]Reached', array(), 'T - TRANSCODE');
     return $execution_string;
   }
 

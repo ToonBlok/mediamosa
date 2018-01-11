@@ -5,6 +5,9 @@
  */
 
 class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
+
+  protected $unit_test_prefix;
+
   // ------------------------------------------------------------------ Members.
   // ---------------------------------------------------------------- Functions.
   /**
@@ -19,11 +22,165 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     );
   }
 
+  function setUp()
+  {
+    // Get from outside sandbox.
+    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
+    // Run parent first so we are inside sandbox.
+    // Call parent::setUp and preserve arguments.
+    $args = func_get_args();
+
+    // Create and setup the CORE module.
+    $args = array_unique(array_merge(array('mediamosa_messenger'), $args));
+    if (drupal_substr(phpversion(), 0, 3) < '5.3') {
+      call_user_func_array(array($this, 'parent::setUp'), $args);
+    }
+    else {
+      call_user_func_array('parent::setUp', $args);
+    }
+
+    // Set jobserver selection.
+    if (!empty($mediamosa_jobscheduler_uri)) {
+      variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
+    }
+//    parent::setUp();
+    $this->unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+    variable_set('mediamosa_scheduler_username', 'admin');
+    variable_set('mediamosa_scheduler_password', 'admin');
+
+    $this->start_jobcores();
+    sleep(10);
+    //$this->wait_jobcores_online();
+  }
+
+  protected function wait_jobcores_online(){
+    $online = FALSE;
+
+    for ($i = 0; $i < 24; $i++) {
+
+      $online = $this->are_jobcores_online();
+      if ($online) {
+        break;
+      }
+
+      sleep(5);
+    }
+
+    $this->assert($online, 'Jobcores are online');
+  }
+
+  /**
+   *
+   * Before we start a job we have to check if all jobcores are online. We do this by sending asking
+   * the jobcore if it is alive and receiving back a confirmation.
+   *
+   **/
+  protected function are_jobcores_online()
+  {
+    // Arrange
+    $installation_id = 'job1';
+    $core_types = [
+      ['SCHEDULER'],
+      ['ANALYSE'],
+      ['TRANSCODE'],
+      ['STILL']
+    ];
+
+    // Act
+    $this->open_connection();
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+      $keepalive_queue_name = $core_type . '_' . $installation_id . '_' . $i;
+      // $test_queue_name = 'TESTS_' . $core_type . '_' . $installation_id . '_' . $i;
+
+      $job = [
+        "queue" => $keepalive_queue_name,
+        "sender" => "unit_tests"
+      ];
+
+      $this->send($job);
+      sleep(5);
+
+      // Assert
+      $this->assert($this->peek(), $job['queue'] . ' is online.');
+    }
+
+    $this->close_connection();
+  }
+
+  public function send($job) {
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare($job['queue'], false, true, false, false);
+    $this->channel->queue_bind($job['queue'], 'jobs', $job['queue']);
+
+    $msg = new AMQPMessage(
+      serialize($job),
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    $this->channel->basic_publish($msg, 'jobs', $job['queue']);
+  }
+
+  public function peek() {
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare('TESTS', false, true, false, false);
+    $this->channel->queue_bind('TESTS', 'jobs', 'TESTS');
+
+
+    $rmq_msg = $this->channel->basic_get('TESTS');
+
+    if (!is_null($rmq_msg)) {
+      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      return TRUE;
+    } else {
+      return FALSE;
+    }
+
+  }
+
+  protected function start_jobcores(){
+
+    exec('echo start_jobcores triggered >> /home/tony/test.txt');
+    // Fixed values because this is the server setup we need for this test.
+    $installation_id = 'job1';
+    $core_types = [
+      ['SCHEDULER'],
+      ['ANALYSE'],
+      ['TRANSCODE'],
+      ['STILL']
+    ];
+
+    $this->messenger_log('unit_test_prefix', $this->unit_test_prefix);
+
+    mediamosa_debug::log('[STEP1] Initial server setup with: ' . $this->unit_test_prefix, array(), 'T - MISC2');
+
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+
+      $query_data[scheduler_guardian::CORE_TYPE] = $this->unit_test_prefix . '_' . $core_type;
+      $query_data[scheduler_guardian::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+
+      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
+
+      $uri = 'scheduler_guardian/check';
+
+      $this->restCallGet($uri, $query_data);
+    }
+  }
+
+  protected function messenger_log($name, $value) {
+    $this->var_export($name . ':');
+    $this->var_export($value); // /scheduler/job_start
+  }
+
+//  public function testdummy() {
+//    $this->var_export("Dummy");
+//    $this->assert(TRUE);
+//  }
 
   // -------------------------------------------------------------------- Tests.
-  /**
-   * Basic job transcode test.
-   */
   /**
    * Basic job transcode test.
    */
@@ -51,21 +208,22 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     // Heb nu $job_id, $job_type, $mediafile_id
     $query_data = [
       "job_id" => (string)$job_id['job_id'],
-      "job_type" => $job_type,
+      "job_type" => $this->unit_test_prefix . '_' . $job_type,
       "mediafile_id" => $mediafile_id,
       "asset_id" => $asset_id
     ];
     //$location = '/scheduler/start_job?' . http_build_query($query_data);
+    // ###########################################
+    $foo = 'start_job REST call with: ';
+    $this->var_export($foo);
+    $this->var_export($query_data['job_type']); // /scheduler/job_start
+    // ###########################################
     $location = 'scheduler/start_job';
     $this->restCallGet($location, $query_data);
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
-
-    // T fix
-    // Get simpletest id to check on later
-    //$test_info = &$GLOBALS['drupal_test_info'];
 
     $this->cycle($query_data[mediamosa_job_db::ID]);
 
@@ -102,62 +260,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     }
     $this->assertTrue($mediafile_id_transcoded, 'Found transcoded mediafile');
 
-//    if ($mediafile_id_transcoded) {
-//      $mediamosa_uri = mediamosa_storage::get_uri_mediafile($mediafile_id_transcoded);
-//
-//      // Delete the transcoded file.
-//      mediamosa_io::unlink($mediamosa_uri);
-//
-//      // Create transcode job.
-//      $job_id = $this->createMediafileRetranscode($mediafile_id_transcoded, array('profile_id' => $this->getDefaultTranscodeProfile()));
-//
-//      // Parse the queue.
-//      $this->doQueueCycleAll();
-//
-//      $this->assertTrue(
-//        mediamosa_io::is_file($mediamosa_uri),
-//        strtr("The mediafile was successfuly retranscoded: @filename", array('@filename' => mediamosa_io::realpath_safe($mediamosa_uri)))
-//      );
-//    }
-//    else {
-//      $this->fail('Expected to find transcoded file!');
-//    }
   }
-
-
-//  // Really need other solution
-//  /**
-//   * Check status if a job, allow 20*5 seconds of wait time for this ID until we cancel the job.
-//   *
-//   * @param int $job_id
-//   */
-//  protected function cycle($job_id) {
-//
-//    // Keep in mind that with less slots, this needs to be 18.
-//    $max_runs = 20;
-//    $runs = 0;
-//    while ($runs < $max_runs) {
-//
-//      $job = mediamosa_job::get($job_id);
-//
-//      if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
-//
-//        mediamosa_debug::log('Waiting 5 seconds...', array(), 'T - UT');
-//        $this->pass('[' . $job_id . '] still waiting.');
-//        $runs++;
-//        Sleep(5);
-//      } else {
-//        mediamosa_debug::log('Job has not started yet...', array(), 'T - UT');
-//        $runs++;
-//        Sleep(5);
-//      }
-//
-//    }
-//
-//    if ($runs == $max_runs) {
-//      $this->fail('Job scheduler deadlock');
-//    }
-//  }
 
   /**
    * Run and execute the current jobs (one cycle).
@@ -296,4 +399,34 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
 //    // Clean up.
 //    $this->addMediafilesToCleanUp($asset['mediafiles']);
 //  }
+
+  protected function open_connection() {
+    $host = variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = variable_get('mediamosa_scheduler_port', 5672);
+    $username = variable_get('mediamosa_scheduler_username', 'guest');
+    $password = variable_get('mediamosa_scheduler_password', 'guest');
+
+    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
+    $this->channel = $this->connection->channel();
+  }
+
+  protected function close_connection() {
+    $this->channel->close();
+    $this->connection->close();
+  }
+
+  protected function send_message($job) {
+
+    $this->channel->exchange_declare('exchange', 'direct', false, false, false);
+
+    $msg = new AMQPMessage(
+      '',
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    # Send the message.
+    //echo 'sent with routing_key: ' . $job['job_type'];
+    $this->channel->basic_publish($msg, 'exchange', 'TRANSCODE');
+
+  }
 }

@@ -23,6 +23,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $args = func_get_args();
 
     // Create and setup the CORE module.
+//    $args = array_unique(array_merge(array('mediamosa_messenger'), $args));
     $args = array_unique(array_merge(array('mediamosa_job', 'mediamosa_tool_ffmpeg'), $args));
     if (drupal_substr(phpversion(), 0, 3) < '5.3') {
       call_user_func_array(array($this, 'parent::setUp'), $args);

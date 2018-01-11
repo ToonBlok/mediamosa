@@ -70,9 +70,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
           return;
         }
 
-        $job += array(
-          'mediafile_path' => mediamosa_storage::get_local_mediafile_path($job[mediamosa_job_db::MEDIAFILE_ID])
-        );
+//        $job += array(
+//          'mediafile_path' => mediamosa_storage::get_local_mediafile_path($job[mediamosa_job_db::MEDIAFILE_ID])
+//        );
 
         $job['asset_link'] = $this->get_asset_link($job['job_id']);
         mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] after receiving parameters: ', array(), 'T - SCHEDULER');
@@ -101,8 +101,14 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       return;
     }
 
+    $unit_test_prefix = '';
+    if (mediamosa::in_simpletest_sandbox()) {
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
+      mediamosa_debug::log('[STEP6] new prefix is: ' . $unit_test_prefix, array(), 'T - MISC2');
+    }
+
     switch ($job_type) {
-      case mediamosa_job_server_db::JOB_TYPE_STILL:
+      case $unit_test_prefix . mediamosa_job_server_db::JOB_TYPE_STILL:
         // Default status.
         $status = mediamosa_job_server_db::JOB_STATUS_INPROGRESS;
 
@@ -153,7 +159,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
         }
 
         break;
-      case mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
+      case $unit_test_prefix . mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
+        mediamosa_debug::log('[STEP1500]', array(), 'T - UT');
         if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
           mediamosa_debug::log('Transcode done and errors are none.', array(), 'T - TRANSCODE');
           // Status to finished.
@@ -813,9 +820,15 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
     $result = array();
 
+    $unit_test_prefix = '';
+    if (mediamosa::in_simpletest_sandbox()) {
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
+      mediamosa_debug::log('[STEP6] new prefix is: ' . $unit_test_prefix, array(), 'T - MISC2');
+    }
+
     switch ($job_type) {
 
-      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_TRANSCODE:
         // Get job transcode.
         $job_transcode = mediamosa_job_transcode::get($job_id);
 
@@ -823,6 +836,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
         $result['tool'] = $job_transcode[mediamosa_job_transcode_db::TOOL];
         $result['file_extension'] = $job_transcode[mediamosa_job_transcode_db::FILE_EXTENSION];
         $result['command'] = mediamosa_job_scheduler::map_parameters($job_transcode[mediamosa_job_transcode_db::TOOL], $job_transcode[mediamosa_job_transcode_db::COMMAND], $mediafile_id);
+
+        mediamosa_debug::log('STEP[3.1] getting parameters:', array(), 'T - UT');
+        mediamosa_debug::log_export($result, WATCHDOG_NOTICE, 'T - UT');
 
 
         if ($result['tool'] == NULL) {
@@ -832,7 +848,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
         break;
 
-      case mediamosa_job_db::JOB_TYPE_STILL:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_STILL:
         $query_job = mediamosa_job_still::get($job_id);
 
         if ($query_job) {
@@ -1171,6 +1187,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     );
   }
 
+
   function check_resume_jobs() {
     // Get jobs that are in progress
     $jobs = $this->get_inprogress_jobs();
@@ -1208,6 +1225,8 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
       $update_message = unserialize($msg->body);
 
+      $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
+      mediamosa_debug::log('[STEP5] Received progression in jobcore with: ' . $checkvar, array(), 'T - MISC2');
       $this->update_progression($update_message);
 
       echo ' [x] Done', "\n";
@@ -1334,7 +1353,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
    * Implements do_call().
    */
   public function do_call() {
-    mediamosa_debug::log('UNIT TEST TRIGGERED ME', array(), 'T - MISC2');
+    mediamosa_debug::log('[STEP2] UNIT TEST TRIGGERED ME', array(), 'T - MISC2');
     $mediamosa = mediamosa::get();
 
     // T fix, check if unit test is in progress, if yes switch DBs
@@ -1360,18 +1379,27 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
       $job += array(
         'test_run_id' => $test_info['test_run_id']
       );
+
+      mediamosa_debug::log('[STEP3] $job got test_run_id: ' . $job['test_run_id'], array(), 'T - MISC2');
     }
 
     $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
 
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
+    $unit_test_prefix = '';
+    if (mediamosa::in_simpletest_sandbox()) {
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
+      mediamosa_debug::log('[STEP6] new prefix is: ' . $unit_test_prefix, array(), 'T - MISC2');
+    }
+
+
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
-      case mediamosa_job_db::JOB_TYPE_ANALYSE:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_ANALYSE:
         $job['asset_link'] = $this->get_asset_link($job['job_id']);
 
         break;
-      case mediamosa_job_db::JOB_TYPE_STILL:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_STILL:
 //        $job_parameters = $this->get_job_parameters($job);
 //        mediamosa_debug::log_export($job_parameters, WATCHDOG_NOTICE, 'T - MISC');
 
@@ -1392,7 +1420,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 //          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
         break;
-      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $transcode_parameters = $this->get_job_parameters($job);
 
         // If retrieving transcode_parameters succeeded
