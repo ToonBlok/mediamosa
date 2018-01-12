@@ -7,7 +7,13 @@ use PhpAmqpLib\Message\AMQPMessage;
 class scheduler_guardian extends mediamosa_rest_call
 {
   const CORE_TYPE = 'core_type';
+  const QUEUE = 'queue';
   const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
+
+  const CORE_SCHEDULER = 'SCHEDULER';
+  const CORE_TRANSCODE = 'TRANSCODE'; // Unused
+  const CORE_ANALYSE = 'ANALYSE'; // Unused
+  const CORE_STILL = 'STILL'; // Unused
 
   /*
    * Implements get_var_setup().
@@ -19,6 +25,10 @@ class scheduler_guardian extends mediamosa_rest_call
         self::CORE_TYPE=> array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "The jobcore type.",
+        ),
+        self::QUEUE => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "The queue to listen for.",
         ),
         self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
@@ -38,8 +48,9 @@ class scheduler_guardian extends mediamosa_rest_call
   {
     $mediamosa = mediamosa::get();
 
-    $core_type = $this->get_param_value(self::CORE_TYPE);
+    $queue = $this->get_param_value(self::QUEUE);
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
+    $core_type = $this->get_param_value(self::CORE_TYPE);
 
     mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue_keepalive_server);
 
@@ -47,7 +58,7 @@ class scheduler_guardian extends mediamosa_rest_call
 
     $this->send($queue_keepalive_server);
     sleep(3);
-    $this->peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
+    $this->peek($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
     $mediamosa->add_item(
       array(
@@ -84,7 +95,7 @@ class scheduler_guardian extends mediamosa_rest_call
     $this->close_connection();
   }
 
-  function peek($queue_keepalive_server, $queue_keepalive_server_guardian, $core_type = '') {
+  function peek($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
     $drush_var = $queue_keepalive_server . '_time_last_update';
 
     $this->open_connection();
@@ -100,16 +111,19 @@ class scheduler_guardian extends mediamosa_rest_call
       mediamosa_debug::log($queue_keepalive_server . ' has never started yet', array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_now);
 
-      if ($core_type == 'SCHEDULER') {
+      mediamosa_debug::log('$core_type in peek():', array(), 'T - UT');
+      mediamosa_debug::log($core_type, array(), 'T - UT');
+
+      if ($core_type == self::CORE_SCHEDULER) {
         exec('Scheduler boot command given with following var >> /home/tony/test.txt');
         exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
         mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
-        $this->start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian);
+        $this->start_scheduler($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
       } else {
         exec('Jobcore boot command given with following var >> /home/tony/test.txt');
         exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
         mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue_keepalive_server);
-        $this->start_jobcore($core_type, $queue_keepalive_server, $queue_keepalive_server_guardian);
+        $this->start_jobcore($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
       }
 
     } else {
@@ -143,10 +157,16 @@ class scheduler_guardian extends mediamosa_rest_call
         mediamosa_debug::log($queue_keepalive_server . ' has been silent for 5 minutes. Booting up ' . $queue_keepalive_server, array(), 'Tg - ' . $queue_keepalive_server);
         $this->update_time($drush_var, $time_now, $queue_keepalive_server);
 
-        if (is_null($core_type)) {
-          $this->start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian);
+        if ($core_type == self::CORE_SCHEDULER) {
+          exec('Scheduler boot command given with following var >> /home/tony/test.txt');
+          exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
+          mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
+          $this->start_scheduler($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
         } else {
-          $this->start_jobcore($core_type, $queue_keepalive_server, $queue_keepalive_server_guardian);
+          exec('Jobcore boot command given with following var >> /home/tony/test.txt');
+          exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
+          mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue_keepalive_server);
+          $this->start_jobcore($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
         }
 
       } else { // Scheduler has responded in the last 5 minutes
@@ -172,27 +192,30 @@ class scheduler_guardian extends mediamosa_rest_call
 
   }
 
-  function start_scheduler($queue_keepalive_server, $queue_keepalive_server_guardian) {
+  function start_scheduler($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
     mediamosa_debug::log('Scheduler boot command given!!', array(), 'T - JAN10');
     $uri = '/scheduler/start?';
 
     $query_data = [
-      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
-      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server // The scheduler needs this to know what to listen to for keepalive messages
+      mediamosa_scheduler_start::QUEUE => $queue,
+      mediamosa_scheduler_start::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
+      mediamosa_scheduler_start::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
+      mediamosa_scheduler_start::CORE_TYPE => $core_type,
     ];
 
 
     $this->call($uri, $query_data);
   }
 
-  function start_jobcore($core_type, $queue_keepalive_server, $queue_keepalive_server_guardian) {
+  function start_jobcore($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
     mediamosa_debug::log($core_type . ' boot command given!!', array(), 'T - JAN10');
     $uri = '/jobcore/start?';
 
     $query_data = [
+      jobcore::QUEUE => $queue,
+      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
+      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
       jobcore::CORE_TYPE => $core_type,
-      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The jobcore needs this to know where to send keepalive messages back to
-      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server // The jobcore needs this to know what to listen to for keepalive messages
     ];
 
     mediamosa_debug::log('$query_data:', array(), 'T - MISC');

@@ -526,7 +526,13 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $job_id = $job['job_id'];
     $transcode_parameters = unserialize($job['transcode_parameters']);
 //    $job = mediamosa_job::get($job_id, array(mediamosa_job_db::APP_ID, mediamosa_job_db::HINT)); // Get the job.
-    $app_id = $job[mediamosa_job_db::APP_ID];
+
+    $the_job = $this->get_job_where($job_id);
+    $app_id = $the_job['app_id'];
+    mediamosa_debug::log('We have just filled $app_id with: ' . $app_id . ' and this was $the_job:', array(), 'T - UT');
+    mediamosa_debug::log_export($the_job, WATCHDOG_NOTICE, 'T - UT');
+
+//    $app_id = $job[mediamosa_job_db::APP_ID];
     $mediafile_id = mediamosa_db::uuid($job_id); // Generate new mediafile ID.
     $file_extension = $transcode_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
     mediamosa_debug::log('File extension was determined as: ' . $file_extension, array(), 'T - Transcode');
@@ -539,6 +545,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $file_transcode_uri = mediamosa_storage::get_uri_temporary_file($job_id . '.' . $file_extension);
     $file_destination_uri = mediamosa_storage::create_local_mediafile_uri($app_id, $mediafile_id);
 
+    mediamosa_debug::log('We called create_local_mediafile_uri with this $app_id: ' . $app_id . ', outcome is: ' . $file_destination_uri, array(), 'T - SCHEDULER');
+
     // Rename transcoded file to new dest.
     mediamosa_io::rename($file_transcode_uri, $file_destination_uri);
 
@@ -548,6 +556,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $fields = array(
       mediamosa_job_server_db::MEDIAFILE_DEST => $mediafile_id,
     );
+
+    mediamosa_debug::log('MEDIAFILE_ID: ' . $job['mediafile_id'], array(), 'T - SCHEDULER');
+    mediamosa_debug::log('MEDIAFILE_DEST became: ' . $mediafile_id, array(), 'T - SCHEDULER');
 
     // Enrich with update date.
     $fields = mediamosa_db::db_update_enrich($fields);
@@ -626,17 +637,25 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // If this asset has more jobs, start the job of which its ID is 1 more than the previously completed jobs ID. And asset ID has to be the right one (same)
     //
 
-    if ($job_status == 'FINISHED') {
-      $next_job_id = $job_id + 1;
-      $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+    if (!mediamosa::in_simpletest_sandbox()) {
+      if ($job_status == mediamosa_job_db::JOB_STATUS_FINISHED) {
+        $next_job_id = $job_id + 1;
+        $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+        unset($next_job['app_id']); // Isnt this needed for store_new_mediafile after transcode completion??? Why does it work even if I comment this?
 
-      // this if gives problems
-      //if (!empty($next_job)){
+        // this if gives problems
+        //if (!empty($next_job)){
         mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
         mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-        $this->process_next_job($next_job);
-      //}
+        $next_job += array(
+          'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
+        );
+        $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
 
+        $this->process_next_job($next_job);
+        //}
+
+      }
     }
   }
 
@@ -1123,10 +1142,12 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
  */
 class mediamosa_scheduler_start extends mediamosa_scheduler {
 
-  const SERVER_ACTION = 'server_action';
-  const QUEUE_KEEPALIVE = 'scheduler_keepalive';
-  const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
+  const QUEUE = 'queue';
   const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
+  const QUEUE_KEEPALIVE_SERVER_GUARDIAN = 'queue_keepalive_server_guardian';
+  const CORE_TYPE = 'core_type';
+
+  const QUEUE_KEEPALIVE = 'scheduler_keepalive';
   protected $queue_keepalive_server;
   protected $queue_keepalive_server_guardian;
 
@@ -1136,7 +1157,11 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
   public function get_var_setup() {
     $var_setup = array(
       self::VARS => array(
-        self::SERVER_ACTION => array(
+        self::QUEUE => array(
+          self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
+          self::VAR_DESCRIPTION => "",
+        ),
+        self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         ),
@@ -1144,7 +1169,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         ),
-        self::QUEUE_KEEPALIVE_SERVER => array(
+        self::CORE_TYPE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
           self::VAR_DESCRIPTION => "",
         )
@@ -1160,10 +1185,11 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
    */
   public function do_call() {
     $mediamosa = mediamosa::get();
-
-
+    exec('echo `date` >> /home/tony/test.txt');
+    exec('echo Scheduler start triggered >> /home/tony/test.txt');
 
     try {
+      $queue = $this->get_param_value(self::QUEUE);
       $this->queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
       $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
       mediamosa_debug::log('keepalive_server: ' . $this->queue_keepalive_server . ', keepalive_server_guardian: ' . $this->queue_keepalive_server_guardian, array(), 'T - MISC');
@@ -1173,7 +1199,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
 
 //      $this->check_resume_jobs();
 
-      $this->listen();
+      $this->listen($queue);
       mediamosa_debug::log('Started listening', array(), 'T - SCHEDULER');
     } catch (Exception $e) {
       mediamosa_debug::log($e, array(), 'T - SCHEDULER');
@@ -1203,12 +1229,12 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     }
   }
 
-  function listen() {
+  function listen($queue) {
     $this->open_connection();
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
 
-    $this->channel->queue_declare(self::QUEUE_NAME, false, true, false, false);
-    $this->channel->queue_bind(self::QUEUE_NAME, jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
 
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
@@ -1220,17 +1246,28 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
      *   RabbitMQ message received from the server.
      *
      */
-    $callback = function($msg) {
-      mediamosa_debug::log('Message received in Listen():', array(), 'T - SCHEDULER');
+    $callback = function($rmq_msg) {
+      exec('echo callback triggered at `date` >> /home/tony/test.txt');
+      $msg = unserialize($rmq_msg->body);
+      mediamosa_debug::log('$callback triggered, $msg:', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
-      $update_message = unserialize($msg->body);
 
       $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-      mediamosa_debug::log('[STEP5] Received progression in jobcore with: ' . $checkvar, array(), 'T - MISC2');
-      $this->update_progression($update_message);
+      mediamosa_debug::log('[STEP5] Received progression in scheduler with: ' . $checkvar, array(), 'T - MISC2');
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      $this->update_progression($msg);
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
       echo ' [x] Done', "\n";
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
     };
 
     /**
@@ -1241,6 +1278,9 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
      *
      */
     $keepalive_callback = function($rmq_msg) {
+      exec('echo keepalive_callback triggered at `date` >> /home/tony/test.txt');
+      mediamosa_debug::log('$keepalive_callback triggered', array(), 'T - SCHEDULER');
+      mediamosa_debug::log_export($rmq_msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
       try {
         $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
@@ -1266,12 +1306,17 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume(self::QUEUE_NAME, '', false, false, false, false, $callback);
+    $this->channel->basic_consume($queue, '', false, false, false, false, $callback);
     $this->channel->basic_consume($this->queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
+    mediamosa_debug::log('Started listening to: ' . $queue. ' and ' . $this->queue_keepalive_server, array(), 'T - UT');
 
+    mediamosa_debug::log('Before wait', array(), 'T - UT');
+    exec('echo Started waiting at `date` >> /home/tony/test.txt');
     while(count($this->channel->callbacks)) {
       $this->channel->wait();
     }
+    exec('echo Stopped waiting at `date` >> /home/tony/test.txt');
+    mediamosa_debug::log('After wait (should not trigger)', array(), 'T - UT');
 
     $this->close_connection();
   }
@@ -1393,7 +1438,6 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
       mediamosa_debug::log('[STEP6] new prefix is: ' . $unit_test_prefix, array(), 'T - MISC2');
     }
 
-
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_ANALYSE:
         $job['asset_link'] = $this->get_asset_link($job['job_id']);
@@ -1439,12 +1483,14 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - UT');
 
     $this->send($job);
+    mediamosa_debug::log('Survived send method', array(), 'T - UT');
 
     $mediamosa->add_item(
       array(
         'version' => mediamosa_version::get_current_version_str(FALSE)
       )
     );
+    mediamosa_debug::log('Survived add_item thing', array(), 'T - UT');
   }
 
   public function send($job) {
@@ -1467,10 +1513,12 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 //    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
     $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
+    mediamosa_debug::log('survived basic publish', array(), 'T - UT');
     mediamosa_debug::log( '[' . $job['MSG_ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
     $this->close_connection();
+    mediamosa_debug::log('survived closing connection', array(), 'T - UT');
   }
 
 

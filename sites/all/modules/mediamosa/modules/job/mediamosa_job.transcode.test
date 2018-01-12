@@ -78,6 +78,8 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
    **/
   protected function are_jobcores_online()
   {
+    exec('Unit tests started at: >> /home/tony/test.txt');
+    exec('echo `date` >> /home/tony/test.txt');
     // Arrange
     $installation_id = 'job1';
     $core_types = [
@@ -159,8 +161,9 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     for ($i = 0; $i < count($core_types); $i++) {
       $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
 
-      $query_data[scheduler_guardian::CORE_TYPE] = $this->unit_test_prefix . '_' . $core_type;
-      $query_data[scheduler_guardian::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+      $query_data[jobcore::QUEUE] = $this->unit_test_prefix . '_' . $core_type;
+      $query_data[jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+      $query_data[jobcore::CORE_TYPE] = $core_type;
 
       mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
 
@@ -196,9 +199,9 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $job_type = mediamosa_job_db::JOB_TYPE_TRANSCODE;
 
     // ###########################################
-    $foo = '$job_id (array??)';
+    $foo = '$upload:';
     $this->var_export($foo);
-    $this->var_export($job_id); // /scheduler/job_start
+    $this->var_export($upload); // /scheduler/job_start
     // ###########################################
 
     // Parse the queue.
@@ -209,8 +212,8 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $query_data = [
       "job_id" => (string)$job_id['job_id'],
       "job_type" => $this->unit_test_prefix . '_' . $job_type,
+      "asset_id" => $asset_id,
       "mediafile_id" => $mediafile_id,
-      "asset_id" => $asset_id
     ];
     //$location = '/scheduler/start_job?' . http_build_query($query_data);
     // ###########################################
@@ -221,11 +224,11 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $location = 'scheduler/start_job';
     $this->restCallGet($location, $query_data);
 
+    $this->cycle($query_data[mediamosa_job_db::ID]);
+
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);
-
-    $this->cycle($query_data[mediamosa_job_db::ID]);
 
     // Add mediafile clean up and get the first transcoded mediafile.
     $mediafile_id_transcoded = NULL;
