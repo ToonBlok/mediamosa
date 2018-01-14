@@ -5,7 +5,7 @@ core = 7.x
 ; Messenger (Toon).
 files[] = mediamosa_scheduler.rest.class.inc
 files[] = server.class.inc
-files[] = jobcore.class.inc
+files[] = mediamosa_messenger_jobcore.class.inc
 files[] = mediamosa_guardian.rest.class.inc
 
 files[] = jobs/analyze.class.inc
