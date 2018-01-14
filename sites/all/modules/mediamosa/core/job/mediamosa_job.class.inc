@@ -913,13 +913,13 @@ class mediamosa_job {
       $location = '/scheduler/start_job?' . http_build_query($query_data);
 
       //!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      call($location);
+      self::call($location);
 
     }
   }
 
   // Toon:
-  function call($location) {
+  private static function call($location) {
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
     if (isset($mediamosa_jobscheduler_uri)) {
 
