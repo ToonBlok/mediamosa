@@ -4,7 +4,7 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-class scheduler_guardian extends mediamosa_rest_call
+class mediamosa_messenger_guardian extends mediamosa_rest_call
 {
   const CORE_TYPE = 'core_type';
   const QUEUE = 'queue';
@@ -66,9 +66,9 @@ class scheduler_guardian extends mediamosa_rest_call
   function rmq_send($queue_keepalive_server) {
     $this->rmq_open_connection();
 
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($queue_keepalive_server, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
+    $this->channel->queue_bind($queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [
       "MSG_ID" => $this->variable_get("alive_message_unique_id", 1),
@@ -83,7 +83,7 @@ class scheduler_guardian extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
+    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
     mediamosa_debug::log('[' . $alive_message['MSG_ID'] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     $this->rmq_close_connection();
@@ -94,9 +94,9 @@ class scheduler_guardian extends mediamosa_rest_call
 
     $this->rmq_open_connection();
 
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($queue_keepalive_server_guardian, false, true, false, false);
-    $this->channel->queue_bind($queue_keepalive_server_guardian, jobcore::EXCHANGE_JOBS, $queue_keepalive_server_guardian);
+    $this->channel->queue_bind($queue_keepalive_server_guardian, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server_guardian);
 
     $time_now = microtime(true);
 
@@ -206,10 +206,10 @@ class scheduler_guardian extends mediamosa_rest_call
     $uri = '/jobcore/start?';
 
     $query_data = [
-      jobcore::QUEUE => $queue,
-      jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
-      jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
-      jobcore::CORE_TYPE => $core_type,
+      mediamosa_messenger_jobcore::QUEUE => $queue,
+      mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
+      mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
+      mediamosa_messenger_jobcore::CORE_TYPE => $core_type,
     ];
 
     mediamosa_debug::log('$query_data:', array(), 'T - MISC');

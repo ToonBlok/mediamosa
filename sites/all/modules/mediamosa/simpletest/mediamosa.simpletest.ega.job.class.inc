@@ -221,13 +221,13 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
 
 
-      $query_data[jobcore::QUEUE] = $this->unit_test_prefix . '_' . $core_type;
-      $query_data[jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
-      $query_data[jobcore::CORE_TYPE] = $core_type;
+      $query_data[mediamosa_messenger_jobcore::QUEUE] = $this->unit_test_prefix . '_' . $core_type;
+      $query_data[mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+      $query_data[mediamosa_messenger_jobcore::CORE_TYPE] = $core_type;
 
       mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
 
-      $uri = 'scheduler_guardian/check';
+      $uri = 'guardian/check';
 
       $this->restCallGet($uri, $query_data);
     }

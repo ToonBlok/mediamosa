@@ -12,7 +12,7 @@ use PhpAmqpLib\Message\AMQPMessage;
  *
  */
 
-class jobcore extends mediamosa_rest_call {
+class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
   const QUEUE = 'queue';
   const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
@@ -361,9 +361,9 @@ class jobcore extends mediamosa_rest_call {
    * Peek in it
    */
   function peek() {
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($this->queue_keepalive_server, jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
+    $this->channel->queue_bind($this->queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
     $rmq_msg = $this->channel->basic_get($this->queue_keepalive_server);
 
@@ -470,7 +470,7 @@ class jobcore extends mediamosa_rest_call {
 
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job_type, false, true, false, false);
-    $this->channel->queue_bind($job_type, jobcore::EXCHANGE_JOBS, $job_type);
+    $this->channel->queue_bind($job_type, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
 
     $msg = new AMQPMessage(
       serialize($job),

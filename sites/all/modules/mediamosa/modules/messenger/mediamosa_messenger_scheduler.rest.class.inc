@@ -19,16 +19,16 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   public function rmq_send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
 
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
-    $this->channel->queue_bind($job['job_type'], jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->queue_bind($job['job_type'], mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     $msg = new AMQPMessage(
       serialize($job),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
 
   }
 
@@ -1232,13 +1232,13 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
 
   function listen($queue) {
     $this->rmq_open_connection();
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
 
     $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
+    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
 
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($this->queue_keepalive_server, jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
+    $this->channel->queue_bind($this->queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
     /**
      * Callback used for the communication between the scheduler and jobcores for the purpose of the updating of a jobs progression.
@@ -1286,7 +1286,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       $msg = unserialize($rmq_msg->body);
       if ((isset($msg['sender'])) and ($msg['sender'] == 'unit_tests')) {
         $job = [
-          "job_type" => jobcore::QUEUE_TESTS
+          "job_type" => mediamosa_messenger_jobcore::QUEUE_TESTS
         ];
         $this->rmq_send($job);
       } else {
@@ -1499,9 +1499,9 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
 
     $mediafile = mediamosa_asset_mediafile::must_exists($job[mediamosa_job_db::MEDIAFILE_ID]);
 
-    $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($job['job_type'], false, true, false, false);
-    $this->channel->queue_bind($job['job_type'], jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->queue_bind($job['job_type'], mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
 
     $msg = new AMQPMessage(
       serialize($job),
@@ -1509,7 +1509,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
     );
 //    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER' );
 
-    $this->channel->basic_publish($msg, jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
     mediamosa_debug::log('survived basic publish', array(), 'T - UT');
     mediamosa_debug::log( '[' . $job['MSG_ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
