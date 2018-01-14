@@ -39,14 +39,16 @@ function mediamosa_messenger_call_guardian(){
   }
 }
 
-function mediamosa_messenger_call($uri) {
+function mediamosa_messenger_call($uri, array $query_data = array()) {
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
 
   if (isset($mediamosa_jobscheduler_uri)) {
+    $uri = $uri . http_build_query($query_data);
     $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
-    mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
 
     mediamosa_http::do_head_internal_call($url);
+
+    mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
   } else {
     mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
   }
