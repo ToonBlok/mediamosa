@@ -16,7 +16,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   protected $connection;
   const QUEUE_NAME = 'SCHEDULER';
 
-  public function send($job) {
+  public function rmq_send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
 
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -81,7 +81,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     }
 
     try {
-      $this->send($job);
+      $this->rmq_send($job);
     } catch (Exception $e) {
       mediamosa_debug::log($e, array(), 'T - Scheduler');
     }
@@ -448,7 +448,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
    * @param array $filenames
    *   The filenames of the stills.
    */
-  public static function add_still_to_db($job, $filenames) {
+  public function add_still_to_db($job, $filenames) {
     mediamosa_debug::log('Entered ' . __CLASS__ . ', ' . __METHOD__, array(), 'T - STILL');
     // Vergeet niet dat job id to string werd gedaan
     $job_id = $job['job_id'];
@@ -743,7 +743,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
    * @param int $job_id
    *   The job ID.
    */
-  public static function parse_failed_transcode($job_id) {
+  public function parse_failed_transcode($job_id) {
     mediamosa_debug::log( 'Transcode failed.', array(), 'T - Scheduler');
     // Get original.
     $job_original = mediamosa_job::get($job_id);
@@ -757,7 +757,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   }
 
   // Toon: De front end wilt soms weten wanneer de transcode klaar is, dat doet hij door een notify url mee te geven.
-  public static function notify_transcoding($new_status, $job_id) {
+  public function notify_transcoding($new_status, $job_id) {
 //    if ($old_status == $new_status) {
 //      return;
 //    }
@@ -785,7 +785,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
    *
    * @param array $analyse_result
    */
-  public static function store_analyse_without_job($job_id, array $analyse_result, $mediafile_id) {
+  public function store_analyse_without_job($job_id, array $analyse_result, $mediafile_id) {
     // Parse and store metadata from the analyse result.
     $ffmpeg_output = mediamosa_asset_mediafile_metadata::store_metadata($mediafile_id, $analyse_result);
 
@@ -1112,7 +1112,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 //  }
 
 
-  function open_connection() {
+  function rmq_open_connection() {
 
     $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
     $port = $this->variable_get('mediamosa_scheduler_port', 5672);
@@ -1123,7 +1123,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $this->channel = $this->connection->channel();
   }
 
-  function close_connection() {
+  function rmq_close_connection() {
     $this->channel->close();
     $this->connection->close();
   }
@@ -1222,16 +1222,16 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
     if (!empty($jobs)) {
-      $this->open_connection();
+      $this->rmq_open_connection();
       foreach ($jobs as $job) {
-        $this->send($job);
+        $this->rmq_send($job);
       }
-      $this->close_connection();
+      $this->rmq_close_connection();
     }
   }
 
   function listen($queue) {
-    $this->open_connection();
+    $this->rmq_open_connection();
     $this->channel->exchange_declare(jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
 
     $this->channel->queue_declare($queue, false, true, false, false);
@@ -1288,7 +1288,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
         $job = [
           "job_type" => jobcore::QUEUE_TESTS
         ];
-        $this->send($job);
+        $this->rmq_send($job);
       } else {
         mediamosa_debug::log('Scheduler is responding to keepalive message.', array(), 'T - SCHEDULER');
         //$msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -1297,7 +1297,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
         $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 //      $update_message['job_type'] = 'bla';
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
-        $this->send($update_message);
+        $this->rmq_send($update_message);
       }
     };
 
@@ -1315,7 +1315,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
     exec('echo Stopped waiting at `date` >> /home/tony/test.txt');
     mediamosa_debug::log('After wait (should not trigger)', array(), 'T - UT');
 
-    $this->close_connection();
+    $this->rmq_close_connection();
   }
 
 }
@@ -1479,7 +1479,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
     mediamosa_debug::log('[UT] $job:', array(), 'T - UT');
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - UT');
 
-    $this->send($job);
+    $this->rmq_send($job);
     mediamosa_debug::log('Survived send method', array(), 'T - UT');
 
     $mediamosa->add_item(
@@ -1490,11 +1490,11 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
     mediamosa_debug::log('Survived add_item thing', array(), 'T - UT');
   }
 
-  public function send($job) {
+  public function rmq_send($job) {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
     // Keep alive messages are sent via a construction that already has an open connection, so don't open it again.
 
-    $this->open_connection();
+    $this->rmq_open_connection();
 
 
     $mediafile = mediamosa_asset_mediafile::must_exists($job[mediamosa_job_db::MEDIAFILE_ID]);
@@ -1514,7 +1514,7 @@ class mediamosa_scheduler_job_start extends mediamosa_scheduler {
     mediamosa_debug::log( '[' . $job['MSG_ID'] . '] ' . ' scheduler sent a msg to ' . $job['job_type'] . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     // Keep alive messages are sent via a construction that already has an open connection, so don't close it here.
-    $this->close_connection();
+    $this->rmq_close_connection();
     mediamosa_debug::log('survived closing connection', array(), 'T - UT');
   }
 

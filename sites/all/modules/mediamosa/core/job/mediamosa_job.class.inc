@@ -908,13 +908,9 @@ class mediamosa_job {
       }
 
 
-//      mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC');
 
       $uri = '/scheduler/start_job?';
-
-      //!!!!!!!!!!!!!!!!!!!!!!!!!!!
       self::mediamosa_messenger_call($uri, $query_data);
-
     }
   }
 
