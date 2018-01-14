@@ -117,19 +117,24 @@ class jobcore extends mediamosa_rest_call {
      */
     $callback = function($msg){
       $job = unserialize($msg->body);
-//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-      mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
 
-      $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-      mediamosa_debug::log('[STEP4] Received in jobcore with: ' . $checkvar . ' and int the message it is: ' . $job['test_run_id'], array(), 'T - MISC2');
-
-
-      if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
-        mediamosa_debug::log('[STEP5] Goes into if it shouldnt', array(), 'T - MISC2');
-        // Resume job
-        mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
-        $this->loop($job);
+      // Kill
+      if ((isset($job['msg_type']) and $job['msg_type'] == 'KILL')) {
+        $this->channel->basic_cancel($msg->delivery_info['consumer_tag']);
       } else {
+//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
+        mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
+
+        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
+        mediamosa_debug::log('[STEP4] Received in jobcore with: ' . $checkvar . ' and int the message it is: ' . $job['test_run_id'], array(), 'T - MISC2');
+
+
+        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+          mediamosa_debug::log('[STEP5] Goes into if it shouldnt', array(), 'T - MISC2');
+          // Resume job
+          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
+          $this->loop($job);
+        } else {
 //        if (isset($job['test_run_id'])) {
 //          // forgot to switch back too after this
 ////          try {
@@ -139,9 +144,12 @@ class jobcore extends mediamosa_rest_call {
 ////          }
 ////          unset($job['test_run_id']);
 //        }
-        mediamosa_debug::log('[STEP5] Goes into the right else', array(), 'T - MISC2');
-        $this->start_job($job);
+          mediamosa_debug::log('[STEP5] Goes into the right else', array(), 'T - MISC2');
+          $this->start_job($job);
+        }
+
       }
+
 
       echo ' [x] Done', "\n";
       $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);

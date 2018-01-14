@@ -1,6 +1,12 @@
 <?php
 
+require_once DRUPAL_ROOT . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
+
+  protected $unit_test_prefix;
   // -------------------------------------------------------------- Constructor.
   /**
    * Implement contructor.
@@ -36,6 +42,10 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     if (!empty($mediamosa_jobscheduler_uri)) {
       variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
     }
+
+    $this->unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+    variable_set('mediamosa_scheduler_username', 'admin');
+    variable_set('mediamosa_scheduler_password', 'admin');
   }
 
   /**
@@ -137,6 +147,306 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     // In verbose mode only.
     $this->verbose(implode('<br />', $texts), 'job server dump (these should be empty)');
   }
+
+  /**
+   * Run and execute the current jobs (one cycle).
+   *
+   * @param bool $trigger_scheduler
+   *   Trigger the scheduler, to handout and start new jobs.
+   */
+  protected function cycle($trigger_scheduler = true) {
+
+    // Keep in mind that with less slots, this needs to be 18.
+    $max_runs = 20;
+    $running_jobs = 1;
+    while ($max_runs-- && $running_jobs) {
+      // Run one job cycle.
+//      self::doQueueCycle($trigger_scheduler);
+
+      // Set flag to know if all jobs are finished or failed.
+      $running_jobs = 0;
+      $waiting_jobs = 0;
+
+      // Get all jobs.
+      $jobs = mediamosa_job::get_job_list(0, '', TRUE);
+
+      // Check if the jobs are all done.
+      foreach ($jobs as $job) {
+        if (!in_array($job[mediamosa_job_db::JOB_STATUS],
+          array(
+            mediamosa_job_db::JOB_STATUS_FINISHED,
+            mediamosa_job_db::JOB_STATUS_FAILED,
+            mediamosa_job_db::JOB_STATUS_CANCELLED,
+          )
+        )) {
+          $running_jobs++;
+
+          if ($job[mediamosa_job_db::JOB_STATUS] === mediamosa_job_db::JOB_STATUS_WAITING) {
+            // Waiting jobs stay waiting when trigger scheduler is off.
+            if (!$trigger_scheduler) {
+              $running_jobs--;
+            }
+            $waiting_jobs++;
+          }
+        }
+      }
+
+      if ($running_jobs) {
+        $this->pass(strtr('Found @running running jobs of which where @waiting waiting jobs, waiting for next cycle.', array('@running' => $running_jobs, '@waiting' => $waiting_jobs)));
+        // Wait 5 seconds.
+        Sleep(5);
+      }
+      else {
+        $this->pass('No more running jobs found, exiting job cycle.');
+      }
+    }
+
+    // If we are dead locked, we need to know.
+    if ($max_runs < 0) {
+      $this->fail(strtr('Job scheduler deadlock; Failed to complete all jobs. Jobs waiting for: @running', array('@running' => $running_jobs)));
+    }
+  }
+
+  protected function start_jobcores($core_types){
+
+    exec('echo start_jobcores triggered >> /home/tony/test.txt');
+    // Fixed values because this is the server setup we need for this test.
+    $installation_id = 'job1';
+
+    $this->messenger_log('unit_test_prefix', $this->unit_test_prefix);
+
+    mediamosa_debug::log('[STEP1] Initial server setup with: ' . $this->unit_test_prefix, array(), 'T - MISC2');
+
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+
+
+      $query_data[jobcore::QUEUE] = $this->unit_test_prefix . '_' . $core_type;
+      $query_data[jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+      $query_data[jobcore::CORE_TYPE] = $core_type;
+
+      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
+
+      $uri = 'scheduler_guardian/check';
+
+      $this->restCallGet($uri, $query_data);
+    }
+  }
+
+  protected function rmq_open_connection() {
+    $host = variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = variable_get('mediamosa_scheduler_port', 5672);
+    $username = variable_get('mediamosa_scheduler_username', 'guest');
+    $password = variable_get('mediamosa_scheduler_password', 'guest');
+
+    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
+    $this->channel = $this->connection->channel();
+  }
+
+  protected function rmq_close_connection() {
+    $this->channel->close();
+    $this->connection->close();
+  }
+
+  protected function messenger_log($name, $value) {
+    $this->var_export($name . ':');
+    $this->var_export($value); // /scheduler/job_start
+  }
+
+  public function rmq_send($msg, $queue) {
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, 'jobs', $queue);
+
+    $msg = new AMQPMessage(
+      serialize($msg),
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    $this->channel->basic_publish($msg, 'jobs', $queue);
+  }
+  public function rmq_clear($core_types) {
+
+    $this->rmq_open_connection();
+    $installation_id = 'job1';
+
+
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i][0];
+      $queue = $this->unit_test_prefix . '_' . $core_type;
+      $queue_keepalive_server = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+      $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
+
+      // Send kill message to cores
+      $msg = [
+        'msg_type' => 'KILL'
+      ];
+      $this->rmq_send($msg, $queue);
+
+      // Queues need to exists if we want the kill message to arrive. Delay delete statements below.
+      sleep(5);
+
+      $this->channel->queue_delete($queue);
+      $this->channel->queue_delete($queue_keepalive_server);
+      $this->channel->queue_delete($queue_keepalive_server_guardian);
+    }
+
+    $this->rmq_close_connection();
+
+
+  }
+
+  public function rmq_peek($queue_keepalive_server_guardian) {
+
+    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
+    $this->channel->queue_declare($queue_keepalive_server_guardian, false, true, false, false);
+    $this->channel->queue_bind($queue_keepalive_server_guardian, 'jobs', $queue_keepalive_server_guardian);
+
+    mediamosa_debug::log('Checked in queue: ' . $queue_keepalive_server_guardian, array(), 'T - UT');
+
+    $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+    if (!is_null($rmq_msg)) {
+      $msg = unserialize($rmq_msg->body);
+      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+
+      mediamosa_debug::log('Message received: ', array(), 'T - UT');
+      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ');
+      return TRUE;
+    }
+
+    mediamosa_debug::log('No message received: ', array(), 'T - UT');
+
+    return FALSE;
+  }
+
+  protected function wait_jobcores_online($core_types){
+    // Start with an assumption that we will evaluate later on.
+    $all_servers_online = TRUE;
+
+    $this->rmq_open_connection();
+
+    for ($i = 0; $i < 24; $i++) {
+      // Unique identifier
+      $installation_id = 'job1';
+      // Standard server setup
+//      $core_types = [
+//        ['SCHEDULER'],
+//        ['ANALYSE'],
+//        ['TRANSCODE'],
+//        ['STILL']
+//      ];
+
+      // Send a msg to the keepalive queue of each core
+      for ($i = 0; $i < count($core_types); $i++) {
+        $core_type = $core_types[$i][0];
+        $queue_keepalive_server = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+        $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
+
+        $msg_alive = [
+          "MSG_ID" => variable_get("alive_message_unique_id", 1),
+          "STATUS_REQUEST" => "pending",
+          "STATUS" => "undetermined"
+        ];
+
+        variable_set("alive_message_unique_id", $msg_alive['MSG_ID']++);
+
+        $this->rmq_send($msg_alive, $queue_keepalive_server);
+
+        // Allow some time for msg to arrive and simultaneously act as a small delay in general.
+        sleep(5);
+
+        // We give each server a chance to set the $all_servers_online variable to FALSE.
+        // If a server sets the variable to FALSE, we know we must wait longer or the setup has failed already.
+        $server_online = $this->rmq_peek($queue_keepalive_server_guardian);
+        if (!$server_online) {
+          $all_servers_online = FALSE;
+          break;
+        }
+      }
+
+      $this->rmq_close_connection();
+
+      // Return the final evaluated statement. If no server set this statement to FALSE we can assume
+      // that all servers are online
+      return $all_servers_online;
+
+    }
+
+  }
+
+  protected function peek_all()
+  {
+    $installation_id = 'job1';
+    $core_types = [
+      ['SCHEDULER'],
+      ['ANALYSE'],
+      ['TRANSCODE'],
+      ['STILL']
+    ];
+
+    for ($i = 0; $i < count($core_types); $i++) {
+      $core_type = $core_types[$i][0];
+      $queue = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+
+      $msg_alive = [
+        "MSG_ID" => variable_get("alive_message_unique_id", 1),
+        "STATUS_REQUEST" => "pending",
+        "STATUS" => "undetermined"
+      ];
+
+      variable_set("alive_message_unique_id", $msg_alive['MSG_ID']++);
+
+      $this->rmq_send($msg_alive, $queue);
+
+    }
+
+  }
+
+  /**
+   *
+   * Before we start a job we have to check if all servers (scheduler and all cores) are online. We do this by sending asking
+   * the jobcore if it is alive and receiving back a confirmation.
+   *
+   **/
+//  protected function send_all()
+//  {
+//    // Arrange
+//    $installation_id = 'job1';
+//    $core_types = [
+//      ['SCHEDULER'],
+//      ['ANALYSE'],
+//      ['TRANSCODE'],
+//      ['STILL']
+//    ];
+//
+//    // Act
+//    $this->rmq_open_connection();
+//    for ($i = 0; $i < count($core_types); $i++) {
+//      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+//      $keepalive_queue_name = $core_type . '_' . $installation_id . '_' . $i;
+//      $queue = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
+//
+//      $job = [
+//        "queue" => $keepalive_queue_name,
+//        "in_sandbox" => TRUE
+//      ];
+//
+////      $this->rmq_send($job);
+//      // Assert
+//
+//      // Every server check has the possibility to set this variable to FALSE. If the variable gets set to FALSE once during the loop,
+//      // we can assume that right now the server setup has either failed or is not ready yet and we will check again in 5 seconds.
+//      $all_servers_online = $this->rmq_peek();
+//      if (!$all_servers_online) {
+//        break;
+//      }
+//    }
+//
+//    return;
+//
+//    $this->rmq_close_connection();
+//  }
+
 
   /**
    * Create a transcode job.

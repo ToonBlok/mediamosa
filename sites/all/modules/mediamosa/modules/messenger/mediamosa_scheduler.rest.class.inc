@@ -729,6 +729,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       mediamosa_acl::replace_mediafile_to_mediafile($job_info['mediafile_id'], $mediafile_id_dest);
     }
 
+    // This must go trough my core!!!!!!!!!!!!!!!!!!!!!!!!!!
     // Analyse the mediafile.
     $analyse_result = mediamosa_job_server::analyse((string) $mediafile_id_dest, $job_id);
 
@@ -1252,21 +1253,17 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       mediamosa_debug::log('$callback triggered, $msg:', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
-      $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-      mediamosa_debug::log('[STEP5] Received progression in scheduler with: ' . $checkvar, array(), 'T - MISC2');
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      $this->update_progression($msg);
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-      echo ' [x] Done', "\n";
+      // Kill
+      if ((isset($msg['msg_type']) and ($msg['msg_type'] == 'KILL'))) {
+        $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
+      } else {
+        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
+        mediamosa_debug::log('[STEP5] Received progression in scheduler with: ' . $checkvar, array(), 'T - MISC2');
+        $this->update_progression($msg);
+      }
+
+
       $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
     };
 

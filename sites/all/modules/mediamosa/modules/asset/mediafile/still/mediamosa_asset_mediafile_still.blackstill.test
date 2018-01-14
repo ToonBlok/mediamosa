@@ -32,14 +32,28 @@ class MediaMosaStillBlackStillTestCaseEgaJob extends MediaMosaTestCaseEgaJob {
       'still_type' => 'NONE',
     );
 
-    // Create still job.
-    $this->createMediafileStill($mediafile_id, $parameters);
 
-    // Parse the queue.
-    $this->doQueueCycleAll();
-
-    // Get the stills.
+//    // Parse the queue.
+//    $this->doQueueCycleAll();
+//
+//    // Get the stills.
     $stills = $this->getMediafileStill($mediafile_id);
+
+    // Create still job.
+    $job_id = $this->createMediafileStill($mediafile_id, $parameters);
+    $job_type = mediamosa_job_db::JOB_TYPE_STILL;
+
+    $query_data = [
+      "job_id" => (string)$job_id['job_id'],
+      "job_type" => $this->unit_test_prefix . '_' . $job_type,
+      "asset_id" => $asset_id,
+      "mediafile_id" => $mediafile_id,
+    ];
+
+    $location = 'scheduler/start_job';
+    $this->restCallGet($location, $query_data);
+
+    $this->cycle($query_data[mediamosa_job_db::ID]);
 
     // Dump the still data.
     $this->var_export($stills);

@@ -4,9 +4,8 @@
  * Job tests for transcode jobs.
  */
 
-class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
 
-  protected $unit_test_prefix;
+class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
 
   // ------------------------------------------------------------------ Members.
   // ---------------------------------------------------------------- Functions.
@@ -45,138 +44,25 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
       variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
     }
 //    parent::setUp();
-    $this->unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
-    variable_set('mediamosa_scheduler_username', 'admin');
-    variable_set('mediamosa_scheduler_password', 'admin');
 
-    $this->start_jobcores();
-    sleep(10);
-    //$this->wait_jobcores_online();
-  }
-
-  protected function wait_jobcores_online(){
-    $online = FALSE;
-
-    for ($i = 0; $i < 24; $i++) {
-
-      $online = $this->are_jobcores_online();
-      if ($online) {
-        break;
-      }
-
-      sleep(5);
-    }
-
-    $this->assert($online, 'Jobcores are online');
-  }
-
-  /**
-   *
-   * Before we start a job we have to check if all jobcores are online. We do this by sending asking
-   * the jobcore if it is alive and receiving back a confirmation.
-   *
-   **/
-  protected function are_jobcores_online()
-  {
-    exec('Unit tests started at: >> /home/tony/test.txt');
-    exec('echo `date` >> /home/tony/test.txt');
-    // Arrange
-    $installation_id = 'job1';
+//    $core_types = [
+//      ['SCHEDULER'],
+//      ['ANALYSE'],
+//      ['TRANSCODE'],
+//      ['STILL']
+//    ];
     $core_types = [
       ['SCHEDULER'],
-      ['ANALYSE'],
       ['TRANSCODE'],
-      ['STILL']
     ];
-
-    // Act
-    $this->open_connection();
-    for ($i = 0; $i < count($core_types); $i++) {
-      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
-      $keepalive_queue_name = $core_type . '_' . $installation_id . '_' . $i;
-      // $test_queue_name = 'TESTS_' . $core_type . '_' . $installation_id . '_' . $i;
-
-      $job = [
-        "queue" => $keepalive_queue_name,
-        "sender" => "unit_tests"
-      ];
-
-      $this->send($job);
-      sleep(5);
-
-      // Assert
-      $this->assert($this->peek(), $job['queue'] . ' is online.');
-    }
-
-    $this->close_connection();
+    $this->start_jobcores($core_types);
+//    sleep(10);
+    $servers_are_online = $this->wait_jobcores_online($core_types);
+    $this->assert($servers_are_online, 'Servers required for unit tests are online');
   }
 
-  public function send($job) {
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare($job['queue'], false, true, false, false);
-    $this->channel->queue_bind($job['queue'], 'jobs', $job['queue']);
-
-    $msg = new AMQPMessage(
-      serialize($job),
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    $this->channel->basic_publish($msg, 'jobs', $job['queue']);
-  }
-
-  public function peek() {
-
-    $this->channel->exchange_declare('jobs', 'direct', false, false, false);
-    $this->channel->queue_declare('TESTS', false, true, false, false);
-    $this->channel->queue_bind('TESTS', 'jobs', 'TESTS');
 
 
-    $rmq_msg = $this->channel->basic_get('TESTS');
-
-    if (!is_null($rmq_msg)) {
-      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-      return TRUE;
-    } else {
-      return FALSE;
-    }
-
-  }
-
-  protected function start_jobcores(){
-
-    exec('echo start_jobcores triggered >> /home/tony/test.txt');
-    // Fixed values because this is the server setup we need for this test.
-    $installation_id = 'job1';
-    $core_types = [
-      ['SCHEDULER'],
-      ['ANALYSE'],
-      ['TRANSCODE'],
-      ['STILL']
-    ];
-
-    $this->messenger_log('unit_test_prefix', $this->unit_test_prefix);
-
-    mediamosa_debug::log('[STEP1] Initial server setup with: ' . $this->unit_test_prefix, array(), 'T - MISC2');
-
-    for ($i = 0; $i < count($core_types); $i++) {
-      $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
-
-      $query_data[jobcore::QUEUE] = $this->unit_test_prefix . '_' . $core_type;
-      $query_data[jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
-      $query_data[jobcore::CORE_TYPE] = $core_type;
-
-      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
-
-      $uri = 'scheduler_guardian/check';
-
-      $this->restCallGet($uri, $query_data);
-    }
-  }
-
-  protected function messenger_log($name, $value) {
-    $this->var_export($name . ':');
-    $this->var_export($value); // /scheduler/job_start
-  }
 
 //  public function testdummy() {
 //    $this->var_export("Dummy");
@@ -187,7 +73,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
   /**
    * Basic job transcode test.
    */
-  public function testJobTranscode() {
+  public function atestJobTranscode() {
 
     // Create upload file.
     $upload = $this->uploadTestFile(array('filename' => $this->getTestVideo_wmv()));
@@ -263,173 +149,108 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     }
     $this->assertTrue($mediafile_id_transcoded, 'Found transcoded mediafile');
 
+//    $core_types = [
+//      ['SCHEDULER'],
+//      ['TRANSCODE'],
+//    ];
+//    $this->rmq_clear($core_types);
+
   }
 
-  /**
-   * Run and execute the current jobs (one cycle).
-   *
-   * @param bool $trigger_scheduler
-   *   Trigger the scheduler, to handout and start new jobs.
-   */
-  protected function cycle($trigger_scheduler = true) {
-
-    // Keep in mind that with less slots, this needs to be 18.
-    $max_runs = 20;
-    $running_jobs = 1;
-    while ($max_runs-- && $running_jobs) {
-      // Run one job cycle.
-//      self::doQueueCycle($trigger_scheduler);
-
-      // Set flag to know if all jobs are finished or failed.
-      $running_jobs = 0;
-      $waiting_jobs = 0;
-
-      // Get all jobs.
-      $jobs = mediamosa_job::get_job_list(0, '', TRUE);
-
-      // Check if the jobs are all done.
-      foreach ($jobs as $job) {
-        if (!in_array($job[mediamosa_job_db::JOB_STATUS],
-          array(
-            mediamosa_job_db::JOB_STATUS_FINISHED,
-            mediamosa_job_db::JOB_STATUS_FAILED,
-            mediamosa_job_db::JOB_STATUS_CANCELLED,
-          )
-        )) {
-          $running_jobs++;
-
-          if ($job[mediamosa_job_db::JOB_STATUS] === mediamosa_job_db::JOB_STATUS_WAITING) {
-            // Waiting jobs stay waiting when trigger scheduler is off.
-            if (!$trigger_scheduler) {
-              $running_jobs--;
-            }
-            $waiting_jobs++;
-          }
-        }
-      }
-
-      if ($running_jobs) {
-        $this->pass(strtr('Found @running running jobs of which where @waiting waiting jobs, waiting for next cycle.', array('@running' => $running_jobs, '@waiting' => $waiting_jobs)));
-        // Wait 5 seconds.
-        Sleep(5);
-      }
-      else {
-        $this->pass('No more running jobs found, exiting job cycle.');
-      }
-    }
-
-    // If we are dead locked, we need to know.
-    if ($max_runs < 0) {
-      $this->fail(strtr('Job scheduler deadlock; Failed to complete all jobs. Jobs waiting for: @running', array('@running' => $running_jobs)));
-    }
-  }
 
 
   /**
    * Basic job transcode test.
    */
-//  public function testJobTranscodeExtended() {
-//    // Create upload file.
-//    $upload = $this->uploadTestFile();
-//    $asset_id = $upload['asset_id'];
-//    $mediafile_id = $upload['mediafile_id'];
-//
-//    $default_profiles = array(
-//      array(
-//        'Test profile',
-//        'TRUE',
-//        'ffmpeg',
-//        'ogv',
-//        array(
-//          'audiocodec' => 'libvorbis',
-//          'audiobitrate' => '128000',
-//          'audiosamplingrate' => '44100',
-//          'audiochannels' => '2',
-//          'videocodec' => 'libtheora',
-//          'videobitrate' => '1000000',
-//          'fps' => '30',
-//          'size' => '640x360',
-//          'aspect' => '16:9',
-//        ),
-//      ),
-//    );
-//
-//    // Create new transcode profiles.
-//    foreach ($default_profiles as $default_profile) {
-//      $node = mediamosa_node::create_basic_node(mediamosa_node::MEDIAMOSA_NODE_TYPE_TRANSCODE_PROFILE, $default_profile[0]);
-//      $node->{mediamosa_transcode_profile_db::APP_ID} = 0;
-//      $node->{mediamosa_transcode_profile_db::VERSION} = 0;
-//      $node->{mediamosa_transcode_profile_db::PROFILE} = $default_profile[0];
-//      $node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} = $default_profile[1];
-//      $node->{mediamosa_transcode_profile_db::TOOL} = $default_profile[2];
-//      $node->{mediamosa_transcode_profile_db::FILE_EXTENSION} = $default_profile[3];
-//      $node->{mediamosa_transcode_profile_db::COMMAND} = mediamosa_transcode_profile::arrayToCommand($default_profile[4]);
-//
-//      if ($node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} == mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE_TRUE) {
-//        // Clear others, so mine will become default.
-//        _mediamosa_transcode_profile_update_isdefault($node);
-//      }
-//
-//      node_save($node);
-//    }
-//
-//    // Get the asset.
-//    $asset = $this->getAsset($asset_id);
-//    $this->var_export($asset);
-//
-//    // Create transcode job.
+  public function testJobTranscodeExtended() {
+    // Create upload file.
+    $upload = $this->uploadTestFile();
+    $asset_id = $upload['asset_id'];
+    $mediafile_id = $upload['mediafile_id'];
+
+    $default_profiles = array(
+      array(
+        'Test profile',
+        'TRUE',
+        'ffmpeg',
+        'ogv',
+        array(
+          'audiocodec' => 'libvorbis',
+          'audiobitrate' => '128000',
+          'audiosamplingrate' => '44100',
+          'audiochannels' => '2',
+          'videocodec' => 'libtheora',
+          'videobitrate' => '1000000',
+          'fps' => '30',
+          'size' => '640x360',
+          'aspect' => '16:9',
+        ),
+      ),
+    );
+
+    // Create new transcode profiles.
+    foreach ($default_profiles as $default_profile) {
+      $node = mediamosa_node::create_basic_node(mediamosa_node::MEDIAMOSA_NODE_TYPE_TRANSCODE_PROFILE, $default_profile[0]);
+      $node->{mediamosa_transcode_profile_db::APP_ID} = 0;
+      $node->{mediamosa_transcode_profile_db::VERSION} = 0;
+      $node->{mediamosa_transcode_profile_db::PROFILE} = $default_profile[0];
+      $node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} = $default_profile[1];
+      $node->{mediamosa_transcode_profile_db::TOOL} = $default_profile[2];
+      $node->{mediamosa_transcode_profile_db::FILE_EXTENSION} = $default_profile[3];
+      $node->{mediamosa_transcode_profile_db::COMMAND} = mediamosa_transcode_profile::arrayToCommand($default_profile[4]);
+
+      if ($node->{mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE} == mediamosa_transcode_profile_db::IS_DEFAULT_PROFILE_TRUE) {
+        // Clear others, so mine will become default.
+        _mediamosa_transcode_profile_update_isdefault($node);
+      }
+
+      node_save($node);
+    }
+
+    // Get the asset.
+    $asset = $this->getAsset($asset_id);
+    $this->var_export($asset);
+
+    // Create transcode job.
 //    $this->createMediafileTranscode($mediafile_id);
 //
 //    // Parse the queue.
 //    $this->doQueueCycleAll();
-//
-//    // Get the asset.
-//    $asset = $this->getAsset($asset_id);
-//    $this->var_export($asset);
-//
-//    // Might be swapped in results, so check what is the transcode.
-//    if ($asset['mediafiles']['mediafile'][0]['is_original_file'] == 'TRUE') {
-//      $metadata = $asset['mediafiles']['mediafile'][1]['metadata'];
-//    }
-//    else {
-//      $metadata = $asset['mediafiles']['mediafile'][0]['metadata'];
-//    }
-//
-//    // Must be converted to '640x360'.
-//    $this->assertTrue($metadata['width'] == 640, 'New transcoding is 640 wide.');
-//    $this->assertTrue($metadata['height'] == 360, 'New transcoding is 360 high.');
-//
-//    // Clean up.
-//    $this->addMediafilesToCleanUp($asset['mediafiles']);
-//  }
 
-  protected function open_connection() {
-    $host = variable_get('mediamosa_scheduler_host', 'localhost');
-    $port = variable_get('mediamosa_scheduler_port', 5672);
-    $username = variable_get('mediamosa_scheduler_username', 'guest');
-    $password = variable_get('mediamosa_scheduler_password', 'guest');
+    // Create transcode job.
+    $job_id = $this->createMediafileTranscode($mediafile_id);
+    $job_type = mediamosa_job_db::JOB_TYPE_TRANSCODE;
 
-    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
-    $this->channel = $this->connection->channel();
+    $query_data = [
+      "job_id" => (string)$job_id['job_id'],
+      "job_type" => $this->unit_test_prefix . '_' . $job_type,
+      "asset_id" => $asset_id,
+      "mediafile_id" => $mediafile_id,
+    ];
+
+    $location = 'scheduler/start_job';
+    $this->restCallGet($location, $query_data);
+
+    $this->cycle($query_data[mediamosa_job_db::ID]);
+
+    // Get the asset.
+    $asset = $this->getAsset($asset_id);
+    $this->var_export($asset);
+
+    // Might be swapped in results, so check what is the transcode.
+    if ($asset['mediafiles']['mediafile'][0]['is_original_file'] == 'TRUE') {
+      $metadata = $asset['mediafiles']['mediafile'][1]['metadata'];
+    }
+    else {
+      $metadata = $asset['mediafiles']['mediafile'][0]['metadata'];
+    }
+
+    // Must be converted to '640x360'.
+    $this->assertTrue($metadata['width'] == 640, 'New transcoding is 640 wide.');
+    $this->assertTrue($metadata['height'] == 360, 'New transcoding is 360 high.');
+
+    // Clean up.
+    $this->addMediafilesToCleanUp($asset['mediafiles']);
   }
 
-  protected function close_connection() {
-    $this->channel->close();
-    $this->connection->close();
-  }
-
-  protected function send_message($job) {
-
-    $this->channel->exchange_declare('exchange', 'direct', false, false, false);
-
-    $msg = new AMQPMessage(
-      '',
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    # Send the message.
-    //echo 'sent with routing_key: ' . $job['job_type'];
-    $this->channel->basic_publish($msg, 'exchange', 'TRANSCODE');
-
-  }
 }

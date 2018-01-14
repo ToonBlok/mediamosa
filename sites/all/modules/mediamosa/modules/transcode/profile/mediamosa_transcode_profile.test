@@ -5,6 +5,8 @@
  */
 
 class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
+
+  protected $unit_test_prefix;
   // ------------------------------------------------------------------ Members.
   // ---------------------------------------------------------------- Functions.
   /**
@@ -17,6 +19,38 @@ class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
       'group' => MEDIAMOSA_TEST_GROUP_MEDIAMOSA_CORE_JOB,
       mediamosa_settings::MEDIAMOSA_RUN => mediamosa_settings::MEDIAMOSA_RUN_15_MINUTES,
     );
+  }
+
+  function setUp()
+  {
+    // Get from outside sandbox.
+    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
+    // Run parent first so we are inside sandbox.
+    // Call parent::setUp and preserve arguments.
+    $args = func_get_args();
+
+    // Create and setup the CORE module.
+    $args = array_unique(array_merge(array('mediamosa_messenger'), $args));
+    if (drupal_substr(phpversion(), 0, 3) < '5.3') {
+      call_user_func_array(array($this, 'parent::setUp'), $args);
+    }
+    else {
+      call_user_func_array('parent::setUp', $args);
+    }
+
+    // Set jobserver selection.
+    if (!empty($mediamosa_jobscheduler_uri)) {
+      variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
+    }
+//    parent::setUp();
+    $this->unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+    variable_set('mediamosa_scheduler_username', 'admin');
+    variable_set('mediamosa_scheduler_password', 'admin');
+
+    $this->start_jobcores();
+    sleep(10);
+    //$this->wait_jobcores_online();
   }
 
   // -------------------------------------------------------------------- Tests.
@@ -74,10 +108,29 @@ class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
     $this->var_export($asset);
 
     // Create transcode job.
-    $this->createMediafileTranscode($mediafile_id, array(), array(mediamosa_error::ERRORCODE_JOB_TRANSCODE_PARAMETER_NOT_FLOAT));
+//    $this->createMediafileTranscode($mediafile_id, array(), array(mediamosa_error::ERRORCODE_JOB_TRANSCODE_PARAMETER_NOT_FLOAT));
+    $job_id = $this->createMediafileTranscode($mediafile_id, array(), array(mediamosa_error::ERRORCODE_JOB_TRANSCODE_PARAMETER_NOT_FLOAT));
+    $job_type = mediamosa_job_db::JOB_TYPE_TRANSCODE;
+
+    // ###########################################
+    $this->var_export('$job_id:');
+    $this->var_export($job_id); // /scheduler/job_start
+    // ###########################################
+
+//    $query_data = [
+//      "job_id" => (string)$job_id['job_id'],
+//      "job_type" => $this->unit_test_prefix . '_' . $job_type,
+//      "asset_id" => $asset_id,
+//      "mediafile_id" => $mediafile_id,
+//    ];
+//    //$location = '/scheduler/start_job?' . http_build_query($query_data);
+//    $location = 'scheduler/start_job';
+//    $this->restCallGet($location, $query_data);
+//
+//    $this->cycle($query_data[mediamosa_job_db::ID]);
 
     // Parse the queue.
-    $this->doQueueCycleAll();
+//    $this->doQueueCycleAll();
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);

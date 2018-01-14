@@ -4,7 +4,7 @@
  * Implements hook_cron().
  */
 function mediamosa_messenger_cron() {
-  call_guardian();
+  mediamosa_messenger_call_guardian();
 }
 
 /**
@@ -13,10 +13,10 @@ function mediamosa_messenger_cron() {
 function _mediamosa_messenger_cron()
 {
   mediamosa_debug::log('SUCCESS', array(), 'T - MISC');
-  //call_guardian();
+//  mediamosa_messenger_call_guardian();
 }
 
-function call_guardian(){
+function mediamosa_messenger_call_guardian(){
   $installation_id = variable_get('mediamosa_installation_id');
   $core_types = variable_get('mediamosa_cores');
   mediamosa_debug::log('Cores: ' . count($core_types), array(), 'T - MISC');
@@ -33,32 +33,23 @@ function call_guardian(){
 
     mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
 
-    $location = '/scheduler_guardian/check?' . http_build_query($query_data);
+    $uri = '/scheduler_guardian/check?' . http_build_query($query_data);
 
-    call($location);
+    mediamosa_messenger_call($uri);
   }
 }
 
-function call($location) {
+function mediamosa_messenger_call($uri) {
   $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
   if (isset($mediamosa_jobscheduler_uri)) {
+    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
+    mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
 
-    $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
-
-    mediamosa_debug::log($url, array(), 'T - REST');
-
-    // Dont trigger in sandbox.
-    if (mediamosa::in_simpletest_sandbox()) {
-      // So we wait till finished.
-      MediaMosaTestCase::staticInternalRestCallGet($url);
-    } else {
-      // Trigger.
-      mediamosa_http::do_head_internal_call($url);
-    }
+    mediamosa_http::do_head_internal_call($url);
   } else {
     mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
   }
-
 }
 
 /**
