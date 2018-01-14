@@ -910,37 +910,28 @@ class mediamosa_job {
 
 //      mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC');
 
-      $location = '/scheduler/start_job?' . http_build_query($query_data);
+      $uri = '/scheduler/start_job?';
 
       //!!!!!!!!!!!!!!!!!!!!!!!!!!!
-      self::call($location);
+      self::mediamosa_messenger_call($uri, $query_data);
 
     }
   }
 
-  // Toon:
-  private static function call($location) {
+  private static function mediamosa_messenger_call($uri, array $query_data = array()) {
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
     if (isset($mediamosa_jobscheduler_uri)) {
+      $uri = $uri . http_build_query($query_data);
+      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
 
-      $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $location;
+      mediamosa_http::do_head_internal_call($url);
 
-      mediamosa_job_scheduler::log_debug('Triggering job scheduler @ @uri', array('@uri' => $url));
-
-      // Dont trigger in sandbox.
-      if (mediamosa::in_simpletest_sandbox()) {
-        // So we wait till finished.
-        MediaMosaTestCase::staticInternalRestCallGet($url);
-      } else {
-        // Trigger.
-        mediamosa_http::do_head_internal_call($url);
-      }
+      mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
     } else {
       mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
     }
-
   }
-
 
   /**
    * Called after the job has been created.
