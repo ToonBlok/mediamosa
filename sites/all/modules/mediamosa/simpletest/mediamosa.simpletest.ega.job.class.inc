@@ -7,6 +7,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
 
   protected $unit_test_prefix;
+  protected $core_types;
   // -------------------------------------------------------------- Constructor.
   /**
    * Implement contructor.
@@ -55,6 +56,8 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
 
     // Dump job table contents.
     $this->dump_jobs();
+    $this->rmq_clear($this->core_types);
+
 
     // Call parent.
     parent::tearDown();

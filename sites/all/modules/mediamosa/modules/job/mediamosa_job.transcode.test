@@ -51,13 +51,13 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
 //      ['TRANSCODE'],
 //      ['STILL']
 //    ];
-    $core_types = [
+    $this->core_types = [
       ['SCHEDULER'],
       ['TRANSCODE'],
     ];
-    $this->start_jobcores($core_types);
+    $this->start_jobcores($this->core_types);
 //    sleep(10);
-    $servers_are_online = $this->wait_jobcores_online($core_types);
+    $servers_are_online = $this->wait_jobcores_online($this->core_types);
     $this->assert($servers_are_online, 'Servers required for unit tests are online');
   }
 
@@ -73,7 +73,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
   /**
    * Basic job transcode test.
    */
-  public function atestJobTranscode() {
+  public function aatestJobTranscode() {
 
     // Create upload file.
     $upload = $this->uploadTestFile(array('filename' => $this->getTestVideo_wmv()));
@@ -148,12 +148,6 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
       }
     }
     $this->assertTrue($mediafile_id_transcoded, 'Found transcoded mediafile');
-
-//    $core_types = [
-//      ['SCHEDULER'],
-//      ['TRANSCODE'],
-//    ];
-//    $this->rmq_clear($core_types);
 
   }
 

@@ -1,5 +1,7 @@
 <?php
 
+// Alles hier moet met een underscore beginnen
+
 /**
  * Implements hook_cron().
  */

@@ -81,6 +81,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     }
 
     try {
+      // Scheduler to jobcore
       $this->rmq_send($job);
     } catch (Exception $e) {
       mediamosa_debug::log($e, array(), 'T - Scheduler');
@@ -94,6 +95,11 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $mediafile_id_src = $job[mediamosa_job_db::MEDIAFILE_ID]; // hmmmmmmm
     $status = mediamosa_job_db::JOB_STATUS_INPROGRESS; // Default status
     $job_status = $job['new_job_status'];
+    mediamosa_debug::log('$job when updating:', array(), 'T - JAN15');
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - JAN15');
+    mediamosa_debug::log('$job after requesting db:', array(), 'T - JAN15');
+    $job2 = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
+    mediamosa_debug::log_export($job2, WATCHDOG_NOTICE, 'T - JAN15');
 
     // No status file found, we just have to wait.
     if (empty($job_status['Status'])) {
@@ -167,7 +173,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
           $status = mediamosa_job_db::JOB_STATUS_FINISHED;
 
           // Store the transcode.
-          $this->store_new_mediafile($job);
+          $mediafile_id_dest = $this->store_new_mediafile($job);
 
           // Log it.
 //          mediamosa_job_server::log_mediafile($mediafile_id_src, 'End job @job_type, Job ID: @job_id, status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $status));
@@ -180,11 +186,13 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 //      mediamosa_debug::log('MY CODE: Invoked rules_invoke_event with mediafile_id_src: ' . $mediafile_id_src, array(), 'T - Transcode');
 
           $job = $this->get_job_where($job['job_id']);
-//          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 1517');
+          mediamosa_debug::log('$job after requesting when done:', array(), 'T - JAN15');
+//          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - JAN15');
           // Toon: This is completely somewhere else in the original code
-          mediamosa_statistics::insert_job_transcode($job['mediafile_dest'], $job['job_id']);
-          // If the transcode job is completed, add it to the mediafile.
-          $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $job['mediafile_dest']); // second was mediafile_src ???
+
+          mediamosa_statistics::insert_job_transcode($mediafile_id_dest, $job['job_id']);
+          $this->parse_finished_transcode($job['job_id'], $job['mediafile_id'], $mediafile_id_dest); // If the transcode job is completed, add it to the mediafile.
+
         } elseif ($job_status['Status'] == 'error' && (empty($job_status['Errors']) || $job_status['Errors'] != 'none')) {
           $status = mediamosa_job_server_db::JOB_STATUS_FAILED;
           $link_asset = mediamosa_job_server::get_asset_link($job_id);
@@ -564,13 +572,14 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $fields = mediamosa_db::db_update_enrich($fields);
 
     // Update the filename in mediafile_dest.
-    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
-      ->fields($fields)
-      ->condition(mediamosa_job_db::ID, $job_id)
-      ->execute();
+//    mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
+//      ->fields($fields)
+//      ->condition(mediamosa_job_db::ID, $job_id)
+//      ->execute();
 
     // Log it.
 //    mediamosa_job_server::log_mediafile($job_server[mediamosa_job_server_db::MEDIAFILE_ID_SRC], "Job with ID @job_id ready, new mediafile stored as '@uri' (@path).", array('@job_id' => $job_id, '@uri' => $file_destination_uri, '@path' => mediamosa_io::realpath($file_destination_uri)));
+    return $mediafile_id;
   }
 
   function set_job_status($job, $job_status, $progress, $error_description = '', $error_description_args = array()) {
@@ -638,6 +647,9 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     //
 
     if (!mediamosa::in_simpletest_sandbox()) {
+
+      // Get all jobs belonging to this asset. Use trick to see which job is the lowest and not finished
+      //
       if ($job_status == mediamosa_job_db::JOB_STATUS_FINISHED) {
         $next_job_id = $job_id + 1;
         $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
@@ -656,6 +668,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
         //}
 
       }
+
     }
   }
 
@@ -677,9 +690,11 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // Get the original transcode job.
     $job_info = $this->get_transcodejob_info($job_id);
 
+
     // Get Asset.
     $asset = mediamosa_asset::get($job_info['asset_id']);
     assert(!empty($asset));
+
 
     $fields = array(
       mediamosa_asset_mediafile_db::ID => $mediafile_id_dest,
@@ -734,6 +749,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $analyse_result = mediamosa_job_server::analyse((string) $mediafile_id_dest, $job_id);
 
     // Store it.
+    mediamosa_debug::log('[UT] analyse problem: ' . $mediafile_id_dest . ', and ' . $analyse_result . '. For job: ' . $job_id, array(), 'T - UT');
     $this->store_analyse_without_job($job_id, $analyse_result, (string) $mediafile_id_dest);
   }
 
@@ -792,40 +808,45 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     // Store in error description.
     mediamosa_job::store_error_description($job_id, $ffmpeg_output);
 
+//    mediamosa_debug::log('$mediafile_id (which was mediafile_dest):', array(), 'T - JAN15');
+//    mediamosa_debug::log_export($mediafile_id, WATCHDOG_NOTICE, 'T - JAN15');
+
     $job = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
+//    mediamosa_debug::log('$job which was just requested from DB:', array(), 'T - JAN15');
+//    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - JAN15');
 
 
-    // Have to skip and do retranscode in a different way later
+//    // Have to skip and do retranscode in a different way later
 //    // Is it a retranscode job?
-//    if ($job[mediamosa_job_db::MEDIAFILE_DEST]) {
-//      // Get the realpath before we remove the mediafile from database.
-//      $mediafile_realpath_dest = mediamosa_storage::get_realpath_mediafile($job[mediamosa_job_db::MEDIAFILE_DEST]);
-//      mediamosa_debug::log('$mediafile_realpath_dest: ' . $mediafile_realpath_dest . ' and $job[mediafile_dest]: ' . $job[mediamosa_job_db::MEDIAFILE_DEST], array(), 'Toon - TRANSCODE');
-//
-//      // Delete the original so it can be overwritten.
-//      mediamosa_asset_mediafile::delete($job[mediamosa_job_db::MEDIAFILE_DEST]);
-//
-//      // Move the file.
-//      mediamosa_io::move(
-//        mediamosa_storage::get_uri_mediafile($mediafile_id),
-//        $mediafile_realpath_dest
-//      );
-//
-//      // Turn off foreign keys so we can move mediafile data and metadata.
-//      mediamosa_db::db_query('SET foreign_key_checks = 0');
-//
-//      // Update mediamosa_asset_mediafile table.
-//      mediamosa_asset_mediafile::update_mediafile_id($mediafile_id, $job[mediamosa_job_db::MEDIAFILE_DEST]);
-//
-//      // Update mediamosa_asset_mediafile_metadata table.
-//      mediamosa_asset_mediafile_metadata::move_mediafile_metadata($mediafile_id, $job[mediamosa_job_db::MEDIAFILE_DEST]);
-//
-//      // And turn it back on.
-//      mediamosa_db::db_query('SET foreign_key_checks = 1');
-//
-//      // Take the new mediafile_id.
-//      $mediafile_id = $job[mediamosa_job_db::MEDIAFILE_DEST];
-//    }
+    if ($job[mediamosa_job_db::MEDIAFILE_DEST]) {
+      // Get the realpath before we remove the mediafile from database.
+      $mediafile_realpath_dest = mediamosa_storage::get_realpath_mediafile($job[mediamosa_job_db::MEDIAFILE_DEST]);
+      mediamosa_debug::log('$mediafile_realpath_dest: ' . $mediafile_realpath_dest . ' and $job[mediafile_dest]: ' . $job[mediamosa_job_db::MEDIAFILE_DEST], array(), 'Toon - TRANSCODE');
+
+      // Delete the original so it can be overwritten.
+      mediamosa_asset_mediafile::delete($job[mediamosa_job_db::MEDIAFILE_DEST]);
+
+      // Move the file.
+      mediamosa_io::move(
+        mediamosa_storage::get_uri_mediafile($mediafile_id),
+        $mediafile_realpath_dest
+      );
+
+      // Turn off foreign keys so we can move mediafile data and metadata.
+      mediamosa_db::db_query('SET foreign_key_checks = 0');
+
+      // Update mediamosa_asset_mediafile table.
+      mediamosa_asset_mediafile::update_mediafile_id($mediafile_id, $job[mediamosa_job_db::MEDIAFILE_DEST]);
+
+      // Update mediamosa_asset_mediafile_metadata table.
+      mediamosa_asset_mediafile_metadata::move_mediafile_metadata($mediafile_id, $job[mediamosa_job_db::MEDIAFILE_DEST]);
+
+      // And turn it back on.
+      mediamosa_db::db_query('SET foreign_key_checks = 1');
+
+      // Take the new mediafile_id.
+      $mediafile_id = $job[mediamosa_job_db::MEDIAFILE_DEST];
+    }
 
     // Normalize to asset.
     mediamosa_asset::update_asset_info_with_mediafileid($mediafile_id);

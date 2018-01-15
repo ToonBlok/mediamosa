@@ -48,9 +48,14 @@ class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
     variable_set('mediamosa_scheduler_username', 'admin');
     variable_set('mediamosa_scheduler_password', 'admin');
 
-    $this->start_jobcores();
-    sleep(10);
-    //$this->wait_jobcores_online();
+    $this->core_types = [
+      ['SCHEDULER'],
+      ['TRANSCODE'],
+    ];
+    $this->start_jobcores($this->core_types);
+//    sleep(10);
+    $servers_are_online = $this->wait_jobcores_online($this->core_types);
+    $this->assert($servers_are_online, 'Servers required for unit tests are online');
   }
 
   // -------------------------------------------------------------------- Tests.
@@ -131,6 +136,7 @@ class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
 
     // Parse the queue.
 //    $this->doQueueCycleAll();
+//    $this->cycle();
 
     // Get the asset.
     $asset = $this->getAsset($asset_id);

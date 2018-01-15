@@ -840,6 +840,25 @@ class mediamosa_job {
 
   public static function check_send($id, $still_type, $size, $fields) {
 
+    // Orde behouden
+    // geen jobs in progress
+    // 2de job ziet asset in progress
+
+    // Get all jobs that belong to this asset, do min() or asc to get the job with the lowest id (the first) (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
+//    $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+//      ->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])
+//      ->orderBy('b.region', 'ASC')
+//      ->countQuery()
+//      ->execute()
+//      ->fetchField();    //
+//    mediamosa_debug::log('$jobs from new query:', array(), 'T - JAN15');
+//    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
+    // ...
+    // ...
+    // ...
+
+
+
     $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])->countQuery()->execute()->fetchField();
     // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
     if ($count == 2) {
