@@ -4,6 +4,10 @@
  * The job module.
  */
 
+require_once DRUPAL_ROOT . '/vendor/autoload.php';
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Message\AMQPMessage;
+
 class mediamosa_job {
 
   // ---------------------------------------------------------------- Functions.
@@ -831,107 +835,198 @@ class mediamosa_job {
 
 
     if (!mediamosa::in_simpletest_sandbox()) {
-      self::check_send($id, $still_type, $size, $fields);
+      self::check_send($fields[mediamosa_job_db::ASSET_ID]);
     }
 
     // Insert it.
     return $id;
   }
 
-  public static function check_send($id, $still_type, $size, $fields) {
+  public static function check_send($asset_id) {
+    // Job arrives:
+    // ...
 
-    // Orde behouden
-    // geen jobs in progress
-    // 2de job ziet asset in progress
+    // Requirements for job to be sent:
+    // -Job cannot be "UPLOAD".
+    // -No jobs should be "INPROGRESS" at this moment in time.
+    // -This job has ID > ID of upload AND ID is lowest of all the other jobs (with exception of upload)
+    //
 
-    // Get all jobs that belong to this asset, do min() or asc to get the job with the lowest id (the first) (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
-//    $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
-//      ->fields('mj')
-//      ->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])
-//      ->orderBy('mj.job_id', 'ASC')
+
+    // What if upload is "INPROGRESS" and takes a large amount of time?
+
+
+
+    // Kijken op success and failed momenten
+
+
+
+    // Get the first job of this asset that is not an upload.
+    // (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
+
+    $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+      ->fields('mj')
+      ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+      ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+      ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_INPROGRESS)
+      ->orderBy('mj.job_id', 'ASC')
+      ->countQuery()
+      ->execute()
+      ->fetchField();    //
+
+//    $count = db_select('watchdog', 'w')
+//      ->condition('type', $type)
+//      ->condition('message', $message)
+//      ->condition('variables', serialize($variables))
+//      ->condition('severity', $severity)
+//      ->condition('link', $link)
+//      ->countQuery()
 //      ->execute()
-//      ->fetchAssoc();    //
-//    mediamosa_debug::log('$jobs from new query:', array(), 'T - JAN15');
-//    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
-    // ...
-    // ...
-    // ...
+//      ->fetchField();
+    mediamosa_debug::log('How many jobs are there that are in progress: ', array(), 'T - MISC3');
+    mediamosa_debug::log_export($count_jobs_in_progress, WATCHDOG_NOTICE, 'T - MISC3');
 
-//    return;
+    // Get the first job of this asset that:
+    // -Has same asset ID
+    // -Is not an upload job
+    // -Is waiting
+    // This query will always pick up the next job and preserves job order
+    $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+      ->fields('mj')
+      ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+      ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+      ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
+      ->orderBy('mj.job_id', 'ASC')
+      ->execute()
+      ->fetchAssoc();    //
+    mediamosa_debug::log('check_send pulled this job out of the DB:', array(), 'T - MISC3');
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC3');
+
+    self::rmq_send($job, $job[mediamosa_job_db::JOB_TYPE]);
+
+//    // ######################## Get still or transcode parameters... MOVE TO SCHEDULER
+//    $still_parameters = unserialize($fields[mediamosa_job_db::STILL_PARAMETERS]);
+//
+//    // We still dont have fps and video duration:
+//    $a_mediafile = mediamosa_asset_mediafile_metadata::get_with_mediafileid($fields[mediamosa_job_db::MEDIAFILE_ID], array(
+//      array(
+//        'prop_name' => mediamosa_asset_mediafile_metadata::FILE_DURATION,
+//        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
+//      ),
+//      array(
+//        'prop_name' => mediamosa_asset_mediafile_metadata::FPS,
+//        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
+//      ),
+//    ));
+//    $actual_duration = $a_mediafile[mediamosa_asset_mediafile_metadata::FILE_DURATION];
+//    $fps = $a_mediafile[mediamosa_asset_mediafile_metadata::FPS];
+//    $video_duration = 0;
+//    if ($actual_duration && $actual_duration != '') {
+//      // Remove the ms from time.
+//      $actual_duration = mediamosa_unicode::substr($actual_duration, 0, 8);
+//      @list($uren, $minuten, $seconden) = explode(':', $actual_duration, 3);
+//      $video_duration = (($uren * 3600) + ($minuten * 60) + $seconden);
+//      if ($video_duration < $still_parameters['frametime']) {
+//        // If the video duration is less than still picture time, we decrease
+//        // the still picture time to half of video duration.
+//        $still_parameters['frametime'] = ($video_duration >> 1);
+//      }
+//    }
+//
+//    $still_parameters += array(
+//      "fps" => $fps,
+//      "video_duration" => $video_duration
+//    );
+//
+//    $query_data = [
+//      mediamosa_job_db::ID => $id,
+//      mediamosa_job_db::JOB_TYPE => $fields[mediamosa_job_db::JOB_TYPE],
+//      mediamosa_job_db::JOB_STATUS => '',
+//      mediamosa_job_db::STILL_PARAMETERS => serialize($still_parameters),
+//      mediamosa_job_db::ASSET_ID => $fields[mediamosa_job_db::ASSET_ID],
+//      mediamosa_job_db::MEDIAFILE_ID  => $fields[mediamosa_job_db::MEDIAFILE_ID],
+//      mediamosa_job_db::APP_ID => $fields[mediamosa_job_db::APP_ID],
+//      mediamosa_job_db::MEDIAFILE_DEST => '',
+//      mediamosa_job_still_db::SIZE => $size
+//    ];
+//
+//    if (isset($mediafile_dest)) {
+//      $query_data += array(
+//        mediamosa_job_db::MEDIAFILE_DEST => $fields[mediamosa_job_db::MEDIAFILE_DEST],
+//      );
+//    }
+//
+//    // Get blackstill_check
+//    switch ($still_type) {
+//      case mediamosa_asset_mediafile_metadata::STILL_TYPE_NORMAL:
+//      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SECOND:
+//      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SCENE:
+//        $query_data['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_FALSE;
+//        break;
+//
+//      default:
+//        $query_data['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_TRUE;
+//        break;
+//    }
+//    // ######################## Get still or transcode parameters... MOVE TO SCHEDULER
 
 
-    $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])->countQuery()->execute()->fetchField();
-    // If this job is the first job for the asset, send it to the scheduler. $count == 2, because $count == 1 is an upload job
-    if ($count == 2) {
-      $still_parameters = unserialize($fields[mediamosa_job_db::STILL_PARAMETERS]);
+//    mediamosa_debug::log('Before send', array(), 'T - JAN16');
+//    mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - JAN16');
+//    $uri = '/scheduler/start_job?';
+//
+//    self::mediamosa_messenger_call($uri, $job);
+  }
 
-      // We still dont have fps and video duration:
-      $a_mediafile = mediamosa_asset_mediafile_metadata::get_with_mediafileid($fields[mediamosa_job_db::MEDIAFILE_ID], array(
-        array(
-          'prop_name' => mediamosa_asset_mediafile_metadata::FILE_DURATION,
-          'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
-        ),
-        array(
-          'prop_name' => mediamosa_asset_mediafile_metadata::FPS,
-          'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
-        ),
-      ));
-      $actual_duration = $a_mediafile[mediamosa_asset_mediafile_metadata::FILE_DURATION];
-      $fps = $a_mediafile[mediamosa_asset_mediafile_metadata::FPS];
-      $video_duration = 0;
-      if ($actual_duration && $actual_duration != '') {
-        // Remove the ms from time.
-        $actual_duration = mediamosa_unicode::substr($actual_duration, 0, 8);
-        @list($uren, $minuten, $seconden) = explode(':', $actual_duration, 3);
-        $video_duration = (($uren * 3600) + ($minuten * 60) + $seconden);
-        if ($video_duration < $still_parameters['frametime']) {
-          // If the video duration is less than still picture time, we decrease
-          // the still picture time to half of video duration.
-          $still_parameters['frametime'] = ($video_duration >> 1);
-        }
-      }
-
-      $still_parameters += array(
-        "fps" => $fps,
-        "video_duration" => $video_duration
-      );
-
-      $query_data = [
-        mediamosa_job_db::ID => $id,
-        mediamosa_job_db::JOB_TYPE => $fields[mediamosa_job_db::JOB_TYPE],
-        mediamosa_job_db::JOB_STATUS => '',
-        mediamosa_job_db::STILL_PARAMETERS => serialize($still_parameters),
-        mediamosa_job_db::ASSET_ID => $fields[mediamosa_job_db::ASSET_ID],
-        mediamosa_job_db::MEDIAFILE_ID  => $fields[mediamosa_job_db::MEDIAFILE_ID],
-        mediamosa_job_db::APP_ID => $fields[mediamosa_job_db::APP_ID],
-        mediamosa_job_db::MEDIAFILE_DEST => '',
-        mediamosa_job_still_db::SIZE => $size
-      ];
-
-      if (isset($mediafile_dest)) {
-        $query_data += array(
-          mediamosa_job_db::MEDIAFILE_DEST => $fields[mediamosa_job_db::MEDIAFILE_DEST],
-        );
-      }
-
-      // Get blackstill_check
-      switch ($still_type) {
-        case mediamosa_asset_mediafile_metadata::STILL_TYPE_NORMAL:
-        case mediamosa_asset_mediafile_metadata::STILL_TYPE_SECOND:
-        case mediamosa_asset_mediafile_metadata::STILL_TYPE_SCENE:
-          $query_data['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_FALSE;
-          break;
-
-        default:
-          $query_data['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_TRUE;
-          break;
-      }
-
-
-
-      $uri = '/scheduler/start_job?';
-      self::mediamosa_messenger_call($uri, $query_data);
+  public static function rmq_send($job, $job_type = '') {
+    try {
+      $rmq_connection = self::rmq_open_connection();
+    } catch (Exception $e) {
+      echo "Wrong!";
     }
+
+    $rmq_connection['channel']->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $rmq_connection['channel']->queue_declare($job_type, false, true, false, false);
+    $rmq_connection['channel']->queue_bind($job_type, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
+
+    $msg = new AMQPMessage(
+      serialize($job),
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    $rmq_connection['channel']->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
+
+    mediamosa_debug::log('Legacy code sent to queue: ' . $job_type . ' this job: ', array(), 'T - RMQ');
+    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - RMQ');
+//
+    self::rmq_close_connection($rmq_connection);
+    mediamosa_debug::log('4 triggered', array(), 'T - RMQ');
+  }
+
+  public static function rmq_open_connection() {
+
+    $host = variable_get('mediamosa_scheduler_host', 'localhost');
+    $port = variable_get('mediamosa_scheduler_port', 5672);
+    $username = variable_get('mediamosa_scheduler_username', 'guest');
+    $password = variable_get('mediamosa_scheduler_password', 'guest');
+
+      $connection = new AMQPStreamConnection($host, $port, $username, $password);
+      $channel = $connection->channel();
+//      var_dump($channel);
+
+    //return;
+
+    $rmq_connection = [
+      'channel' => $channel,
+      'connection' => $connection
+    ];
+
+    return $rmq_connection;
+  }
+
+  public static function rmq_close_connection($rmq_connection) {
+    $rmq_connection['channel']->close();
+    $rmq_connection['connection']->close();
   }
 
   private static function mediamosa_messenger_call($uri, array $query_data = array()) {
@@ -1309,6 +1404,8 @@ class mediamosa_job {
         ->fields($fields)
         ->condition(mediamosa_job_db::ID, $job_ext[mediamosa_job_db::ID])
         ->execute();
+
+//      mediamosa_job::check_send();
 
       // Trigger url.
       self::notify_transcoding($current_status, $status, $job_ext[mediamosa_job_db::ID]);

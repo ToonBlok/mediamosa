@@ -7,6 +7,7 @@
  */
 function mediamosa_messenger_cron() {
   mediamosa_messenger_call_guardian();
+  mediamosa_job_scheduler::parse_queue();
 }
 
 /**
@@ -53,6 +54,48 @@ function mediamosa_messenger_call($uri, array $query_data = array()) {
     mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
   } else {
     mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
+  }
+}
+
+function mediamosa_messenger_check_transcode_timeout() {
+
+  $result = mediamosa_db::db_query(
+    'SELECT mj.#job_id, mj.#asset_id, mj.#mediafile_id, ms.#uri FROM {#mediamosa_job} AS mj
+        JOIN {#mediamosa_server_job} AS msj ON msj.#job_id = mj.#job_id
+        JOIN {#mediamosa_server} AS ms ON ms.#nid = msj.#server_id
+        WHERE NOT mj.#started IS NULL AND TIME_TO_SEC(TIMEDIFF(utc_timestamp(), mj.#started)) > :JOB_TRANSCODE_TIMEOUT AND #server_type = :server_type_job_processor',
+    array(
+      '#job_id' => mediamosa_job_db::ID,
+      '#asset_id' => mediamosa_job_db::ASSET_ID,
+      '#mediafile_id' => mediamosa_job_db::MEDIAFILE_ID,
+      '#uri' => mediamosa_server_db::SERVER_URI,
+      ':JOB_TRANSCODE_TIMEOUT' => mediamosa_settings::JOB_TRANSCODE_TIMEOUT,
+      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME,
+      '#mediamosa_server_job' => mediamosa_server_job_db::TABLE_NAME,
+      '#mediamosa_server' => mediamosa_server_db::TABLE_NAME,
+      '#nid' => mediamosa_server_db::NID,
+      '#server_id' => mediamosa_server_job_db::SERVER_ID,
+      '#server_type' => mediamosa_server_db::SERVER_TYPE,
+      ':server_type_job_processor' => mediamosa_server_db::SERVER_TYPE_JOB_PROCESSOR,
+      '#started' => mediamosa_job_db::STARTED,
+    )
+  );
+
+  foreach ($result as $result_row) {
+    // Delete the job from the server job table.
+    mediamosa_server_job::delete_by_jobid($result_row[mediamosa_job_db::ID]);
+
+    // Update the status of the job.
+    $error_message = mediamosa_error::error_code_find_description(mediamosa_error::ERRORCODE_JOB_TRANSCODE_TIMEOUT, array('@timeout' => mediamosa_settings::JOB_TRANSCODE_TIMEOUT));
+
+    // Get the status.
+    $job = mediamosa_job::get($result_row[mediamosa_job_db::ID], array(mediamosa_job_db::JOB_STATUS));
+    $status = $job[mediamosa_job_db::JOB_STATUS];
+    // Has to go like this, we cannot call the scheduler update code directly.
+    // Alternative is writing "error" to this jobs contents so that the jobcore loop can return that status to the scheduler and let it handle setting the job on finished or failed.
+    mediamosa_job::set_job_status_failed($result_row[mediamosa_job_db::ID], $error_message, $status);
+
+    mediamosa_job_scheduler::log_mediafile($result_row[mediamosa_job_db::MEDIAFILE_ID], 'Transcode job was deleted because of timeout, job_id: @job_id', array('@job_id' => $result_row[mediamosa_job_db::ID]), $result_row[mediamosa_job_db::ASSET_ID]);
   }
 }
 
