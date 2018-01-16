@@ -846,17 +846,18 @@ class mediamosa_job {
 
     // Get all jobs that belong to this asset, do min() or asc to get the job with the lowest id (the first) (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
 //    $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+//      ->fields('mj')
 //      ->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])
-//      ->orderBy('b.region', 'ASC')
-//      ->countQuery()
+//      ->orderBy('mj.job_id', 'ASC')
 //      ->execute()
-//      ->fetchField();    //
+//      ->fetchAssoc();    //
 //    mediamosa_debug::log('$jobs from new query:', array(), 'T - JAN15');
 //    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
     // ...
     // ...
     // ...
 
+//    return;
 
 
     $count = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])->countQuery()->execute()->fetchField();
