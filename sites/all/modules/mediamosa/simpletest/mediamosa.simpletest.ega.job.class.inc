@@ -218,7 +218,6 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
 
     $this->messenger_log('unit_test_prefix', $this->unit_test_prefix);
 
-    mediamosa_debug::log('[STEP1] Initial server setup with: ' . $this->unit_test_prefix, array(), 'T - MISC2');
 
     for ($i = 0; $i < count($core_types); $i++) {
       $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
@@ -228,7 +227,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       $query_data[mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
       $query_data[mediamosa_messenger_jobcore::CORE_TYPE] = $core_type;
 
-      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - MISC');
+      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - UT');
 
       $uri = 'guardian/check';
 
@@ -305,19 +304,15 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $this->channel->queue_declare($queue_keepalive_server_guardian, false, true, false, false);
     $this->channel->queue_bind($queue_keepalive_server_guardian, 'jobs', $queue_keepalive_server_guardian);
 
-    mediamosa_debug::log('Checked in queue: ' . $queue_keepalive_server_guardian, array(), 'T - UT');
 
     $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
     if (!is_null($rmq_msg)) {
       $msg = unserialize($rmq_msg->body);
       $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
 
-      mediamosa_debug::log('Message received: ', array(), 'T - UT');
-      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ');
       return TRUE;
     }
 
-    mediamosa_debug::log('No message received: ', array(), 'T - UT');
 
     return FALSE;
   }

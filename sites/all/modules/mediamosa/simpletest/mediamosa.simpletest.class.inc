@@ -609,7 +609,6 @@ class MediaMosaTestCase extends DrupalWebTestCase {
     if (!empty($test_info['test_run_id'])) {
       $options['headers']['User-Agent'] = drupal_generate_test_ua($test_info['test_run_id']);
     }
-    mediamosa_debug::log('[UT] ' . $uri. ', UA: ' . $options['headers']['User-Agent'], array(), 'T - UT');
 
     $result = $this->curlExec($curl_opts);
 

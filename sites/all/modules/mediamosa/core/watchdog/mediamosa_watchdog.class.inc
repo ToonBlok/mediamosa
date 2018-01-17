@@ -130,14 +130,20 @@ class mediamosa_watchdog {
       ->condition('wid', $wid)
       ->execute();
 
-    // Insert the assset_id.
-    return mediamosa_db::db_insert(mediamosa_watchdog_db::TABLE_NAME)
-      ->fields(array(
+    $fields = array(
         mediamosa_watchdog_db::ID => $wid,
         mediamosa_watchdog_db::ASSET_ID => $asset_id,
         mediamosa_watchdog_db::MEDIAFILE_ID => $mediafile_id,
+      );
+
+    return mediamosa_db::db_merge(mediamosa_watchdog_db::TABLE_NAME)
+      ->key(array(
+        mediamosa_watchdog_db::ID => $wid,
       ))
+      ->fields($fields)
+      ->updateFields($fields)
       ->execute();
+
   }
 
   /**

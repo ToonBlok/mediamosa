@@ -105,8 +105,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
       mediamosa_debug::log($queue_keepalive_server . ' has never started yet', array(), 'Tg - ' . $queue_keepalive_server);
       $this->variable_set($drush_var, $time_now);
 
-      mediamosa_debug::log('$core_type in peek():', array(), 'T - UT');
-      mediamosa_debug::log($core_type, array(), 'T - UT');
 
       if ($core_type == self::CORE_SCHEDULER) {
         exec('Scheduler boot command given with following var >> /home/tony/test.txt');
@@ -187,7 +185,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   }
 
   function mediamosa_messenger_start_scheduler($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
-    mediamosa_debug::log('Scheduler boot command given!!', array(), 'T - JAN10');
     $uri = '/scheduler/start?';
 
     $query_data = [
@@ -202,7 +199,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   }
 
   function mediamosa_messenger_start_jobcore($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
-    mediamosa_debug::log($core_type . ' boot command given!!', array(), 'T - JAN10');
     $uri = '/jobcore/start?';
 
     $query_data = [
@@ -212,8 +208,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
       mediamosa_messenger_jobcore::CORE_TYPE => $core_type,
     ];
 
-    mediamosa_debug::log('$query_data:', array(), 'T - MISC');
-    mediamosa_debug::log_export($query_data, WATCHDOG_NOTICE, 'T - MISC');
 
 
     $this->mediamosa_messenger_call($uri, $query_data);

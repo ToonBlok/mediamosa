@@ -439,6 +439,9 @@ class mediamosa_rest_call_asset_mediafile_upload extends mediamosa_rest_call {
       }
     }
     catch (Exception $e) {
+      mediamosa_debug::log_export($e->getTrace());
+
+
       if ($this->isset_param(self::REDIRECT_URI)) {
         // Any errors need to be redirected.
         throw new mediamosa_exception_redirect_and_exit($this->get_param_value(self::REDIRECT_URI), $e->getCode(), $e->getMessage());
