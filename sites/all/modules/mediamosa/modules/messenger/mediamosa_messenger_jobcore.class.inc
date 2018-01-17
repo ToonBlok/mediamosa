@@ -127,23 +127,23 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
         $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
 
+        $this->start_job($job);
 
-        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
-          // Resume job
-          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
-          $this->loop($job);
-        } else {
-//        if (isset($job['test_run_id'])) {
-//          // forgot to switch back too after this
-////          try {
-////            $this->switch_db($job['test_run_id']);
-////          } catch (Exception $e) {
-////            mediamosa_debug::log('.', array(), 'T - ERROR');
-////          }
-////          unset($job['test_run_id']);
+//        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+//          // Resume job
+//          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
+//          $this->loop($job);
+//        } else {
+////        if (isset($job['test_run_id'])) {
+////          // forgot to switch back too after this
+//////          try {
+//////            $this->switch_db($job['test_run_id']);
+//////          } catch (Exception $e) {
+//////            mediamosa_debug::log('.', array(), 'T - ERROR');
+//////          }
+//////          unset($job['test_run_id']);
+////        }
 //        }
-          $this->start_job($job);
-        }
 
       }
 

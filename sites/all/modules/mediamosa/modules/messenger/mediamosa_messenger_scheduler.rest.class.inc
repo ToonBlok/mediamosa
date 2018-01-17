@@ -589,33 +589,65 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       // [] Chosen job must be waiting status
       // []
 
-//      if ($job_status == mediamosa_job_db::JOB_STATUS_FINISHED) {
-//
-//        $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
-//          ->fields('mj')
-//          ->condition(mediamosa_job_db::ASSET_ID, $fields[mediamosa_job_db::ASSET_ID])
-//          ->orderBy('mj.job_id', 'ASC')
-//          ->execute()
-//          ->fetchAll();    // Hoe all krijgen?
-//        mediamosa_debug::log(':: :: ::', array(), 'T - JAN15');
-//        mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
-//        $next_job_id = $job_id + 1;
-//        $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
-//        unset($next_job['app_id']); // Isnt this needed for store_new_mediafile after transcode completion??? Why does it work even if I comment this?
-//
-//        // this if gives problems
-//        //if (!empty($next_job)){
-//        mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
-//        mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-//        $next_job += array(
-//          'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
-//        );
-//        $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
-//
-//        $this->process_next_job($next_job);
-//        //}
-//
-//      }
+      if ($job_status == mediamosa_job_db::JOB_STATUS_FINISHED) {
+
+        $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+          ->fields('mj')
+          ->condition(mediamosa_job_db::ASSET_ID, $job[mediamosa_job_db::ASSET_ID])
+          ->orderBy('mj.job_id', 'ASC')
+          ->execute()
+          ->fetchAll();    // Hoe all krijgen?
+
+
+        // If no job is already in progress
+        $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+          ->fields('mj')
+          ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+          ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+          ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_INPROGRESS)
+          ->orderBy('mj.job_id', 'ASC')
+          ->countQuery()
+          ->execute()
+          ->fetchField();
+        mediamosa_debug::log(microtime(TRUE) . ' - Count jobs INPROGRESS: ' . $count_jobs_in_progress, array(), 'T - MISC');
+
+        if ($count_jobs_in_progress == 0) {
+          $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+            ->fields('mj')
+            ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+            ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+            ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
+            ->orderBy('mj.job_id', 'ASC')
+            ->execute()
+            ->fetchAssoc();    //
+
+          if (!empty($job)  ) {
+
+
+
+
+
+
+
+        mediamosa_debug::log(':: :: ::', array(), 'T - JAN15');
+        mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
+        $next_job_id = $job_id + 1;
+        $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+        unset($next_job['app_id']); // Isnt this needed for store_new_mediafile after transcode completion??? Why does it work even if I comment this?
+
+        // this if gives problems
+        //if (!empty($next_job)){
+        mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
+        mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
+        $next_job += array(
+          'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
+        );
+        $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
+
+        $this->process_next_job($next_job);
+        //}
+
+      }
 
     }
   }
@@ -1285,9 +1317,18 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
       // Kill
       if ((isset($msg['msg_type']) and ($msg['msg_type'] == 'KILL'))) {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
-      } elseif ($msg[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_WAITING) {
+      }
+
+//      if ($msg[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_WAITING) {
+
+      // If the message has this array that means its an update message
+      if (isset($msg['new_job_status'])) {
+        $this->update_progression($msg);
+      } else {
         mediamosa_debug::log('This job arrived in the scheduler:', array(), 'T - MISC');
         mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
+
+        // Move to a "process" job kind of function
         if ($msg[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_STILL) {
           $msg = $this->enrich_job($msg);
 
@@ -1295,12 +1336,12 @@ class mediamosa_scheduler_start extends mediamosa_scheduler {
           mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
           $this->rmq_send($msg);
-        } else if ($msg[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_ANALYSE) {
-          $this->rmq_send($msg);
         }
-      } else {
-        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-        $this->update_progression($msg);
+
+//        else if ($msg[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_ANALYSE) {
+//          $this->rmq_send($msg);
+//        }
+
       }
 
 
