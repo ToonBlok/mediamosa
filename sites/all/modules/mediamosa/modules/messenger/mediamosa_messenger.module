@@ -8,32 +8,19 @@
 function mediamosa_messenger_cron() {
   mediamosa_messenger_call_guardian();
   mediamosa_job_scheduler::parse_queue();
-
-//  $asset_id = "Y1NbVAcVNCebBpmcRQiS8CT7";
 //
-//  $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+//  $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
 //    ->fields('mj')
-//    ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+//    ->condition(mediamosa_job_db::ASSET_ID, 'J2QwJeqplWbXgJeyOC6sci82')
+//    ->condition(mediamosa_job_db::ID, 57, '>')
 //    ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
-//    ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_INPROGRESS)
+//    ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
 //    ->orderBy('mj.job_id', 'ASC')
-//    ->countQuery()
 //    ->execute()
-//    ->fetchField();
+//    ->fetchAssoc();    //
 //
-//  if ($count_jobs_in_progress == 0) {
-//    $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
-//      ->fields('mj')
-//      ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
-//      ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
-//      ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
-//      ->orderBy('mj.job_id', 'ASC')
-//      ->execute()
-//      ->fetchAssoc();    //
-//  }
-//
-////  mediamosa_debug::log_export($count_jobs_in_progress, WATCHDOG_NOTICE, 'T - MYSTERY');
-//  mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MYSTERY');
+//    mediamosa_debug::log('$job:', array(), 'T - ABC');
+//    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - ABC');
 }
 
 /**

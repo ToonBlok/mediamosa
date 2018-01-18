@@ -896,13 +896,15 @@ class mediamosa_job {
 //          $job[mediamosa_job_db::JOB_TYPE] = $unit_test_prefix . $job[mediamosa_job_db::JOB_TYPE];
 
           $msg = [
-            'MSG_ID' => 0,
+            'MSG_ID' => variable_get('alive_message_unique_id', 1),
             'MSG_TYPE' => 'START_JOB',
             'QUEUE' => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
             'TIMESTAMP' => microtime(TRUE),
             'UNIT_TEST_PREFIX' => $unit_test_prefix,
             'DATA' => $job
           ];
+
+          variable_set("alive_message_unique_id", $msg['MSG_ID']++);
 
           self::rmq_send($msg, $msg['QUEUE']);
         } catch (Exception $e) {

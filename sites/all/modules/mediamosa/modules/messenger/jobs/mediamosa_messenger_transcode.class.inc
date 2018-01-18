@@ -3,10 +3,10 @@
 class transcode
 {
   function start($job){
-    mediamosa_debug::log('Transcode for job ' . $job[mediamosa_job_db::ID] . ' started.', array(), 'T - TRANSCODE');
-    mediamosa_debug::log('$job:', array(), 'T - TRANSCODE');
+    mediamosa_debug::log('$job arrived in transcode class:', array(), 'T - TRANSCODE');
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - TRANSCODE');
-    $execution_string = $this->generate_transcode_exec($job['job_id'], $job['mediafile_id'], unserialize($job['transcode_parameters']));
+
+    $execution_string = $this->generate_transcode_exec($job[mediamosa_job_db::ID], $job[mediamosa_job_db::MEDIAFILE_ID], $job['transcode_parameters']);
     mediamosa_debug::log('$execution_string for job ' . $job[mediamosa_job_db::ID] , array(), 'T - TRANSCODE');
     mediamosa_debug::log_export($execution_string, WATCHDOG_NOTICE, 'T - TRANSCODE' );
 

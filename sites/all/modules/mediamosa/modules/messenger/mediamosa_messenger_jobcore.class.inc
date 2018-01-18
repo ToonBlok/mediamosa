@@ -320,20 +320,35 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     $time_loop_started = microtime(TRUE);
     $time_last_peeked = microtime(TRUE);
 
+    $unit_test_prefix = '';
+    if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+    }
+
+    $msg = [
+      "MSG_ID" => variable_get("alive_message_unique_id", 1),
+      'MSG_TYPE' => 'PROGRESSION',
+      'QUEUE' => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
+      'TIMESTAMP' => microtime(TRUE),
+      'UNIT_TEST_PREFIX' => $unit_test_prefix,
+      'DATA' => $job
+    ];
+
+    variable_set("alive_message_unique_id", $msg['MSG_ID']++);
+
     while(TRUE) {
-      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+      $msg['DATA']['new_job_status'] = mediamosa_job_server::get_status_contents($msg['DATA'][mediamosa_job_db::ID]);
 
-      mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] '. $job['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+      mediamosa_debug::log_export('[' . $msg['DATA'][mediamosa_job_db::ID] . '] '. $msg['DATA']['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
 
-      $this->send($job, $this->get_scheduler_queue());
+      $this->send($msg, $msg['QUEUE']);
 
       $time_now = microtime(TRUE);
 
       if (($time_loop_started + 172800) < ($time_now)) { // Set job on failed every two days.
-        $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-        $job['new_job_status']['Status'] = 'error';
-        $this->send($job, mediamosa_scheduler::QUEUE_NAME); /// WRONG QUEUE
-//        $this->unswitch_db();
+        $msg['DATA']['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
+        $msg['DATA']['new_job_status']['Status'] = 'error';
+        $this->send($msg, $msg['QUEUE']);
         break;
       } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
         $this->peek();
@@ -341,10 +356,15 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         // reset
         $time_last_peeked = $time_now;
       }
-      if ($job['new_job_status']['Status'] == 'done') { // If job is done and we have sent the final progression message, break out of the while loop.
+      if ($msg['DATA']['new_job_status']['Status'] == 'done') { // If job is done and we have sent the final progression message, break out of the while loop.
 
-        mediamosa_debug::log_export('[' . $job[mediamosa_job_db::ID] . '] done at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
-        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - LOOP');
+        mediamosa_debug::log_export('[' . $msg['DATA'][mediamosa_job_db::ID] . '] done at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+        mediamosa_debug::log_export($msg['DATA'], WATCHDOG_NOTICE, 'T - LOOP');
+        break;
+      } elseif ($msg['DATA']['new_job_status']['Status'] == 'error') { // If job is done and we have sent the final progression message, break out of the while loop.
+
+        mediamosa_debug::log_export('[' . $msg['DATA'][mediamosa_job_db::ID] . '] failed at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
+        mediamosa_debug::log_export($msg['DATA'], WATCHDOG_NOTICE, 'T - LOOP');
         break;
       }
 
