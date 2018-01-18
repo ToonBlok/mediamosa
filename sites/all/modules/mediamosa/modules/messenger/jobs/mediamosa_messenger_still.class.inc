@@ -4,6 +4,7 @@ class still
 {
 
   function start($job) {
+
     mediamosa_debug::log('Job arrived in still class:', array(), 'T - 999');
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 999');
     $execution_string = $this->generate_still_exec($job);

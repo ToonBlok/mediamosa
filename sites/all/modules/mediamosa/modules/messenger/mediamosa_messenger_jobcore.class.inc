@@ -115,41 +115,47 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
      *   RabbitMQ message received from the server.
      *
      */
-    $callback = function($msg){
-      $job = unserialize($msg->body);
+    $callback = function($rmq_msg){
+      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
 
-      // Kill
-      if ((isset($job['msg_type']) and $job['msg_type'] == 'KILL')) {
-        $this->channel->basic_cancel($msg->delivery_info['consumer_tag']);
+      $msg = unserialize($rmq_msg->body);
+
+      mediamosa_debug::log('Msg received:', array(), 'T - ' . $this->core_type);
+      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ' . $this->core_type);
+
+      if ($msg['MSG_TYPE'] == 'KILL') {
+        $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
       } else {
-//      echo ' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'] . "\n";
-        mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
-
-        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-
+        $job = $msg['DATA'];
         $this->start_job($job);
-
-//        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
-//          // Resume job
-//          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
-//          $this->loop($job);
-//        } else {
-////        if (isset($job['test_run_id'])) {
-////          // forgot to switch back too after this
-//////          try {
-//////            $this->switch_db($job['test_run_id']);
-//////          } catch (Exception $e) {
-//////            mediamosa_debug::log('.', array(), 'T - ERROR');
-//////          }
-//////          unset($job['test_run_id']);
-////        }
-//        }
-
       }
 
+//      // Kill
+//        mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
+//
+//        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
+//
+//        $this->start_job($job);
+//
+////        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+////          // Resume job
+////          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
+////          $this->loop($job);
+////        } else {
+//////        if (isset($job['test_run_id'])) {
+//////          // forgot to switch back too after this
+////////          try {
+////////            $this->switch_db($job['test_run_id']);
+////////          } catch (Exception $e) {
+////////            mediamosa_debug::log('.', array(), 'T - ERROR');
+////////          }
+////////          unset($job['test_run_id']);
+//////        }
+////        }
+//
+//      }
 
-      echo ' [x] Done', "\n";
-      $msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
+
 
     };
 
@@ -257,6 +263,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 //  }
 
   function start_job($job){
+
     switch ($this->core_type) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYSE started.', array(), 'T - ANALYZE');
@@ -273,6 +280,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         $this->loop($job);
         break;
     }
+
   }
 
   function resume_job($job){

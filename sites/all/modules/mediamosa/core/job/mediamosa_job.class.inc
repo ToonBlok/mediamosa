@@ -887,7 +887,24 @@ class mediamosa_job {
           $job = self::get_job_ext($job[mediamosa_job_db::ID]);
           mediamosa_debug::log('$job after updating and retrieving:', array(), 'T - MISC');
           mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-          self::rmq_send($job, $job[mediamosa_job_db::JOB_TYPE]);
+
+
+          $unit_test_prefix = '';
+          if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
+            $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+          }
+//          $job[mediamosa_job_db::JOB_TYPE] = $unit_test_prefix . $job[mediamosa_job_db::JOB_TYPE];
+
+          $msg = [
+            'MSG_ID' => 0,
+            'MSG_TYPE' => 'START_JOB',
+            'QUEUE' => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
+            'TIMESTAMP' => microtime(TRUE),
+            'UNIT_TEST_PREFIX' => $unit_test_prefix,
+            'DATA' => $job
+          ];
+
+          self::rmq_send($msg, $msg['QUEUE']);
         } catch (Exception $e) {
           mediamosa_debug::log($e, array(), 'T - MISC');
         }
@@ -899,22 +916,22 @@ class mediamosa_job {
 
   }
 
-  public static function rmq_send($job, $job_type = '') {
+  public static function rmq_send($msg, $queue = '') {
     $rmq_connection = self::rmq_open_connection();
 
     $rmq_connection['channel']->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $rmq_connection['channel']->queue_declare($job_type, false, true, false, false);
-    $rmq_connection['channel']->queue_bind($job_type, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
+    $rmq_connection['channel']->queue_declare($queue, false, true, false, false);
+    $rmq_connection['channel']->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
-    $msg = new AMQPMessage(
-      serialize($job),
+    $rmq_msg = new AMQPMessage(
+      serialize($msg),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $rmq_connection['channel']->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
+    $rmq_connection['channel']->basic_publish($rmq_msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
-    mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $job_type . ' this job: ', array(), 'T - RMQ');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - RMQ');
+    mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $queue . ' this job: ', array(), 'T - RMQ');
+    mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 //
     self::rmq_close_connection($rmq_connection);
   }

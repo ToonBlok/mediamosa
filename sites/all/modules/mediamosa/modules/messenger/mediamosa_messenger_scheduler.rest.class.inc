@@ -17,20 +17,20 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   protected $connection;
   const QUEUE_NAME = 'SCHEDULER';
 
-  public function rmq_send($job)
+  public function rmq_send($msg, $queue)
   {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
 
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($job['job_type'], false, true, false, false);
-    $this->channel->queue_bind($job['job_type'], mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
     $msg = new AMQPMessage(
-      serialize($job),
+      serialize($msg),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job['job_type']);
+    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
   }
 
@@ -433,6 +433,83 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     return mediamosa_job_server_db::JOB_STATUS_FINISHED;
   }
 
+  function enrich_job($job) {
+
+    $still_parameters = unserialize($job[mediamosa_job_db::STILL_PARAMETERS]);
+    mediamosa_debug::log('Before enrichment:', array(), 'T - 999');
+    mediamosa_debug::log_export($still_parameters, WATCHDOG_NOTICE, 'T - 999');
+
+    $job += array(
+      'blackstill_check' => '',
+      'asset_link' => ''
+    );
+
+
+    switch ($still_parameters['still_type']) {
+      case mediamosa_asset_mediafile_metadata::STILL_TYPE_NORMAL:
+      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SECOND:
+      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SCENE:
+        $job['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_FALSE;
+        break;
+
+      default:
+        $job['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_TRUE;
+        break;
+    }
+
+    $job['asset_link'] = $this->get_asset_link($job['job_id']);
+    mediamosa_debug::log('$job[asset_link]:', array(), 'T - 999');
+    mediamosa_debug::log_export($job['asset_link'], WATCHDOG_NOTICE, 'T - 999');
+
+
+    if (empty($job['blackstill_check'])) {
+      // Something went wrong, we cannot proceed
+    }
+
+    if (empty($job['asset_link'])) {
+      // Something went wrong, we cannot proceed
+    }
+
+    // We still dont have fps and video duration:
+    $a_mediafile = mediamosa_asset_mediafile_metadata::get_with_mediafileid($job[mediamosa_job_db::MEDIAFILE_ID], array(
+      array(
+        'prop_name' => mediamosa_asset_mediafile_metadata::FILE_DURATION,
+        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
+      ),
+      array(
+        'prop_name' => mediamosa_asset_mediafile_metadata::FPS,
+        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
+      ),
+    ));
+    $actual_duration = $a_mediafile[mediamosa_asset_mediafile_metadata::FILE_DURATION];
+    $fps = $a_mediafile[mediamosa_asset_mediafile_metadata::FPS];
+    $video_duration = 0;
+    if ($actual_duration && $actual_duration != '') {
+      // Remove the ms from time.
+      $actual_duration = mediamosa_unicode::substr($actual_duration, 0, 8);
+      @list($uren, $minuten, $seconden) = explode(':', $actual_duration, 3);
+      $video_duration = (($uren * 3600) + ($minuten * 60) + $seconden);
+      if ($video_duration < $still_parameters['frametime']) {
+        // If the video duration is less than still picture time, we decrease
+        // the still picture time to half of video duration.
+        $still_parameters['frametime'] = ($video_duration >> 1);
+      }
+    }
+
+    $still_parameters += array(
+      "fps" => $fps,
+      "video_duration" => $video_duration
+    );
+
+    mediamosa_debug::log('After enrichment:', array(), 'T - 999');
+    mediamosa_debug::log_export($still_parameters, WATCHDOG_NOTICE, 'T - 999');
+
+    $job[mediamosa_job_db::STILL_PARAMETERS] = serialize($still_parameters);
+
+
+    return $job;
+  }
+
   /**
    * Process the data from a still job.
    *
@@ -578,61 +655,61 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       // []
 
       if ($job_status == mediamosa_job_db::JOB_STATUS_FINISHED) {
+////
+////        $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+////          ->fields('mj')
+////          ->condition(mediamosa_job_db::ASSET_ID, $job[mediamosa_job_db::ASSET_ID])
+////          ->orderBy('mj.job_id', 'ASC')
+////          ->execute()
+////          ->fetchAll();    // Hoe all krijgen?
 //
-//        $jobs = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+//
+//        // If no job is already in progress
+//        $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
 //          ->fields('mj')
-//          ->condition(mediamosa_job_db::ASSET_ID, $job[mediamosa_job_db::ASSET_ID])
+//          ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+//          ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+//          ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_INPROGRESS)
 //          ->orderBy('mj.job_id', 'ASC')
+//          ->countQuery()
 //          ->execute()
-//          ->fetchAll();    // Hoe all krijgen?
-
-
-        // If no job is already in progress
-        $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
-          ->fields('mj')
-          ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
-          ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
-          ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_INPROGRESS)
-          ->orderBy('mj.job_id', 'ASC')
-          ->countQuery()
-          ->execute()
-          ->fetchField();
-        mediamosa_debug::log(microtime(TRUE) . ' - Count jobs INPROGRESS: ' . $count_jobs_in_progress, array(), 'T - MISC');
-
-        if ($count_jobs_in_progress == 0) {
-          $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
-            ->fields('mj')
-            ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
-            ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
-            ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
-            ->orderBy('mj.job_id', 'ASC')
-            ->execute()
-            ->fetchAssoc();    //
-
-          if (!empty($job)) {
-
-
-            mediamosa_debug::log(':: :: ::', array(), 'T - JAN15');
-            mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
-            $next_job_id = $job_id + 1;
-            $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
-            unset($next_job['app_id']); // Isnt this needed for store_new_mediafile after transcode completion??? Why does it work even if I comment this?
-
-            // this if gives problems
-            //if (!empty($next_job)){
-            mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
-            mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-            $next_job += array(
-              'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
-            );
-            $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
-
-            $this->process_next_job($next_job);
-            //}
-
-          }
-
-        }
+//          ->fetchField();
+//        mediamosa_debug::log(microtime(TRUE) . ' - Count jobs INPROGRESS: ' . $count_jobs_in_progress, array(), 'T - MISC');
+//
+//        if ($count_jobs_in_progress == 0) {
+//          $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
+//            ->fields('mj')
+//            ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
+//            ->condition(mediamosa_job_db::JOB_TYPE, mediamosa_job_db::JOB_TYPE_UPLOAD, '!=')
+//            ->condition(mediamosa_job_db::JOB_STATUS, mediamosa_job_db::JOB_STATUS_WAITING)
+//            ->orderBy('mj.job_id', 'ASC')
+//            ->execute()
+//            ->fetchAssoc();    //
+//
+//          if (!empty($job)) {
+//
+//
+//            mediamosa_debug::log(':: :: ::', array(), 'T - JAN15');
+//            mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - JAN15');
+//            $next_job_id = $job_id + 1;
+//            $next_job = $this->get_job_where($next_job_id, $job[mediamosa_job_db::ASSET_ID]);
+//            unset($next_job['app_id']); // Isnt this needed for store_new_mediafile after transcode completion??? Why does it work even if I comment this?
+//
+//            // this if gives problems
+//            //if (!empty($next_job)){
+//            mediamosa_debug::log('[' . $next_job[mediamosa_job_db::ID] . '] $next_job: ', array(), 'T - SCHEDULER');
+//            mediamosa_debug::log_export($next_job, WATCHDOG_NOTICE, 'T - SCHEDULER');
+//            $next_job += array(
+//              'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
+//            );
+//            $this->variable_set("alive_message_unique_id", $job['MSG_ID'] + 1);
+//
+//            $this->process_next_job($next_job);
+//            //}
+//
+//          }
+//
+//        }
       }
     }
   }
@@ -1189,86 +1266,21 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
   }
 
 
-  function check_resume_jobs() {
-    // Get jobs that are in progress
-    $jobs = $this->get_inprogress_jobs();
-    mediamosa_debug::log('Rounding up INPROGRESS jobs', array(), 'T - SCHEDULER');
-    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - SCHEDULER');
+//  function check_resume_jobs() {
+//    // Get jobs that are in progress
+//    $jobs = $this->get_inprogress_jobs();
+//    mediamosa_debug::log('Rounding up INPROGRESS jobs', array(), 'T - SCHEDULER');
+//    mediamosa_debug::log_export($jobs, WATCHDOG_NOTICE, 'T - SCHEDULER');
+//
+//    if (!empty($jobs)) {
+//      $this->rmq_open_connection();
+//      foreach ($jobs as $job) {
+//        $this->rmq_send($job);
+//      }
+//      $this->rmq_close_connection();
+//    }
+//  }
 
-    if (!empty($jobs)) {
-      $this->rmq_open_connection();
-      foreach ($jobs as $job) {
-        $this->rmq_send($job);
-      }
-      $this->rmq_close_connection();
-    }
-  }
-
-  function enrich_job($job) {
-
-    $still_parameters = unserialize($job[mediamosa_job_db::STILL_PARAMETERS]);
-    mediamosa_debug::log('Before enrichment:', array(), 'T - 999');
-    mediamosa_debug::log_export($still_parameters, WATCHDOG_NOTICE, 'T - 999');
-
-    switch ($still_parameters['still_type']) {
-      case mediamosa_asset_mediafile_metadata::STILL_TYPE_NORMAL:
-      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SECOND:
-      case mediamosa_asset_mediafile_metadata::STILL_TYPE_SCENE:
-        $still_parameters += array(
-          "blackstill_check" => mediamosa_job_still_db::BLACKSTILL_CHECK_FALSE
-        );
-        break;
-
-      default:
-        $still_parameters += array(
-          "blackstill_check" => mediamosa_job_still_db::BLACKSTILL_CHECK_TRUE
-        );
-        break;
-    }
-
-    $job['asset_link'] = $this->get_asset_link($job['job_id']);
-    mediamosa_debug::log('$job[asset_link]:', array(), 'T - 999');
-    mediamosa_debug::log_export($job['asset_link'], WATCHDOG_NOTICE, 'T - 999');
-
-    // We still dont have fps and video duration:
-    $a_mediafile = mediamosa_asset_mediafile_metadata::get_with_mediafileid($job[mediamosa_job_db::MEDIAFILE_ID], array(
-      array(
-        'prop_name' => mediamosa_asset_mediafile_metadata::FILE_DURATION,
-        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
-      ),
-      array(
-        'prop_name' => mediamosa_asset_mediafile_metadata::FPS,
-        'type' => mediamosa_asset_mediafile_metadata_property_db::TYPE_CHAR,
-      ),
-    ));
-    $actual_duration = $a_mediafile[mediamosa_asset_mediafile_metadata::FILE_DURATION];
-    $fps = $a_mediafile[mediamosa_asset_mediafile_metadata::FPS];
-    $video_duration = 0;
-    if ($actual_duration && $actual_duration != '') {
-      // Remove the ms from time.
-      $actual_duration = mediamosa_unicode::substr($actual_duration, 0, 8);
-      @list($uren, $minuten, $seconden) = explode(':', $actual_duration, 3);
-      $video_duration = (($uren * 3600) + ($minuten * 60) + $seconden);
-      if ($video_duration < $still_parameters['frametime']) {
-        // If the video duration is less than still picture time, we decrease
-        // the still picture time to half of video duration.
-        $still_parameters['frametime'] = ($video_duration >> 1);
-      }
-    }
-
-    $still_parameters += array(
-      "fps" => $fps,
-      "video_duration" => $video_duration
-    );
-
-    mediamosa_debug::log('After enrichment:', array(), 'T - 999');
-    mediamosa_debug::log_export($still_parameters, WATCHDOG_NOTICE, 'T - 999');
-
-    $job[mediamosa_job_db::STILL_PARAMETERS] = serialize($still_parameters);
-
-
-    return $job;
-  }
 
   function listen($queue) {
     $this->rmq_open_connection();
@@ -1288,12 +1300,12 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
      *
                                                                                                                                        */
     $callback = function ($rmq_msg) {
-      exec('echo callback triggered at `date` >> /home/tony/test.txt');
+
       $msg = unserialize($rmq_msg->body);
-      mediamosa_debug::log($msg['job_id'] . '$callback triggered, $msg:', array(), 'T - SCHEDULER');
+
+      mediamosa_debug::log($msg['MSG_ID'] . ' - $callback triggered, $msg:', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
-      // Kill
       if ((isset($msg['msg_type']) and ($msg['msg_type'] == 'KILL'))) {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
       }
@@ -1301,19 +1313,23 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
       // If the message has this array that means its an update message
       if (isset($msg['new_job_status'])) {
         $this->update_progression($msg);
-      } else {
-        mediamosa_debug::log('This job arrived in the scheduler:', array(), 'T - MISC');
+      }
+
+      if ($msg['MSG_TYPE'] == 'START_JOB') {
+        mediamosa_debug::log('This msg arrived in the scheduler:', array(), 'T - MISC');
         mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
 
-        // Move to a "process" job kind of function
-        if ($msg[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_STILL) {
-          $msg = $this->enrich_job($msg);
+        $job = $msg['DATA'];
+        mediamosa_debug::log('Unpacked job:', array(), 'T - MISC');
+        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
-          mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $msg['job_type'] . ' this job: ', array(), 'T - RMQ');
-          mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
+        $msg['DATA'] = $this->enrich_job($msg['DATA']);
+        $msg['QUEUE'] = $msg['UNIT_TEST_PREFIX'] . $msg['DATA'][mediamosa_job_db::JOB_TYPE];
 
-          $this->rmq_send($msg);
-        }
+        mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $msg['QUEUE'] . ' this job: ', array(), 'T - RMQ');
+        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
+
+        $this->rmq_send($msg, $msg['QUEUE']);
 
 //        else if ($msg[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_ANALYSE) {
 //          $this->rmq_send($msg);
@@ -1346,7 +1362,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
         $job = [
           "job_type" => mediamosa_messenger_jobcore::QUEUE_TESTS
         ];
-        $this->rmq_send($job);
+        $this->rmq_send($job, $job['type']);
       } else {
         mediamosa_debug::log('Scheduler is responding to keepalive message.', array(), 'T - SCHEDULER');
         //$msg->delivery_info['channel']->basic_ack($msg->delivery_info['delivery_tag']);
@@ -1355,7 +1371,7 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
         $update_message['job_type'] = $this->queue_keepalive_server_guardian;
 //      $update_message['job_type'] = 'bla';
 //      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
-        $this->rmq_send($update_message);
+        $this->rmq_send($update_message, $update_message['job_type']);
       }
     };
 
