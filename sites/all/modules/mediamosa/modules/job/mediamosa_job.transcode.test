@@ -73,7 +73,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
   /**
    * Basic job transcode test.
    */
-  public function aatestJobTranscode() {
+  public function testJobTranscode() {
 
     // Create upload file.
     $upload = $this->uploadTestFile(array('filename' => $this->getTestVideo_wmv()));
@@ -101,14 +101,15 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
       "asset_id" => $asset_id,
       "mediafile_id" => $mediafile_id,
     ];
-    //$location = '/scheduler/start_job?' . http_build_query($query_data);
-    // ###########################################
-    $foo = 'start_job REST call with: ';
-    $this->var_export($foo);
-    $this->var_export($query_data['job_type']); // /scheduler/job_start
-    // ###########################################
-    $location = 'scheduler/start_job';
-    $this->restCallGet($location, $query_data);
+
+//    // ###########################################
+//    $foo = 'start_job REST call with: ';
+//    $this->var_export($foo);
+//    $this->var_export($query_data['job_type']); // /scheduler/job_start
+//    // ###########################################
+
+//    $location = 'scheduler/start_job';
+//    $this->restCallGet($location, $query_data);
 
     $this->cycle($query_data[mediamosa_job_db::ID]);
 
@@ -156,7 +157,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
   /**
    * Basic job transcode test.
    */
-  public function testJobTranscodeExtended() {
+  public function aaatestJobTranscodeExtended() {
     // Create upload file.
     $upload = $this->uploadTestFile();
     $asset_id = $upload['asset_id'];

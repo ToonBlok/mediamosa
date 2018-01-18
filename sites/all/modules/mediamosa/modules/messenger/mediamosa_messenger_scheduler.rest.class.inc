@@ -17,6 +17,18 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   protected $connection;
   const QUEUE_NAME = 'SCHEDULER';
 
+  const MSG_KILL = 'KILL';
+  const MSG_JOB = 'JOB';
+  const MSG_START_JOB = 'START_JOB';
+  const MSG_PROGRESSION = 'PROGRESSION';
+
+  const MSG_ID = 'MSG_ID';
+  const MSG_TYPE = 'MSG_TYPE';
+  const QUEUE = 'QUEUE';
+  const TIMESTAMP = 'TIMESTAMP';
+  const UNIT_TEST_PREFIX = 'UNIT_TEST_PREFIX';
+  const DATA = 'DATA';
+
   public function rmq_send($msg, $queue)
   {
     mediamosa_debug::log('Entered send()', array(), 'T - SCHEDULER');
@@ -977,25 +989,20 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
   // Toon: Is modelled exactly after the real method
   function get_job_parameters($job) {
-    $job_id = $job['job_id'];
-    $mediafile_id = $job['mediafile_id'];
-    $job_type = $job['job_type'];
+    $job_id = $job[mediamosa_job_db::ID];
+    $mediafile_id = $job[mediamosa_job_db::MEDIAFILE_ID];
+    $job_type = $job[mediamosa_job_db::JOB_TYPE];
 
-//    mediamosa_debug::log('Triggered get_job_parameters', array(), 'T - SCHEDULER');
-//    mediamosa_debug::log('$job_id: ' . $job_id, array(), 'T - SCHEDULER');
-//    mediamosa_debug::log('$mediafile_id: ' . $mediafile_id, array(), 'T - SCHEDULER');
-//    mediamosa_debug::log('$job_type: ' . $job_type, array(), 'T - SCHEDULER');
+    mediamosa_debug::log('Triggered get_job_parameters', array(), 'T - SCHEDULER');
+    mediamosa_debug::log('$job_id: ' . $job_id, array(), 'T - SCHEDULER');
+    mediamosa_debug::log('$mediafile_id: ' . $mediafile_id, array(), 'T - SCHEDULER');
+    mediamosa_debug::log('$job_type: ' . $job_type, array(), 'T - SCHEDULER');
 
     $result = array();
 
-    $unit_test_prefix = '';
-    if (mediamosa::in_simpletest_sandbox()) {
-      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
-    }
-
     switch ($job_type) {
 
-      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_TRANSCODE:
+      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         // Get job transcode.
         $job_transcode = mediamosa_job_transcode::get($job_id);
 
@@ -1004,8 +1011,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
         $result['file_extension'] = $job_transcode[mediamosa_job_transcode_db::FILE_EXTENSION];
         $result['command'] = mediamosa_job_scheduler::map_parameters($job_transcode[mediamosa_job_transcode_db::TOOL], $job_transcode[mediamosa_job_transcode_db::COMMAND], $mediafile_id);
 
-//        mediamosa_debug::log('Result:', array(), 'T - SCHEDULER');
-//        mediamosa_debug::log_export($result, WATCHDOG_NOTICE, 'T - SCHEDULER');
+        mediamosa_debug::log('Result:', array(), 'T - SCHEDULER');
+        mediamosa_debug::log_export($result, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
         if ($result['tool'] == NULL) {
           return FALSE;
@@ -1013,7 +1020,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 
         break;
 
-      case $unit_test_prefix . mediamosa_job_db::JOB_TYPE_STILL:
+      case mediamosa_job_db::JOB_TYPE_STILL:
 //        $query_job = mediamosa_job_still::get($job_id);
 //
 //        if ($query_job) {
@@ -1395,8 +1402,9 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
       mediamosa_debug::log($msg['MSG_ID'] . ' - $callback triggered, $msg:', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
-      if ((isset($msg['msg_type']) and ($msg['msg_type'] == 'KILL'))) {
+      if ($msg['MSG_TYPE'] == 'KILL') {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
+        exit(); // Don't know if belongs here
       } else {
         $this->process_msg($msg);
       }

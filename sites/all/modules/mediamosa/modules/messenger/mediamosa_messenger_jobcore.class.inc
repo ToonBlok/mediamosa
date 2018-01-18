@@ -125,6 +125,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
       if ($msg['MSG_TYPE'] == 'KILL') {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
+        exit(); // Don't know if belongs here
       } else {
         $job = $msg['DATA'];
         $this->start_job($job);
@@ -322,7 +323,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
     $unit_test_prefix = '';
     if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
-      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
+      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
     }
 
     $msg = [

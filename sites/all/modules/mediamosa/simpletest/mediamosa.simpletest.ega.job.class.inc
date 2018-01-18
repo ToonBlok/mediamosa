@@ -281,7 +281,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
 
       // Send kill message to cores
       $msg = [
-        'msg_type' => 'KILL'
+        'MSG_TYPE' => 'KILL'
       ];
       $this->rmq_send($msg, $queue);
 
