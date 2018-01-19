@@ -567,8 +567,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
         }
 
         $still_parameters += array(
-          "fps" => $fps,
-          "video_duration" => $video_duration
+          'fps' => $fps,
+          'video_duration' => $video_duration
         );
 
         mediamosa_debug::log('After enrichment:', array(), 'T - 999');
@@ -1321,19 +1321,19 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
       self::VARS => array(
         self::QUEUE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::CORE_TYPE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         )
       )
     );

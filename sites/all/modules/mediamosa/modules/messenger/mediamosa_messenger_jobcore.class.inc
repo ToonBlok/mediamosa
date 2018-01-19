@@ -35,19 +35,19 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       self::VARS => array(
         self::QUEUE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
         self::CORE_TYPE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => "",
+          self::VAR_DESCRIPTION => '',
         ),
       )
     );
@@ -111,7 +111,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     $this->channel->queue_bind($queue, self::EXCHANGE_JOBS, $queue);
     $this->channel->queue_bind($this->queue_keepalive_server, self::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
-    echo ' [*] Waiting for ' . $queue. ' messages. To exit press CTRL+C', "\n";
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $queue);
 
     /**
@@ -193,7 +192,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       mediamosa_debug::log('[' . $msg[mediamosa_messenger_scheduler::MSG_ID] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
-      $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(true);
+      $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(TRUE);
 //      $msg['job_type'] = $this->queue_keepalive_server_guardian;
 
       mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');
