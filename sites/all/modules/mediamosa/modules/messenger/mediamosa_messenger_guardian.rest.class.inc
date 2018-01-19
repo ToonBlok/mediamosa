@@ -71,11 +71,11 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     $this->channel->queue_bind($queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [
-      mediamosa_scheduler::MSG_ID => $this->variable_get("alive_message_unique_id", 1),
-      mediamosa_scheduler::MSG_STATUS => mediamosa_scheduler::SERVER_STATUS_PENDING
+      mediamosa_messenger_scheduler::MSG_ID => $this->variable_get("alive_message_unique_id", 1),
+      mediamosa_messenger_scheduler::MSG_STATUS => mediamosa_messenger_scheduler::SERVER_STATUS_PENDING
     ];
 
-    $this->variable_set("alive_message_unique_id", $alive_message[mediamosa_scheduler::MSG_ID]++);
+    $this->variable_set("alive_message_unique_id", $alive_message[mediamosa_messenger_scheduler::MSG_ID]++);
 
     $msg = new AMQPMessage(
       serialize($alive_message),
@@ -83,7 +83,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     );
 
     $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-    mediamosa_debug::log('[' . $alive_message[mediamosa_scheduler::MSG_ID] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log('[' . $alive_message[mediamosa_messenger_scheduler::MSG_ID] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     $this->rmq_close_connection();
   }
@@ -126,10 +126,10 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
         }
 
         $msg = unserialize($rmq_msg->body);
-        mediamosa_debug::log('[' . $msg[mediamosa_scheduler::MSG_ID] . '] Guardian received a msg with content: ' . serialize($msg[mediamosa_scheduler::MSG_DATA]) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+        mediamosa_debug::log('[' . $msg[mediamosa_messenger_scheduler::MSG_ID] . '] Guardian received a msg with content: ' . serialize($msg[mediamosa_messenger_scheduler::MSG_DATA]) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
         mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
-        $this->mediamosa_messenger_update_time($drush_var, $msg[mediamosa_scheduler::MSG_TIMESTAMP], $queue_keepalive_server);
+        $this->mediamosa_messenger_update_time($drush_var, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP], $queue_keepalive_server);
 
         $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
 

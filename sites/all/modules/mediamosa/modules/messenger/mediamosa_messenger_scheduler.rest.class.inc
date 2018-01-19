@@ -4,7 +4,7 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-abstract class mediamosa_scheduler extends mediamosa_rest_call
+abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
 {
 
   /**
@@ -62,41 +62,41 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 //        $this->update_progression($msg);
 //      }
 
-    if ($msg[self::MSG_TYPE] == 'START_JOB') {
+    if ($msg[self::MSG_TYPE] == self::MSG_START_JOB) {
       mediamosa_debug::log('This msg arrived in the scheduler:', array(), 'T - MISC');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
 
 
-      $job = $msg[mediamosa_scheduler::MSG_DATA];
+      $job = $msg[mediamosa_messenger_scheduler::MSG_DATA];
       mediamosa_debug::log('Unpacked job:', array(), 'T - MISC');
       mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
-      switch ($msg[mediamosa_scheduler::MSG_DATA][mediamosa_job_db::JOB_TYPE]) {
+      switch ($msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::JOB_TYPE]) {
         case mediamosa_job_db::JOB_TYPE_ANALYSE:
-          $msg[mediamosa_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_scheduler::MSG_DATA]);
+          $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
         case mediamosa_job_db::JOB_TYPE_STILL:
-          $msg[mediamosa_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_scheduler::MSG_DATA]);
+          $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-          $msg[mediamosa_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_scheduler::MSG_DATA]);
+          $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
       }
 
-      $msg[mediamosa_scheduler::MSG_QUEUE] = $msg[mediamosa_scheduler::MSG_UNIT_TEST_PREFIX] . $msg[mediamosa_scheduler::MSG_DATA][mediamosa_job_db::JOB_TYPE];
+      $msg[mediamosa_messenger_scheduler::MSG_QUEUE] = $msg[mediamosa_messenger_scheduler::MSG_UNIT_TEST_PREFIX] . $msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::JOB_TYPE];
 
-      mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $msg[mediamosa_scheduler::MSG_QUEUE] . ' this job: ', array(), 'T - RMQ');
+      mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $msg[mediamosa_messenger_scheduler::MSG_QUEUE] . ' this job: ', array(), 'T - RMQ');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
 //      if ($msg[mediamosa_scheduler::MSG_DATA][mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_TRANSCODE) {
 //        mediamosa_debug::log('Stopped TRANSCODE from happening', array(), 'T - RMQ');
 //      } else {
-      $this->rmq_send($msg, $msg[mediamosa_scheduler::MSG_QUEUE]);
+      $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
 //      }
 
 
     } elseif ($msg[self::MSG_TYPE] == 'PROGRESSION') {
-      $this->update_progression($msg[mediamosa_scheduler::MSG_DATA]);
+      $this->update_progression($msg[mediamosa_messenger_scheduler::MSG_DATA]);
     }
 
   }
@@ -790,12 +790,12 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
             }
 
             $msg = [
-              mediamosa_scheduler::MSG_ID => $this->variable_get('alive_message_unique_id', 1),
-              mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_START_JOB,
-              mediamosa_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
-              mediamosa_scheduler::MSG_TIMESTAMP => microtime(TRUE),
-              mediamosa_scheduler::MSG_UNIT_TEST_PREFIX => $unit_test_prefix,
-              mediamosa_scheduler::MSG_DATA => $next_job
+              mediamosa_messenger_scheduler::MSG_ID => $this->variable_get('alive_message_unique_id', 1),
+              mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_START_JOB,
+              mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
+              mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
+              mediamosa_messenger_scheduler::MSG_UNIT_TEST_PREFIX => $unit_test_prefix,
+              mediamosa_messenger_scheduler::MSG_DATA => $next_job
             ];
 
             $this->variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
@@ -1301,7 +1301,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
  * URI: scheduler/start
  * Method: GET
                           */
-class mediamosa_scheduler_start extends mediamosa_scheduler
+class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
 {
 
   const QUEUE = 'queue';
@@ -1438,8 +1438,8 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
       $this->rmq_ack($rmq_msg);
       $msg = unserialize($rmq_msg->body);
 
-      $msg[self::MSG_STATUS] = mediamosa_scheduler::SERVER_STATUS_ONLINE;
-      $msg[mediamosa_scheduler::MSG_TIMESTAMP] = microtime(true);
+      $msg[self::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
+      $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(true);
 //      $msg['job_type'] = $this->queue_keepalive_server_guardian;
 
       mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');

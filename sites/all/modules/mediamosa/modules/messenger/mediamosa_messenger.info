@@ -4,7 +4,6 @@ core = 7.x
 
 ; Messenger (Toon).
 files[] = mediamosa_messenger_scheduler.rest.class.inc
-files[] = server.class.inc
 files[] = mediamosa_messenger_jobcore.class.inc
 files[] = mediamosa_messenger_guardian.rest.class.inc
 
@@ -14,7 +13,5 @@ files[] = jobs/mediamosa_messenger_transcode.class.inc
 files[] = jobs/mediamosa_messenger_download.class.inc
 files[] = jobs/mediamosa_messenger_move.class.inc
 files[] = jobs/mediamosa_messenger_upload.class.inc
-
-files[] = mediamosa_messenger_test.test
 
 
