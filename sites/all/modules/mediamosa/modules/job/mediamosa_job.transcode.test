@@ -43,21 +43,15 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     if (!empty($mediamosa_jobscheduler_uri)) {
       variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
     }
-//    parent::setUp();
 
-//    $core_types = [
-//      ['SCHEDULER'],
-//      ['ANALYSE'],
-//      ['TRANSCODE'],
-//      ['STILL']
-//    ];
     $this->core_types = [
       ['SCHEDULER'],
       ['TRANSCODE'],
     ];
+
     $this->start_jobcores($this->core_types);
-//    sleep(10);
     $servers_are_online = $this->wait_jobcores_online($this->core_types);
+    $this->var_export($this->core_types, 'Server setup');
     $this->assert($servers_are_online, 'Servers required for unit tests are online');
   }
 
@@ -73,7 +67,7 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
   /**
    * Basic job transcode test.
    */
-  public function aaatestJobTranscode() {
+  public function testJobTranscode() {
 
     // Create upload file.
     $upload = $this->uploadTestFile(array('filename' => $this->getTestVideo_wmv()));
@@ -84,8 +78,6 @@ class MediaMosaJobTranscodeTestCaseEga extends MediaMosaTestCaseEgaJob {
     $this->createMediafileTranscode($mediafile_id, array('profile_id' => $this->getDefaultTranscodeProfile()));
 
     // Parse the queue.
-//    $this->cycle($job_id);
-
     $this->doQueueCycleAll(FALSE, FALSE);
 
     // Get the asset.

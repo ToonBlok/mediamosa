@@ -874,34 +874,34 @@ class mediamosa_job {
 
 
         // Eerst kijken exceptie
-        try {
-          // If failed set job on failed
-          mediamosa_debug::log('$job before updating and retrieving:', array(), 'T - MISC');
-          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-          self::set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, 0.000);
-          $job = self::get_job_ext($job[mediamosa_job_db::ID]);
-          mediamosa_debug::log('$job after updating and retrieving:', array(), 'T - MISC');
-          mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
+
+        // If failed set job on failed
+        mediamosa_debug::log('$job before updating and retrieving:', array(), 'T - MISC');
+        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
+        self::set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, 0.000);
+        $job = self::get_job_ext($job[mediamosa_job_db::ID]);
+        mediamosa_debug::log('$job after updating and retrieving:', array(), 'T - MISC');
+        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
 
-          $unit_test_prefix = '';
-          if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
-            $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
-          }
+        $unit_test_prefix = '';
+        if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
+          $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
+        }
 //          $job[mediamosa_job_db::JOB_TYPE] = $unit_test_prefix . $job[mediamosa_job_db::JOB_TYPE];
 
-          $msg = [
-            mediamosa_scheduler::MSG_ID => variable_get('alive_message_unique_id', 1),
-            mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_START_JOB,
-            mediamosa_scheduler::QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
-            mediamosa_scheduler::TIMESTAMP => microtime(TRUE),
-            mediamosa_scheduler::UNIT_TEST_PREFIX => $unit_test_prefix,
-            mediamosa_scheduler::DATA => $job
-          ];
+        $msg = [
+          mediamosa_scheduler::MSG_ID => variable_get('alive_message_unique_id', 1),
+          mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_START_JOB,
+          mediamosa_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
+          mediamosa_scheduler::MSG_TIMESTAMP => microtime(TRUE),
+          mediamosa_scheduler::MSG_UNIT_TEST_PREFIX => $unit_test_prefix,
+          mediamosa_scheduler::MSG_DATA => $job
+        ];
+        variable_set("alive_message_unique_id", $msg[mediamosa_scheduler::MSG_ID]++);
 
-          variable_set("alive_message_unique_id", $msg['MSG_ID']++);
-
-          self::rmq_send($msg, $msg['QUEUE']);
+        try {
+          self::rmq_send($msg, $msg[mediamosa_scheduler::MSG_QUEUE]);
         } catch (Exception $e) {
           mediamosa_debug::log($e, array(), 'T - MISC');
         }

@@ -223,7 +223,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       // Send kill message to cores
       mediamosa_debug::log('KILL messages sent at ' . microtime(TRUE), array(), 'T - UT');
       $msg = [
-        'MSG_TYPE' => 'KILL'
+        mediamosa_scheduler::MSG_TYPE => 'KILL'
       ];
       $this->rmq_send($msg, $queue);
 
@@ -293,7 +293,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
           "STATUS" => "undetermined"
         ];
 
-        variable_set("alive_message_unique_id", $msg_alive['MSG_ID']++);
+        variable_set("alive_message_unique_id", $msg_alive[mediamosa_scheduler::MSG_ID]++);
 
         $this->rmq_send($msg_alive, $queue_keepalive_server);
 
@@ -339,7 +339,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         "STATUS" => "undetermined"
       ];
 
-      variable_set("alive_message_unique_id", $msg_alive['MSG_ID']++);
+      variable_set("alive_message_unique_id", $msg_alive[mediamosa_scheduler::MSG_ID]++);
 
       $this->rmq_send($msg_alive, $queue);
 

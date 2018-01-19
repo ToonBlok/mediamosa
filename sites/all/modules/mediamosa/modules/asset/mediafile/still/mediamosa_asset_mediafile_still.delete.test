@@ -20,6 +20,41 @@ class MediaMosaStillDeleteTestCaseEgaJob extends MediaMosaTestCaseEgaJob {
     );
   }
 
+  function setUp()
+  {
+    // Get from outside sandbox.
+    $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
+
+    // Run parent first so we are inside sandbox.
+    // Call parent::setUp and preserve arguments.
+    $args = func_get_args();
+
+    // Create and setup the CORE module.
+    $args = array_unique(array_merge(array('mediamosa_messenger'), $args));
+    if (drupal_substr(phpversion(), 0, 3) < '5.3') {
+      call_user_func_array(array($this, 'parent::setUp'), $args);
+    }
+    else {
+      call_user_func_array('parent::setUp', $args);
+    }
+
+    // Set jobserver selection.
+    if (!empty($mediamosa_jobscheduler_uri)) {
+      variable_set('mediamosa_jobscheduler_uri', $mediamosa_jobscheduler_uri);
+    }
+
+    $this->core_types = [
+      ['SCHEDULER'],
+      ['TRANSCODE'],
+      ['STILL'],
+    ];
+
+    $this->start_jobcores($this->core_types);
+    $servers_are_online = $this->wait_jobcores_online($this->core_types);
+    $this->var_export($this->core_types, 'Server setup');
+    $this->assert($servers_are_online, 'Servers required for unit tests are online');
+  }
+
   // ------------------------------------------------------------------ Tests.
   public function testStillDelete() {
 
@@ -49,7 +84,7 @@ class MediaMosaStillDeleteTestCaseEgaJob extends MediaMosaTestCaseEgaJob {
     $job_id = $this->createMediafileStill($mediafile_id);
 
     // Parse the queue.
-    $this->doQueueCycleAll();
+    $this->doQueueCycleAll(FALSE, FALSE);
 
     // Get the stills.
     $a_stills = $this->getMediafileStill($mediafile_id);

@@ -71,12 +71,11 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     $this->channel->queue_bind($queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [
-      "MSG_ID" => $this->variable_get("alive_message_unique_id", 1),
-      "STATUS_REQUEST" => "pending",
-      "STATUS" => "undetermined"
+      mediamosa_scheduler::MSG_ID => $this->variable_get("alive_message_unique_id", 1),
+      mediamosa_scheduler::MSG_STATUS => mediamosa_scheduler::SERVER_STATUS_PENDING
     ];
 
-    $this->variable_set("alive_message_unique_id", $alive_message['MSG_ID'] + 1);
+    $this->variable_set("alive_message_unique_id", $alive_message[mediamosa_scheduler::MSG_ID]++);
 
     $msg = new AMQPMessage(
       serialize($alive_message),
@@ -84,7 +83,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     );
 
     $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-    mediamosa_debug::log('[' . $alive_message['MSG_ID'] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+    mediamosa_debug::log('[' . $alive_message[mediamosa_scheduler::MSG_ID] . '] Guardian sent a message to ' . $queue_keepalive_server . ' with message content: ' . serialize($alive_message) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
     $this->rmq_close_connection();
   }
@@ -107,36 +106,32 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
 
 
       if ($core_type == self::CORE_SCHEDULER) {
-        exec('Scheduler boot command given with following var >> /home/tony/test.txt');
-        exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
         mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
         $this->mediamosa_messenger_start_scheduler($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
       } else {
-        exec('Jobcore boot command given with following var >> /home/tony/test.txt');
-        exec('echo ' .  $GLOBALS['drupal_test_info']['test_run_id'] . ' >> /home/tony/test.txt');
         mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue_keepalive_server);
         $this->mediamosa_messenger_start_jobcore($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
       }
 
     } else {
 
-      $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
-      while (!is_null($msg)) {
+      $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+      while (!is_null($rmq_msg)) {
 
         try {
-          $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
+          $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
         } catch (Exception $e) {
           // Called ack on empty message, something wrong with the messages being sent.
           throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
         }
 
-        $update_msg = unserialize($msg->body);
-        mediamosa_debug::log('[' . $update_msg['MSG_ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
+        $msg = unserialize($rmq_msg->body);
+        mediamosa_debug::log('[' . $msg[mediamosa_scheduler::MSG_ID] . '] Guardian received a msg with content: ' . serialize($msg[mediamosa_scheduler::MSG_DATA]) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
         mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
 
-        $this->mediamosa_messenger_update_time($drush_var, $update_msg['timestamp'], $queue_keepalive_server);
+        $this->mediamosa_messenger_update_time($drush_var, $msg[mediamosa_scheduler::MSG_TIMESTAMP], $queue_keepalive_server);
 
-        $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+        $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
 
         //$this->close_connection(); // Why was this here??????
       }
