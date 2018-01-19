@@ -288,12 +288,12 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
         $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
         $msg_alive = [
-          "MSG_ID" => variable_get("alive_message_unique_id", 1),
+          "MSG_ID" => variable_get('UNIQUE_MSG_ID', 1),
           "STATUS_REQUEST" => "pending",
           "STATUS" => "undetermined"
         ];
 
-        variable_set("alive_message_unique_id", $msg_alive[mediamosa_messenger_scheduler::MSG_ID]++);
+        variable_set('UNIQUE_MSG_ID', $msg_alive[mediamosa_messenger_scheduler::MSG_ID]++);
 
         $this->rmq_send($msg_alive, $queue_keepalive_server);
 
@@ -334,12 +334,12 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       $queue = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
 
       $msg_alive = [
-        "MSG_ID" => variable_get("alive_message_unique_id", 1),
+        "MSG_ID" => variable_get('UNIQUE_MSG_ID', 1),
         "STATUS_REQUEST" => "pending",
         "STATUS" => "undetermined"
       ];
 
-      variable_set("alive_message_unique_id", $msg_alive[mediamosa_messenger_scheduler::MSG_ID]++);
+      variable_set('UNIQUE_MSG_ID', $msg_alive[mediamosa_messenger_scheduler::MSG_ID]++);
 
       $this->rmq_send($msg_alive, $queue);
 

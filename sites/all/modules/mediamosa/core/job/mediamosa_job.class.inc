@@ -891,14 +891,14 @@ class mediamosa_job {
 //          $job[mediamosa_job_db::JOB_TYPE] = $unit_test_prefix . $job[mediamosa_job_db::JOB_TYPE];
 
         $msg = [
-          mediamosa_messenger_scheduler::MSG_ID => variable_get('alive_message_unique_id', 1),
+          mediamosa_messenger_scheduler::MSG_ID => variable_get('UNIQUE_MSG_ID', 1),
           mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_START_JOB,
           mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
           mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
           mediamosa_messenger_scheduler::MSG_UNIT_TEST_PREFIX => $unit_test_prefix,
           mediamosa_messenger_scheduler::MSG_DATA => $job
         ];
-        variable_set("alive_message_unique_id", $msg[mediamosa_messenger_scheduler::MSG_ID]++);
+        variable_set('UNIQUE_MSG_ID', $msg[mediamosa_messenger_scheduler::MSG_ID]++);
 
         try {
           self::rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);

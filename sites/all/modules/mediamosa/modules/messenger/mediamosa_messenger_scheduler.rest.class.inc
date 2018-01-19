@@ -55,8 +55,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
   // Just a reused round_up_jobs() for the new start job after first job is completed feature
   function process_msg($msg)
   {
-    $msg[self::MSG_ID] = variable_get("alive_message_unique_id", 1);
-    variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
+    $msg[self::MSG_ID] = variable_get('UNIQUE_MSG_ID', 1);
+    variable_set('UNIQUE_MSG_ID', $msg[self::MSG_ID]++);
     // If the message has this array that means its an update message
 //      if (isset($msg['new_job_status'])) {
 //        $this->update_progression($msg);
@@ -790,7 +790,7 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
             }
 
             $msg = [
-              mediamosa_messenger_scheduler::MSG_ID => $this->variable_get('alive_message_unique_id', 1),
+              mediamosa_messenger_scheduler::MSG_ID => $this->variable_get('UNIQUE_MSG_ID', 1),
               mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_START_JOB,
               mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
               mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
@@ -798,9 +798,9 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
               mediamosa_messenger_scheduler::MSG_DATA => $next_job
             ];
 
-            $this->variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
+            $this->variable_set('UNIQUE_MSG_ID', $msg[self::MSG_ID]++);
 
-            variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
+            variable_set('UNIQUE_MSG_ID', $msg[self::MSG_ID]++);
 
             mediamosa_debug::log('Picked this msg to send next to process_msg()', array(), 'T - MISC');
             mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');

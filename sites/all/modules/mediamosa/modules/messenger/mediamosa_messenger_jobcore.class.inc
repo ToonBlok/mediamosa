@@ -340,7 +340,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     }
 
     $msg = [
-      mediamosa_messenger_scheduler::MSG_ID => variable_get("alive_message_unique_id", 1),
+      mediamosa_messenger_scheduler::MSG_ID => variable_get('UNIQUE_MSG_ID', 1),
       mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_PROGRESSION,
       mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
       mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
@@ -348,7 +348,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       mediamosa_messenger_scheduler::MSG_DATA => $job
     ];
 
-    variable_set("alive_message_unique_id", $msg[mediamosa_messenger_scheduler::MSG_ID]++);
+    variable_set('UNIQUE_MSG_ID', $msg[mediamosa_messenger_scheduler::MSG_ID]++);
 
     while(TRUE) {
       $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status'] = mediamosa_job_server::get_status_contents($msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::ID]);

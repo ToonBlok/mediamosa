@@ -50,8 +50,10 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
 
     mediamosa_debug::log('** Start guardian', array(), 'Tg - ' . $queue_keepalive_server);
 
+    // Send a keepalive message to each server.
     $this->rmq_send($queue_keepalive_server);
     sleep(3);
+    // Take a look inside the guardian queue for this server to check for a response.
     $this->rmq_peek($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
     mediamosa_debug::log('** End guardian', array(), 'Tg - ' . $queue_keepalive_server);
@@ -71,11 +73,11 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     $this->channel->queue_bind($queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
 
     $alive_message = [
-      mediamosa_messenger_scheduler::MSG_ID => $this->variable_get("alive_message_unique_id", 1),
+      mediamosa_messenger_scheduler::MSG_ID => $this->variable_get('UNIQUE_MSG_ID', 1),
       mediamosa_messenger_scheduler::MSG_STATUS => mediamosa_messenger_scheduler::SERVER_STATUS_PENDING
     ];
 
-    $this->variable_set("alive_message_unique_id", $alive_message[mediamosa_messenger_scheduler::MSG_ID]++);
+    $this->variable_set('UNIQUE_MSG_ID', $alive_message[mediamosa_messenger_scheduler::MSG_ID]++);
 
     $msg = new AMQPMessage(
       serialize($alive_message),
