@@ -53,7 +53,7 @@ class MediaMosaStillBlackStillTestCaseEgaJob extends MediaMosaTestCaseEgaJob {
     $location = 'scheduler/start_job';
     $this->restCallGet($location, $query_data);
 
-    $this->cycle($query_data[mediamosa_job_db::ID]);
+//    $this->cycle($query_data[mediamosa_job_db::ID]);
 
     // Dump the still data.
     $this->var_export($stills);

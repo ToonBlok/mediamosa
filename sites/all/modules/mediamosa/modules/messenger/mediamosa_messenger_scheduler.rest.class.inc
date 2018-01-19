@@ -49,14 +49,14 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
   // Just a reused round_up_jobs() for the new start job after first job is completed feature
   function process_msg($msg)
   {
-    $msg['MSG_ID'] = variable_get("alive_message_unique_id", 1);
-    variable_set("alive_message_unique_id", $msg['MSG_ID']++);
+    $msg[self::MSG_ID] = variable_get("alive_message_unique_id", 1);
+    variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
     // If the message has this array that means its an update message
 //      if (isset($msg['new_job_status'])) {
 //        $this->update_progression($msg);
 //      }
 
-    if ($msg['MSG_TYPE'] == 'START_JOB') {
+    if ($msg[self::MSG_TYPE] == 'START_JOB') {
       mediamosa_debug::log('This msg arrived in the scheduler:', array(), 'T - MISC');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
 
@@ -89,7 +89,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
 //      }
 
 
-    } elseif ($msg['MSG_TYPE'] == 'PROGRESSION') {
+    } elseif ($msg[self::MSG_TYPE] == 'PROGRESSION') {
       $this->update_progression($msg['DATA']);
     }
 
@@ -156,9 +156,13 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
     $job_status = $job['new_job_status'];
     mediamosa_debug::log('$job when updating:', array(), 'T - JAN15');
     mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - JAN15');
-    mediamosa_debug::log('$job after requesting db:', array(), 'T - JAN15');
-    $job2 = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
-    mediamosa_debug::log_export($job2, WATCHDOG_NOTICE, 'T - JAN15');
+    if ($job_status['Status'] == 'done') {
+      mediamosa_debug::log('update_progression received DONE job at ' . microtime(TRUE), array(), 'T - JAN15');
+    }
+
+//    mediamosa_debug::log('$job after requesting db:', array(), 'T - JAN15');
+//    $job2 = mediamosa_job::get($job_id, array(mediamosa_job_db::MEDIAFILE_DEST));
+//    mediamosa_debug::log_export($job2, WATCHDOG_NOTICE, 'T - JAN15');
 
     // No status file found, we just have to wait.
     if (empty($job_status['Status'])) {
@@ -166,13 +170,8 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
       return;
     }
 
-    $unit_test_prefix = '';
-    if (mediamosa::in_simpletest_sandbox()) {
-      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
-    }
-
     switch ($job_type) {
-      case $unit_test_prefix . mediamosa_job_server_db::JOB_TYPE_STILL:
+      case mediamosa_job_server_db::JOB_TYPE_STILL:
         // Default status.
         $status = mediamosa_job_server_db::JOB_STATUS_INPROGRESS;
 
@@ -220,7 +219,7 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
         }
 
         break;
-      case $unit_test_prefix . mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
+      case mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
         if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
           mediamosa_debug::log('Transcode done and errors are none.', array(), 'T - TRANSCODE');
           // Status to finished.
@@ -785,17 +784,17 @@ abstract class mediamosa_scheduler extends mediamosa_rest_call
             }
 
             $msg = [
-              'MSG_ID' => $this->variable_get('alive_message_unique_id', 1),
-              'MSG_TYPE' => 'START_JOB',
-              'QUEUE' => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
-              'TIMESTAMP' => microtime(TRUE),
-              'UNIT_TEST_PREFIX' => $unit_test_prefix,
-              'DATA' => $next_job
+              mediamosa_scheduler::MSG_ID => $this->variable_get('alive_message_unique_id', 1),
+              mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_START_JOB,
+              mediamosa_scheduler::QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
+              mediamosa_scheduler::TIMESTAMP => microtime(TRUE),
+              mediamosa_scheduler::UNIT_TEST_PREFIX => $unit_test_prefix,
+              mediamosa_scheduler::DATA => $next_job
             ];
 
-            $this->variable_set("alive_message_unique_id", $msg['MSG_ID']++);
+            $this->variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
 
-            variable_set("alive_message_unique_id", $msg['MSG_ID']++);
+            variable_set("alive_message_unique_id", $msg[self::MSG_ID]++);
 
             mediamosa_debug::log('Picked this msg to send next to process_msg()', array(), 'T - MISC');
             mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - MISC');
@@ -1380,10 +1379,8 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
   function listen($queue) {
     $this->rmq_open_connection();
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-
     $this->channel->queue_declare($queue, false, true, false, false);
     $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
-
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
@@ -1396,19 +1393,23 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
                                                                                                                                        */
     $callback = function ($rmq_msg) {
 
-      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      try {
+        $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      } catch (Exception $e) {
+        // Called ack on empty message, something wrong with the messages being sent.
+        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+      }
       $msg = unserialize($rmq_msg->body);
 
-      mediamosa_debug::log($msg['MSG_ID'] . ' - $callback triggered, $msg:', array(), 'T - SCHEDULER');
+      mediamosa_debug::log($msg[self::MSG_ID] . ' - $callback triggered, $msg:', array(), 'T - SCHEDULER');
       mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - SCHEDULER');
 
-      if ($msg['MSG_TYPE'] == 'KILL') {
+      if ($msg[self::MSG_TYPE] == self::MSG_KILL) {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
         exit(); // Don't know if belongs here
       } else {
         $this->process_msg($msg);
       }
-
     };
 
     /**
@@ -1426,7 +1427,8 @@ class mediamosa_scheduler_start extends mediamosa_scheduler
       try {
         $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
-        mediamosa_debug::log($e, array(), 'T - SCHEDULER');
+        // Called ack on empty message, something wrong with the messages being sent.
+        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
       }
 
       $msg = unserialize($rmq_msg->body);

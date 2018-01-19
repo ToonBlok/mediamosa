@@ -116,7 +116,13 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
      *
      */
     $callback = function($rmq_msg){
-      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+
+      try {
+        $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      } catch (Exception $e) {
+        // Called ack on empty message, something wrong with the messages being sent.
+        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+      }
 
       $msg = unserialize($rmq_msg->body);
 
@@ -168,7 +174,14 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
      *
      */
     $keepalive_callback = function($rmq_msg) {
-      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+
+      try {
+        $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      } catch (Exception $e) {
+        // Called ack on empty message, something wrong with the messages being sent.
+        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+      }
+
       $msg = unserialize($rmq_msg->body);
 
       mediamosa_debug::log('[' . $msg['MSG_ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
@@ -327,12 +340,12 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     }
 
     $msg = [
-      "MSG_ID" => variable_get("alive_message_unique_id", 1),
-      'MSG_TYPE' => 'PROGRESSION',
-      'QUEUE' => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
-      'TIMESTAMP' => microtime(TRUE),
-      'UNIT_TEST_PREFIX' => $unit_test_prefix,
-      'DATA' => $job
+      mediamosa_scheduler::MSG_ID => variable_get("alive_message_unique_id", 1),
+      mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_PROGRESSION,
+      mediamosa_scheduler::QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
+      mediamosa_scheduler::TIMESTAMP => microtime(TRUE),
+      mediamosa_scheduler::UNIT_TEST_PREFIX => $unit_test_prefix,
+      mediamosa_scheduler::DATA => $job
     ];
 
     variable_set("alive_message_unique_id", $msg['MSG_ID']++);
@@ -385,7 +398,13 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
     // If there is a keepalive message it should have a value.
     while (!is_null($rmq_msg)) {
-      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+
+      try {
+        $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+      } catch (Exception $e) {
+        // Called ack on empty message, something wrong with the messages being sent.
+        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+      }
 
       $msg = unserialize($rmq_msg->body);
       mediamosa_debug::log('[' . $msg['MSG_ID'] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');

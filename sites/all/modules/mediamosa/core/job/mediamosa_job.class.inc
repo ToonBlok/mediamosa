@@ -829,9 +829,7 @@ class mediamosa_job {
       ->fields($fields)
       ->execute();
 
-    var_export('Step 1');
     self::check_send($fields[mediamosa_job_db::ASSET_ID]);
-    var_export('Step ? after check send');
 
     // Insert it.
     return $id;
@@ -861,7 +859,6 @@ class mediamosa_job {
     mediamosa_debug::log(microtime(TRUE) . ' - Count jobs INPROGRESS: ' . $count_jobs_in_progress, array(), 'T - MISC');
 
     if ($count_jobs_in_progress == 0) {
-      var_export('Step 2, no jobs in progress');
       $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
         ->fields('mj')
         ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
@@ -874,8 +871,6 @@ class mediamosa_job {
       if (!empty($job)  ) {
         mediamosa_debug::log(microtime(TRUE) . ' - Job sent to scheduler:', array(), 'T - MISC');
         mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-        var_export('Step 3, this job found:');
-        var_export($job);
 
 
         // Eerst kijken exceptie
@@ -897,7 +892,7 @@ class mediamosa_job {
 
           $msg = [
             mediamosa_scheduler::MSG_ID => variable_get('alive_message_unique_id', 1),
-            mediamosa_scheduler::MSG_TYPE => 'START_JOB',
+            mediamosa_scheduler::MSG_TYPE => mediamosa_scheduler::MSG_START_JOB,
             mediamosa_scheduler::QUEUE => $unit_test_prefix . mediamosa_scheduler::QUEUE_NAME,
             mediamosa_scheduler::TIMESTAMP => microtime(TRUE),
             mediamosa_scheduler::UNIT_TEST_PREFIX => $unit_test_prefix,

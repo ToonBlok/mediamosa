@@ -122,7 +122,13 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
 
       $msg = $this->channel->basic_get($queue_keepalive_server_guardian);
       while (!is_null($msg)) {
-        $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
+
+        try {
+          $this->channel->basic_ack($msg->delivery_info['delivery_tag']);
+        } catch (Exception $e) {
+          // Called ack on empty message, something wrong with the messages being sent.
+          throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+        }
 
         $update_msg = unserialize($msg->body);
         mediamosa_debug::log('[' . $update_msg['MSG_ID'] . '] Guardian received a msg with content: ' . serialize($update_msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
