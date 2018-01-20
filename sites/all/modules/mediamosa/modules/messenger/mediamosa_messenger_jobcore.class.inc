@@ -94,8 +94,8 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       }
     }
 
+    // Construct a name to use in this cores logging statement. Value only used in logging statements.
     for ($i = 0; $i < count($core_type); $i++) {
-
       $this->core_type = $this->core_type . $core_type[$i];
 
       if ($i + 1 != count($core_type[$i])) {

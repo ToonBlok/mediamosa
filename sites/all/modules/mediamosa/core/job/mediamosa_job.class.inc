@@ -844,7 +844,6 @@ class mediamosa_job {
 //     (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
   // Note: There may be cases where two analyse jobs start simultaneously!
   public static function check_send($asset_id) {
-
     mediamosa_debug::log('** Start check_send', array(), 'T - MISC');
 
     $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
@@ -872,9 +871,6 @@ class mediamosa_job {
         mediamosa_debug::log(microtime(TRUE) . ' - Job sent to scheduler:', array(), 'T - MISC');
         mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
-
-        // Eerst kijken exceptie
-
         // If failed set job on failed
         mediamosa_debug::log('$job before updating and retrieving:', array(), 'T - MISC');
         mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
@@ -882,7 +878,6 @@ class mediamosa_job {
         $job = self::get_job_ext($job[mediamosa_job_db::ID]);
         mediamosa_debug::log('$job after updating and retrieving:', array(), 'T - MISC');
         mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-
 
         $unit_test_prefix = '';
         if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
