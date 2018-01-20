@@ -109,7 +109,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       $this->listen($queue);
     } catch (Exception $e) {
       // Listen failed
-      throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+      mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
     }
 
     // Geef array terug van response
@@ -152,7 +152,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
         // Called ack on empty message, something wrong with the messages being sent.
-        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+        mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
       }
 
       $msg = unserialize($rmq_msg->body);
@@ -210,7 +210,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
         // Called ack on empty message, something wrong with the messages being sent.
-        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+        mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
       }
 
       $msg = unserialize($rmq_msg->body);
@@ -372,7 +372,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
         // Called ack on empty message, something wrong with the messages being sent.
-        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+        mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
       }
 
       $msg = unserialize($rmq_msg->body);

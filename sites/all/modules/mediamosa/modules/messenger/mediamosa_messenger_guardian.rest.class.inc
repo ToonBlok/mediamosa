@@ -43,7 +43,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   public function do_call() {
     $mediamosa = mediamosa::get();
 
-    $queue = unserialize($this->get_param_value(self::QUEUE));
+    $queue = $this->get_param_value(self::QUEUE);
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
     $core_type = unserialize($this->get_param_value(self::CORE_TYPE));
 
@@ -141,7 +141,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
         $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {
         // Called ack on empty message, something wrong with the messages being sent.
-        throw new mediamosa_exception_error(mediamosa_error::ERRORCODE_STARTING_JOB_FAILED);
+        mediamosa_debug::log($e, array(), 'T - GUARDIAN');
       }
 
       $msg = unserialize($rmq_msg->body);
@@ -179,7 +179,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
 
 
     $query_data = [
-      mediamosa_messenger_jobcore::QUEUE => serialize($queue),
+      mediamosa_messenger_jobcore::QUEUE => $queue,
       mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
       mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
       mediamosa_messenger_jobcore::CORE_TYPE => serialize($core_type),
