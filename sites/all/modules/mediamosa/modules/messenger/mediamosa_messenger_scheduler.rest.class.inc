@@ -36,21 +36,6 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
   const SERVER_STATUS_ONLINE = 'online';
   const SERVER_STATUS_PENDING = 'pending';
 
-  public function rmq_send($msg, $queue)
-  {
-    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
-
-    $msg = new AMQPMessage(
-      serialize($msg),
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
-    mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $queue . ' this msg: ', array(), 'T - RMQ');
-    mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
-  }
 
   // Just a reused round_up_jobs() for the new start job after first job is completed feature
   function process_msg($msg)
@@ -75,9 +60,11 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
         case mediamosa_job_db::JOB_TYPE_ANALYSE:
           $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
+
         case mediamosa_job_db::JOB_TYPE_STILL:
           $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
+
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
           $msg[mediamosa_messenger_scheduler::MSG_DATA] = $this->enrich_job($msg[mediamosa_messenger_scheduler::MSG_DATA]);
           break;
@@ -223,8 +210,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
         } else {
           $this->set_job_status($job, $status, $job_status['Progress']);
         }
-
         break;
+
       case mediamosa_job_server_db::JOB_TYPE_TRANSCODE:
         if ($job_status['Status'] == 'done' && $job_status['Errors'] == 'none') {
           mediamosa_debug::log('Transcode done and errors are none.', array(), 'T - TRANSCODE');
@@ -512,6 +499,7 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         break;
+
       case mediamosa_job_db::JOB_TYPE_STILL:
         $still_parameters = unserialize($job[mediamosa_job_db::STILL_PARAMETERS]);
         mediamosa_debug::log('Before enrichment:', array(), 'T - 999');
@@ -520,7 +508,6 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
         $job += array(
           'blackstill_check' => '',
         );
-
 
         switch ($still_parameters['still_type']) {
           case mediamosa_asset_mediafile_metadata::STILL_TYPE_NORMAL:
@@ -533,8 +520,6 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
             $job['blackstill_check'] = mediamosa_job_still_db::BLACKSTILL_CHECK_TRUE;
             break;
         }
-
-
 
         if (empty($job['blackstill_check'])) {
           // Something went wrong, we cannot proceed
@@ -576,6 +561,7 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
 
         $job[mediamosa_job_db::STILL_PARAMETERS] = serialize($still_parameters);
         break;
+
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         $job += array(
           'transcode_parameters' => ''
@@ -1006,7 +992,6 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
     $result = array();
 
     switch ($job_type) {
-
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         // Get job transcode.
         $job_transcode = mediamosa_job_transcode::get($job_id);
@@ -1240,28 +1225,21 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
 
   }
 
-//  // BACKUP
-//  function get_job_where2($job_id, $asset_id) {
-//    $sql = 'SELECT job_id, job_type, asset_id, mediafile_id, app_id, status, mediafile_dest
-//            FROM {#mediamosa_job} AS mj
-//            WHERE mj.#job_id = :id AND
-//                  mj.#asset_id = :asset_id';
-//
-//    $sql = strtr($sql, array(
-//      '#job_id' => mediamosa_job_db::ID,
-//      '#asset_id' => mediamosa_job_db::ASSET_ID,
-//      '#mediamosa_job' => mediamosa_job_db::TABLE_NAME
-//    ));
-//
-//    return mediamosa_db::db_query($sql,
-//      array(
-//        ':id' => $job_id,
-//        ':asset_id' => $asset_id
-//      )
-//    )->fetch();
-//
-//  }
+  public function rmq_send($msg, $queue)
+  {
+    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
+    $msg = new AMQPMessage(
+      serialize($msg),
+      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
+    );
+
+    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
+    mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $queue . ' this msg: ', array(), 'T - RMQ');
+    mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
+  }
 
   function rmq_open_connection() {
 

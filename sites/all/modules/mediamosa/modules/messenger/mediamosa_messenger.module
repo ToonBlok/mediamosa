@@ -36,6 +36,7 @@ function mediamosa_messenger_call_guardian(){
   $core_types = variable_get('mediamosa_cores');
 
   for ($i = 0; $i < count($core_types); $i++) {
+    mediamosa_debug::log('$cores for this server:' . count($core_types[$i]), array(), 'T - CRON');
     $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
 
     $query_data = [

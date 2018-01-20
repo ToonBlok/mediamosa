@@ -98,10 +98,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     );
   }
 
-//  function __construct($core_type) {
-//    mediamosa_debug::log('Construct class ' . __CLASS__, array(), 'Toon');
-//  }
-
   // Jobcore <- Scheduler, guardian
   function listen($queue) {
     $connection_success = $this->open_connection();
@@ -218,86 +214,28 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     return $connection_success;
   }
 
-  function switch_db($test_run_id) {
-
-    $databases_old = &drupal_static('databases_old');
-    $databases_old = $GLOBALS['databases'];
-
-
-
-//    $test_info = &$GLOBALS['drupal_test_info'];
-    $GLOBALS['drupal_test_info']['test_run_id'] = $test_run_id;
-    $GLOBALS['drupal_test_info']['in_child_site'] = TRUE;
-
-//    $test_info['test_run_id'] = $test_run_id;
-//    $test_info['in_child_site'] = TRUE;
-
-    foreach ($GLOBALS['databases']['default'] as &$value) {
-
-      // Extract the current default database prefix.
-      if (!isset($value['prefix'])) {
-        $current_prefix = '';
-      }
-      elseif (is_array($value['prefix'])) {
-        $current_prefix = $value['prefix']['default'];
-      }
-      else {
-        $current_prefix = $value['prefix'];
-      }
-
-      // Remove the current database prefix and replace it by our own.
-      $value['prefix'] = array(
-        'default' => $current_prefix . $test_run_id,
-      );
-    }
-
-    global $conf;
-    $conf_backup = &drupal_static('conf_backup');
-    $conf_backup = $conf;
-
-
-    $conf = variable_initialize();
-
-    Database::parseConnectionInfo();
-
-
-  }
-
-//  function unswitch_db() {
-//    // Switch database back
-//    $GLOBALS['databases'] = &drupal_static('databases_old');
-//
-//    // Switch variables back
-//    global $conf;
-//    $conf = &drupal_static('conf_backup');
-//    $conf = variable_initialize();
-//
-//    Database::parseConnectionInfo();
-//  }
-
   function start_job($job){
-
     switch ($this->core_type) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYSE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
         break;
+
       case mediamosa_job_db::JOB_TYPE_STILL:
         mediamosa_debug::log('STILL started.', array(), 'T - STILL');
         $this->still->start($job);
         $this->loop($job);
         break;
+
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
         mediamosa_debug::log('TRANSCODE started.', array(), 'T - TRANSCODE');
         $this->transcode->start($job);
         $this->loop($job);
         break;
     }
-
   }
 
   function resume_job($job){
-
     switch ($job['job_type']) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
@@ -313,7 +251,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
         $this->loop($job);
         break;
     }
-
   }
 
   function get_scheduler_queue(){
