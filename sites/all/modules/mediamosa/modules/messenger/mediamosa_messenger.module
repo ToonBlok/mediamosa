@@ -36,13 +36,24 @@ function mediamosa_messenger_call_guardian(){
   $core_types = variable_get('mediamosa_cores');
 
   for ($i = 0; $i < count($core_types); $i++) {
-    mediamosa_debug::log('$cores for this server:' . count($core_types[$i]), array(), 'T - CRON');
-    $core_type = $core_types[$i][0]; // HAS TO BE 0 for now because for now only 1 task
+    $core_type = $core_types[$i];
+
+    $queue_keepalive_server ='';
+    for ($sub_core_type = 0; $sub_core_type < count($core_types[$i]); $sub_core_type++) {
+      $queue_keepalive_server = $queue_keepalive_server . $core_types[$i][$sub_core_type];
+
+      if (($sub_core_type + 1) != (count($core_types[$i]))) {
+        $queue_keepalive_server .= '_';
+      }
+    }
+
+    $queue_keepalive_server = $queue_keepalive_server . '_' . $installation_id . '_' . $i;
+//    mediamosa_debug::log('queue keepalive server: ' . $queue_keepalive_server, array(), 'T - SATURDAY');
 
     $query_data = [
-      mediamosa_scheduler_start::QUEUE => $core_type,
-      mediamosa_scheduler_start::QUEUE_KEEPALIVE_SERVER => $core_type . '_' . $installation_id . '_' . $i, // The scheduler needs this to know what to listen to for keepalive message
-      mediamosa_scheduler_start::CORE_TYPE => $core_type,
+      mediamosa_scheduler_start::QUEUE => serialize($core_type),
+      mediamosa_scheduler_start::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
+      mediamosa_scheduler_start::CORE_TYPE => serialize($core_type),
     ];
 
 

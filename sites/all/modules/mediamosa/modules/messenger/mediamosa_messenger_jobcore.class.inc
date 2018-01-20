@@ -68,15 +68,40 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
   public function do_call() {
     $mediamosa = mediamosa::get();
 
-    $queue = $this->get_param_value(self::QUEUE);
-    $this->core_type = $this->get_param_value(self::CORE_TYPE);
+    $queue = unserialize($this->get_param_value(self::QUEUE));
+    $core_type = unserialize($this->get_param_value(self::CORE_TYPE)); // Purely used for debug statements
+    $this->core_type = '';
     $this->queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
     $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
 
-    $this->analyze = new analyze();
-    $this->still = new still();
-    $this->transcode = new transcode();
+    mediamosa_debug::log('Queue:', array(), 'T - SATURDAY');
+    mediamosa_debug::log_export($queue, WATCHDOG_NOTICE, 'T - SATURDAY');
 
+    // Give the core its helper classes.
+    foreach ($queue as $core) {
+      switch ($core) {
+        case mediamosa_job_db::JOB_TYPE_ANALYSE:
+          $this->analyze = new analyze();
+          break;
+
+        case mediamosa_job_db::JOB_TYPE_STILL:
+          $this->still = new still();
+          break;
+
+        case mediamosa_job_db::JOB_TYPE_TRANSCODE:
+          $this->transcode = new transcode();
+          break;
+      }
+    }
+
+    for ($i = 0; $i < count($core_type); $i++) {
+
+      $this->core_type = $this->core_type . $core_type[$i];
+
+      if ($i + 1 != count($core_type[$i])) {
+        $this->core_type .= '_';
+      }
+    }
 
     mediamosa_debug::log('Jobcore with core type ' . $this->core_type . ' was created', array(), 'T - ' . $this->core_type);
 
@@ -102,9 +127,14 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
   function listen($queue) {
     $connection_success = $this->open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
+
+
+    foreach ($queue as $core) {
+      $this->channel->queue_declare($core, false, true, false, false);
+      $this->channel->queue_bind($core, self::EXCHANGE_JOBS, $core);
+    }
+
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($queue, self::EXCHANGE_JOBS, $queue);
     $this->channel->queue_bind($this->queue_keepalive_server, self::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
     mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $queue);
@@ -203,7 +233,9 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume($queue, '', false, false, false, false, $callback);
+    foreach ($queue as $core) {
+      $this->channel->basic_consume($core, '', false, false, false, false, $callback);
+    }
     $this->channel->basic_consume($this->queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
 
     while(count($this->channel->callbacks)) {
@@ -215,7 +247,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
   }
 
   function start_job($job){
-    switch ($this->core_type) {
+    switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYSE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
@@ -236,7 +268,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
   }
 
   function resume_job($job){
-    switch ($job['job_type']) {
+    switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
         mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);

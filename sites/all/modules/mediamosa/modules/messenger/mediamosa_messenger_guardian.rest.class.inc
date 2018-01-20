@@ -43,9 +43,12 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   public function do_call() {
     $mediamosa = mediamosa::get();
 
-    $queue = $this->get_param_value(self::QUEUE);
+    $queue = unserialize($this->get_param_value(self::QUEUE));
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
-    $core_type = $this->get_param_value(self::CORE_TYPE);
+    $core_type = unserialize($this->get_param_value(self::CORE_TYPE));
+
+//    mediamosa_debug::log('Arrived: ', array(), 'T - SATURDAY');
+//    mediamosa_debug::log_export($core_type, WATCHDOG_NOTICE, 'T - SATURDAY');
     //The keepalive queue on the guardian side for the specific core type for which this guardian has been triggered. The guardian class checks this queue for keepalive responses from the servers it watches.
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
@@ -166,7 +169,7 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   function mediamosa_messenger_start_core($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type) {
     $uri = '';
 
-    if ($core_type == self::CORE_SCHEDULER) {
+    if ((count($core_type) == 1) and ($core_type[0] == self::CORE_SCHEDULER)) {
       $uri = '/scheduler/start?';
       mediamosa_debug::log('Booting up scheduler.', array(), 'Tg - ' . $queue_keepalive_server);
     } else {
@@ -174,11 +177,12 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
       mediamosa_debug::log('Booting up jobcore.', array(), 'Tg - ' . $queue_keepalive_server);
     }
 
+
     $query_data = [
-      mediamosa_messenger_jobcore::QUEUE => $queue,
+      mediamosa_messenger_jobcore::QUEUE => serialize($queue),
       mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER => $queue_keepalive_server, // The scheduler needs this to know what to listen to for keepalive message
       mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER_GUARDIAN => $queue_keepalive_server_guardian, // The scheduler needs this to know where to send keepalive messages back to
-      mediamosa_messenger_jobcore::CORE_TYPE => $core_type,
+      mediamosa_messenger_jobcore::CORE_TYPE => serialize($core_type),
     ];
 
     $this->mediamosa_messenger_call($uri, $query_data);

@@ -1328,9 +1328,12 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
     exec('echo `date` >> /home/tony/test.txt');
     exec('echo Scheduler start triggered >> /home/tony/test.txt');
 
-    $queue = $this->get_param_value(self::QUEUE);
+    $queue = unserialize($this->get_param_value(self::QUEUE));
     $this->queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
     $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
+
+    mediamosa_debug::log('$queue here 1:', array(), 'T - SATURDAY');
+    mediamosa_debug::log_export($queue, WATCHDOG_NOTICE, 'T - SATURDAY');
 
 //    try {
 //    } catch (Exception $e) {
@@ -1371,9 +1374,15 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
 
   function listen($queue) {
     $this->rmq_open_connection();
+
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
+
+    foreach ($queue as $core) {
+      $this->channel->queue_declare($core, false, true, false, false);
+      $this->channel->queue_bind($core, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $core);
+    }
+//    $this->channel->queue_declare($queue, false, true, false, false);
+//    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, self::QUEUE_NAME);
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
 
@@ -1427,7 +1436,15 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
     $this->channel->basic_qos(null, 1, null);
-    $this->channel->basic_consume($queue, '', false, false, false, false, $callback);
+
+    mediamosa_debug::log('$queue here 2:', array(), 'T - SATURDAY');
+    mediamosa_debug::log_export($queue, WATCHDOG_NOTICE, 'T - SATURDAY');
+
+    foreach ($queue as $core) {
+      mediamosa_debug::log('Added ' . $core . ' to consume', array(), 'T - SATURDAY');
+      $this->channel->basic_consume($core, '', false, false, false, false, $callback);
+    }
+
     $this->channel->basic_consume($this->queue_keepalive_server, '', false, false, false, false, $keepalive_callback);
 
     exec('echo Started waiting at `date` >> /home/tony/test.txt');
