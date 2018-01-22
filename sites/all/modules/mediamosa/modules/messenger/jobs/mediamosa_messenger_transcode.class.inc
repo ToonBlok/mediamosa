@@ -1,17 +1,16 @@
 <?php
 
-class transcode
+class mediamosa_messenger_helper_transcode
 {
+  /**
+   * Start a transcode job
+   *
+   * @param array $job
+   * The job to start.
+   */
   function start($job){
-    mediamosa_debug::log('$job arrived in transcode class:', array(), 'T - TRANSCODE');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - TRANSCODE');
-
     $execution_string = $this->generate_transcode_exec($job[mediamosa_job_db::ID], $job[mediamosa_job_db::MEDIAFILE_ID], $job['transcode_parameters']);
-    mediamosa_debug::log('$execution_string for job ' . $job[mediamosa_job_db::ID] , array(), 'T - TRANSCODE');
-    mediamosa_debug::log_export($execution_string, WATCHDOG_NOTICE, 'T - TRANSCODE' );
-
     $exec_output = mediamosa_io::exec($execution_string);
-
 
     mediamosa_job_server::log_mediafile($job['mediafile_id'], 'Job @job_type (Job ID: @job_id) returned output: @output<br /><br />@link',
       array(
@@ -24,19 +23,20 @@ class transcode
   }
 
   /**
-   * Generate the string that is used for the vpx_transcode script.
+   * Generate the executable string for this job
    *
    * @param string $job_id
-   * @param string $mediafile_id
+   * @param int $mediafile_id
+   * @param array $job_parameters
+   * We need the job parameters to start a job.
+   *
+   * @return string
+   * Executable string.
    */
   function generate_transcode_exec($job_id, $mediafile_id, $job_parameters) {
     $tool = $job_parameters[mediamosa_job_server_transcode_db::TOOL];
     $file_extension = $job_parameters[mediamosa_job_server_transcode_db::FILE_EXTENSION];
     $command = $job_parameters[mediamosa_job_server_transcode_db::COMMAND];
-
-
-    // Get the mediafile.
-//    $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id); // GOES INTO DB!!!!!!!!!!!!!!!!!!!
 
     // Create parameter string from the command.
     $commands = mediamosa_transcode_profile::commandToArray($command);

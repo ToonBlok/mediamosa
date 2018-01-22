@@ -5,13 +5,11 @@ use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
 /**
- * Class jobcore
+ * URI: /jobcore/start
+ * Method: GET
  *
- * REMINDERS
- * -Dont forget to add teardown() later
- *
+ * Start a jobcore.
  */
-
 class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
   const QUEUE = 'queue';
@@ -23,9 +21,9 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
   const QUEUE_KEEPALIVE = 'jobcore_keepalive';
   const QUEUE_TESTS = 'TESTS';
 
-  private $queue_keepalive_server;
-  private $queue_keepalive_server_guardian;
-  private $core_type;
+  protected $queue_keepalive_server;
+  protected $queue_keepalive_server_guardian;
+  protected $core_type;
   // ------------------------------------------------------------------ Methods.
   /**
    * Implements get_var_setup().
@@ -35,19 +33,19 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       self::VARS => array(
         self::QUEUE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => '',
+          self::VAR_DESCRIPTION => 'The queue to listen to to receive jobs',
         ),
         self::QUEUE_KEEPALIVE_SERVER => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => '',
+          self::VAR_DESCRIPTION => 'The queue to receive keepalive message on',
         ),
         self::QUEUE_KEEPALIVE_SERVER_GUARDIAN => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => '',
+          self::VAR_DESCRIPTION => 'The queue to send keepalive response message to',
         ),
         self::CORE_TYPE => array(
           self::VAR_TYPE => mediamosa_sdk::TYPE_STRING,
-          self::VAR_DESCRIPTION => '',
+          self::VAR_DESCRIPTION => 'This servers core types',
         ),
       )
     );
@@ -56,12 +54,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     return self::get_var_setup_default($var_setup, FALSE);
   }
 
-  /**
-   * URI: /jobcore/start
-   * Method: GET
-   *
-   * Start a jobcore
-   */
   /**
    * Implements do_call().
    */
@@ -74,22 +66,19 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     $this->queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
     $this->queue_keepalive_server_guardian = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER_GUARDIAN); // Queue that scheduler needs to send messages BACK to guardian.
 
-    mediamosa_debug::log('Queue:', array(), 'T - SATURDAY');
-    mediamosa_debug::log_export($queue, WATCHDOG_NOTICE, 'T - SATURDAY');
-
     // Give the core its helper classes.
     foreach ($queue as $core) {
       switch ($core) {
         case mediamosa_job_db::JOB_TYPE_ANALYSE:
-          $this->analyze = new analyze();
+          $this->analyze = new mediamosa_messenger_helper_analyze();
           break;
 
         case mediamosa_job_db::JOB_TYPE_STILL:
-          $this->still = new still();
+          $this->still = new mediamosa_messenger_helper_still();
           break;
 
         case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-          $this->transcode = new transcode();
+          $this->transcode = new mediamosa_messenger_helper_transcode();
           break;
       }
     }
@@ -103,10 +92,8 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       }
     }
 
-    mediamosa_debug::log('Jobcore with core type ' . $this->core_type . ' was created', array(), 'T - ' . $this->core_type);
-
     try {
-      $this->listen($queue);
+      $this->rmq_listen($queue);
     } catch (Exception $e) {
       // Listen failed
       mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
@@ -118,16 +105,20 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
     $mediamosa->add_item(
       array(
-        'server_type' => $this->core_type,
+        'server_type' => $this->core_type
       )
     );
   }
 
-  // Jobcore <- Scheduler, guardian
-  function listen($queue) {
-    $connection_success = $this->open_connection();
+  /**
+   * Start listening to a queue.
+   *
+   * @param array $queue
+   * The queue we are going to listen to.
+   */
+  protected function rmq_listen($queue) {
+    $connection_success = $this->rmq_open_connection();
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
-
 
     foreach ($queue as $core) {
       $this->channel->queue_declare($core, false, true, false, false);
@@ -136,8 +127,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, self::EXCHANGE_JOBS, $this->queue_keepalive_server);
-
-    mediamosa_debug::log('Ready and waiting for messages.', array(), 'T - ' . $queue);
 
     /**
      * Callback used for the communication between this jobcore and the scheduler. Starts jobs specified in the messages it receives.
@@ -148,52 +137,17 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
      */
     $callback = function($rmq_msg){
 
-      try {
-        $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-      } catch (Exception $e) {
-        // Called ack on empty message, something wrong with the messages being sent.
-        mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
-      }
+      $this->rmq_ack($rmq_msg);
 
       $msg = unserialize($rmq_msg->body);
-
-      mediamosa_debug::log('Msg received:', array(), 'T - ' . $this->core_type);
-      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ' . $this->core_type);
 
       if ($msg[mediamosa_messenger_scheduler::MSG_TYPE] == 'KILL') {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
         exit(); // Don't know if belongs here
       } else {
         $job = $msg[mediamosa_messenger_scheduler::MSG_DATA];
-        $this->start_job($job);
+        $this->mediamosa_messenger_start_job($job);
       }
-
-//      // Kill
-//        mediamosa_debug::log(' [!] Message received: job_id: ' . $job['job_id'] . ', job_type: ' . $job['job_type'] . ' asset_id: ' . $job['asset_id'] . ' mediafile_id: ' . $job['mediafile_id'], array(), 'T - ' . $this->core_type);
-//
-//        $checkvar = $GLOBALS['drupal_test_info']['test_run_id'];
-//
-//        $this->start_job($job);
-//
-////        if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
-////          // Resume job
-////          mediamosa_debug::log('[' . $job[mediamosa_job_db::ID] . '] resuming.', array(), 'T - SCHEDULER');
-////          $this->loop($job);
-////        } else {
-//////        if (isset($job['test_run_id'])) {
-//////          // forgot to switch back too after this
-////////          try {
-////////            $this->switch_db($job['test_run_id']);
-////////          } catch (Exception $e) {
-////////            mediamosa_debug::log('.', array(), 'T - ERROR');
-////////          }
-////////          unset($job['test_run_id']);
-//////        }
-////        }
-//
-//      }
-
-
 
     };
 
@@ -202,7 +156,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
      *
      * @param $rmq_msg
      *   RabbitMQ message received from the server.
-     *
      */
     $keepalive_callback = function($rmq_msg) {
 
@@ -215,20 +168,11 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
 
       $msg = unserialize($rmq_msg->body);
 
-      mediamosa_debug::log('[' . $msg[mediamosa_messenger_scheduler::MSG_ID] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
 
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
       $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(TRUE);
-//      $msg['job_type'] = $this->queue_keepalive_server_guardian;
 
-      mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');
-//        mediamosa_debug::log('Received message and am now sending back ' . $update_message['timestamp'] . '. This is the message and secondly the job: ', array(), 'T - ');
-//        mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - ');
-//        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - ');
-
-      $this->send($msg, $this->queue_keepalive_server_guardian);
-
-//      mediamosa_debug::log('Sent 1 message at ' . microtime(true), array(), 'T - GUARDIAN');
+      $this->rmq_send($msg, $this->queue_keepalive_server_guardian);
     };
 
     // basic_qos: Tells RabbitMQ not to give more than one message to a worker at a time.
@@ -242,63 +186,42 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       $this->channel->wait();
     }
 
-    $this->close_connection();
+    $this->rmq_close_connection();
     return $connection_success;
   }
 
-  function start_job($job){
+  /**
+   * Start a job with the help of a helper class.
+   *
+   * @param $job
+   * The job to start.
+   */
+  protected function mediamosa_messenger_start_job($job) {
     switch ($job[mediamosa_job_db::JOB_TYPE]) {
       case mediamosa_job_db::JOB_TYPE_ANALYSE:
-        mediamosa_debug::log('ANALYSE started.', array(), 'T - ANALYZE');
         $this->analyze->start($job);
         break;
 
       case mediamosa_job_db::JOB_TYPE_STILL:
-        mediamosa_debug::log('STILL started.', array(), 'T - STILL');
         $this->still->start($job);
-        $this->loop($job);
+        $this->mediamosa_messenger_loop($job);
         break;
 
       case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-        mediamosa_debug::log('TRANSCODE started.', array(), 'T - TRANSCODE');
         $this->transcode->start($job);
-        $this->loop($job);
+        $this->mediamosa_messenger_loop($job);
         break;
     }
   }
 
-  function resume_job($job){
-    switch ($job[mediamosa_job_db::JOB_TYPE]) {
-      case mediamosa_job_db::JOB_TYPE_ANALYSE:
-        mediamosa_debug::log('ANALYZE started.', array(), 'T - ANALYZE');
-        $this->analyze->start($job);
-//        $this->loop($job);
-        break;
-      case mediamosa_job_db::JOB_TYPE_STILL:
-        mediamosa_debug::log('STILL started.', array(), 'T - STILL');
-        $this->loop($job);
-        break;
-      case mediamosa_job_db::JOB_TYPE_TRANSCODE:
-        mediamosa_debug::log('TRANSCODE started.', array(), 'T - STILL');
-        $this->loop($job);
-        break;
-    }
-  }
-
-  function get_scheduler_queue(){
-    $scheduler_queue_name = mediamosa_messenger_scheduler::QUEUE_NAME;
-
-    if (mediamosa::in_simpletest_sandbox()) {
-      $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'];
-      $scheduler_queue_name = $unit_test_prefix . '_' . $scheduler_queue_name;
-    }
-
-    return $scheduler_queue_name;
-  }
-
-  function loop($job){
-    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-
+  /**
+   * Loop indefinitely, send progression messages back to the scheduler.
+   * Escape loop when done or when problems are detected.
+   *
+   * @param $job
+   * The job to start the loop for.
+   */
+  protected function mediamosa_messenger_loop($job) {
     $time_loop_started = microtime(TRUE);
     $time_last_peeked = microtime(TRUE);
 
@@ -308,7 +231,7 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     }
 
     $msg = [
-      mediamosa_messenger_scheduler::MSG_ID => variable_get('UNIQUE_MSG_ID', 1),
+      mediamosa_messenger_scheduler::MSG_ID => mediamosa_job::mediamosa_messenger_get_unique_msg_id(),
       mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_PROGRESSION,
       mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
       mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
@@ -316,49 +239,49 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       mediamosa_messenger_scheduler::MSG_DATA => $job
     ];
 
-    variable_set('UNIQUE_MSG_ID', $msg[mediamosa_messenger_scheduler::MSG_ID]++);
-
     while(TRUE) {
       $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status'] = mediamosa_job_server::get_status_contents($msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::ID]);
-
-      mediamosa_debug::log_export('[' . $msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::ID] . '] '. $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Progress'] . ' at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
-
-      $this->send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
-//      $a = mediamosa_scheduler::MSG_QUEUE;
-
+      $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
       $time_now = microtime(TRUE);
 
       if (($time_loop_started + 172800) < ($time_now)) { // Set job on failed every two days.
         $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
         $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] = 'error';
-        $this->send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
+        $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
         break;
       } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
-        $this->peek();
-        mediamosa_debug::log('10 seconds went by. Peek() now.', array(), 'T - LOOP');
-        // reset
+        $this->rmq_peek();
         $time_last_peeked = $time_now;
       }
       if ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'done') { // If job is done and we have sent the final progression message, break out of the while loop.
-
-        mediamosa_debug::log_export('[' . $msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::ID] . '] done at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
-        mediamosa_debug::log_export($msg[mediamosa_messenger_scheduler::MSG_DATA], WATCHDOG_NOTICE, 'T - LOOP');
         break;
       } elseif ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'error') { // If job is done and we have sent the final progression message, break out of the while loop.
-
-        mediamosa_debug::log_export('[' . $msg[mediamosa_messenger_scheduler::MSG_DATA][mediamosa_job_db::ID] . '] failed at ' . microtime(TRUE), WATCHDOG_NOTICE, 'T - LOOP');
-        mediamosa_debug::log_export($msg[mediamosa_messenger_scheduler::MSG_DATA], WATCHDOG_NOTICE, 'T - LOOP');
         break;
       }
-
     }
+  }
 
+  /**
+   * Let the RabbitMQ server know the message has safely arrived.
+   *
+   * @param AMQPMessage $rmq_msg
+   * The RabbitMQ message.
+   */
+  protected function rmq_ack($rmq_msg) {
+    try {
+      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
+    } catch (Exception $e) {
+      // Called ack on empty message, something wrong with the messages being sent.
+      mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
+    }
   }
 
   /*
-   * Peek in it
+   * If this jobcore is busy with a job it cannot respond to a keepalive message from the guardian
+   * While the jobcore is busy, this method gets called every 10 second to take a quick peek into
+   * this jobcores keepalive queue and to give a response.
    */
-  function peek() {
+  protected function rmq_peek() {
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
     $this->channel->queue_declare($this->queue_keepalive_server, false, true, false, false);
     $this->channel->queue_bind($this->queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_keepalive_server);
@@ -376,111 +299,70 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
       }
 
       $msg = unserialize($rmq_msg->body);
-      mediamosa_debug::log('[' . $msg[mediamosa_messenger_scheduler::MSG_ID] . '] ' . $this->core_type . ' jobcore received a msg with content: ' . serialize($msg) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
-
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
       $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(true);
-//      $msg['job_type'] = $this->queue_keepalive_server_guardian;
 
-      mediamosa_debug::log('Received message on ' . $this->queue_keepalive_server, array(), 'T - GUARDIAN');
-
-      $this->send($msg, $this->queue_keepalive_server_guardian);
+      $this->rmq_send($msg, $this->queue_keepalive_server_guardian);
 
       // Get keepalive message, and if there is one present the while loop will restart.
       $rmq_msg = $this->channel->basic_get($this->queue_keepalive_server);
-
     }
-
   }
 
-  // *************** NEW LOOP
-//  function loop($job){
-//    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
-//    $mediamosa_jobcore_timeout = $this->variable_get('mediamosa_jobcore_timeout', 300);
-//
-//    // Get the time since this script has started
-//    if (isset($_SERVER['REQUEST_TIME'])) {
-//      $time_started = $_SERVER['REQUEST_TIME'];
-//    }
-//
-//    while(TRUE) {
-//
-//      $job['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
-//      $this->send($job, 'PROGRESSION');
-//
-//
-//      $time_now = microtime(TRUE);
-//
-//      if (($time_started + 172800) < ($time_now)) {
-//        // 2 days have passed
-//        break;
-//      }
-//
-//    }
-//
-//    for ($x = 0; $x < $mediamosa_jobcore_timeout; $x++) {
-//      $start_at = microtime(TRUE);
-//      // Now take the time it took, and subtrac that from 10.
-//
-//
-//      // Run for 60 seconds but sleep every 10 seconds. Sleep 6 times.
-//      // Sleep every 10 seconds unless time
-//      $time_to_sleep = 10 - round(microtime(TRUE) - $start_at);
-//      if ($time_to_sleep > 0) {
-//        sleep($time_to_sleep);
-//      }
-//
-//      // And repeat for 6 times = 1 minute = 1 cron run.
-//    }
-//
-//  }
-
-  function variable_get($name, $default = NULL) {
+  /**
+   * Wrapper around variable_get().
+   */
+  protected function variable_get($name, $default = NULL) {
     return variable_get($name, $default);
   }
 
-  function variable_set($name, $value) {
+  /**
+   * Wrapper around variable_set().
+   */
+  protected function variable_set($name, $value) {
     variable_set($name, $value);
   }
 
-  function open_connection() {
+  /**
+   * Open a RabbitMQ connection.
+   */
+  protected function rmq_open_connection() {
     $host = variable_get('mediamosa_scheduler_host', 'localhost');
     $port = variable_get('mediamosa_scheduler_port', 5672);
     $username = variable_get('mediamosa_scheduler_username', 'guest');
     $password = variable_get('mediamosa_scheduler_password', 'guest');
 
-
     $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
     $this->channel = $this->connection->channel();
-//    $var = $this->channel->open();
   }
 
-  function close_connection() {
+  /**
+   * Close a currently open RabbitMQ connection.
+   */
+  protected function rmq_close_connection() {
     $this->channel->close();
     $this->connection->close();
   }
 
-  // Jobcore --> scheduler, guardian
-  function send($job, $job_type = '') {
-    //$this->open_connection();
-
+  /**
+   * Send a RabbitMQ message.
+   *
+   * @param array $msg
+   * The message we want to send.
+   * @param string $queue
+   * The destination of the $msg.
+   */
+  protected function rmq_send($msg, $queue) {
     $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($job_type, false, true, false, false);
-    $this->channel->queue_bind($job_type, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $job_type);
+    $this->channel->queue_declare($queue, false, true, false, false);
+    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
     $msg = new AMQPMessage(
-      serialize($job),
+      serialize($msg),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-
-    mediamosa_debug::log('Jobcore sent to queue: ' . $job_type . ' this job: ', array(), 'T - SCHEDULER');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - SCHEDULER');
-    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $job_type);
-
-    mediamosa_debug::log( '[' . $job[mediamosa_messenger_scheduler::MSG_ID] . '] ' . $this->core_type . ' jobcore sent a msg to ' . $job_type . ' with content: ' . serialize($job) . ' at ' . microtime(TRUE), array(), 'T - RMQ');
-
-    //$this->close_connection();
+    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $queue);
   }
 
 }

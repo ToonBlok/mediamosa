@@ -168,8 +168,6 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       $query_data[mediamosa_messenger_jobcore::QUEUE_KEEPALIVE_SERVER] = $this->unit_test_prefix . '_' . $core_type . '_' . $installation_id . '_' . $i;
       $query_data[mediamosa_messenger_jobcore::CORE_TYPE] = $core_type;
 
-      mediamosa_debug::log('Query data prepared for core: ' . serialize($query_data), array(), 'T - UT');
-
       $uri = 'guardian/check';
 
       $this->restCallGet($uri, $query_data);
@@ -221,7 +219,6 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
       $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
       // Send kill message to cores
-      mediamosa_debug::log('KILL messages sent at ' . microtime(TRUE), array(), 'T - UT');
       $msg = [
         mediamosa_messenger_scheduler::MSG_TYPE => 'KILL'
       ];

@@ -38,13 +38,7 @@ function mediamosa_messenger_drush_command() {
  * Callback function for mm-version command.
  */
 function drush_mediamosa_messenger_mm_messenger() {
-  drush_print('Starting analyse, still and transcode server.');
-//  $args = func_get_args();
-//  $type = $args[0];
-  drush_mediamosa_messenger('/jobcore/parsequeue?core_type=', 'ANALYSE');
-  drush_mediamosa_messenger('/jobcore/parsequeue?core_type=', 'STILL');
-  drush_mediamosa_messenger('/jobcore/parsequeue?core_type=', 'TRANSCODE');
-//  $jobcore = new jobcore($type);
+  // Put code here
 }
 
 function drush_mediamosa_messenger($path, $value = '') {

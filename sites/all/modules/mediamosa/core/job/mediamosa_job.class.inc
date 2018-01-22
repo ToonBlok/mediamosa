@@ -829,23 +829,18 @@ class mediamosa_job {
       ->fields($fields)
       ->execute();
 
-    self::check_send($fields[mediamosa_job_db::ASSET_ID]);
+    self::mediamosa_messenger_check_send($fields[mediamosa_job_db::ASSET_ID]);
 
     // Insert it.
     return $id;
   }
 
-  // Requirements for job to be sent:
-  // -Job cannot be "UPLOAD".
-  // -No jobs should be "INPROGRESS" at this moment in time.
-  // -This job has ID > ID of upload AND ID is lowest of all the other jobs (with exception of upload)
-
-//     Get the first job of this asset that is not an upload.
-//     (no job must also be in progress) (jobs that are shot in later can be picked up by the loop later in scheduler.
-  // Note: There may be cases where two analyse jobs start simultaneously!
-  public static function check_send($asset_id) {
-    mediamosa_debug::log('** Start check_send', array(), 'T - MISC');
-
+  /**
+   * Check if we need to send a job belonging to this asset to the scheduler.
+   *
+   * @param string $asset_id
+   */
+  public static function mediamosa_messenger_check_send($asset_id) {
     $count_jobs_in_progress = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
       ->fields('mj')
       ->condition(mediamosa_job_db::ASSET_ID, $asset_id)
@@ -855,7 +850,6 @@ class mediamosa_job {
       ->countQuery()
       ->execute()
       ->fetchField();
-    mediamosa_debug::log(microtime(TRUE) . ' - Count jobs INPROGRESS: ' . $count_jobs_in_progress, array(), 'T - MISC');
 
     if ($count_jobs_in_progress == 0) {
       $job = mediamosa_db::db_select(mediamosa_job_db::TABLE_NAME, 'mj')
@@ -868,32 +862,22 @@ class mediamosa_job {
         ->fetchAssoc();    //
 
       if (!empty($job)  ) {
-        mediamosa_debug::log(microtime(TRUE) . ' - Job sent to scheduler:', array(), 'T - MISC');
-        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-
-        // If failed set job on failed
-        mediamosa_debug::log('$job before updating and retrieving:', array(), 'T - MISC');
-        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
-        self::set_job_status($job, mediamosa_job_db::JOB_STATUS_INPROGRESS, 0.000);
+        self::mediamosa_messenger_set_job_status($job[mediamosa_job_db::ID], $job[mediamosa_job_db::MEDIAFILE_ID], $job[mediamosa_job_db::JOB_TYPE], $job[mediamosa_job_db::JOB_STATUS], mediamosa_job_db::JOB_STATUS_INPROGRESS, 0.000);
         $job = self::get_job_ext($job[mediamosa_job_db::ID]);
-        mediamosa_debug::log('$job after updating and retrieving:', array(), 'T - MISC');
-        mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - MISC');
 
         $unit_test_prefix = '';
         if (!is_null($GLOBALS['drupal_test_info']['test_run_id'])) {
           $unit_test_prefix = $GLOBALS['drupal_test_info']['test_run_id'] . '_';
         }
-//          $job[mediamosa_job_db::JOB_TYPE] = $unit_test_prefix . $job[mediamosa_job_db::JOB_TYPE];
 
         $msg = [
-          mediamosa_messenger_scheduler::MSG_ID => variable_get('UNIQUE_MSG_ID', 1),
+          mediamosa_messenger_scheduler::MSG_ID => self::mediamosa_messenger_get_unique_msg_id(),
           mediamosa_messenger_scheduler::MSG_TYPE => mediamosa_messenger_scheduler::MSG_START_JOB,
           mediamosa_messenger_scheduler::MSG_QUEUE => $unit_test_prefix . mediamosa_messenger_scheduler::QUEUE_NAME,
           mediamosa_messenger_scheduler::MSG_TIMESTAMP => microtime(TRUE),
           mediamosa_messenger_scheduler::MSG_UNIT_TEST_PREFIX => $unit_test_prefix,
           mediamosa_messenger_scheduler::MSG_DATA => $job
         ];
-        variable_set('UNIQUE_MSG_ID', $msg[mediamosa_messenger_scheduler::MSG_ID]++);
 
         try {
           self::rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
@@ -904,10 +888,16 @@ class mediamosa_job {
       }
     }
 
-    mediamosa_debug::log('** End check_send', array(), 'T - MISC');
-
   }
 
+  /**
+   * Send a RabbitMQ message.
+   *
+   * @param array $msg
+   * The message we want to send.
+   * @param string $queue
+   * The destination of the $msg.
+   */
   public static function rmq_send($msg, $queue = '') {
     $rmq_connection = self::rmq_open_connection();
 
@@ -922,14 +912,16 @@ class mediamosa_job {
 
     $rmq_connection['channel']->basic_publish($rmq_msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
-    mediamosa_debug::log(__CLASS__ . ' sent to queue: ' . $queue . ' this job: ', array(), 'T - RMQ');
-    mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - RMQ');
-//
     self::rmq_close_connection($rmq_connection);
   }
 
+  /**
+   * Open a RabbitMQ connection.
+   *
+   * @return array
+   * Array containing connection information.
+   */
   public static function rmq_open_connection() {
-
     $host = variable_get('mediamosa_scheduler_host', 'localhost');
     $port = variable_get('mediamosa_scheduler_port', 5672);
     $username = variable_get('mediamosa_scheduler_username', 'guest');
@@ -937,9 +929,6 @@ class mediamosa_job {
 
     $connection = new AMQPStreamConnection($host, $port, $username, $password);
     $channel = $connection->channel();
-//      var_dump($channel);
-
-    //return;
 
     $rmq_connection = [
       'channel' => $channel,
@@ -949,11 +938,23 @@ class mediamosa_job {
     return $rmq_connection;
   }
 
+  /**
+   * Close a currently open RabbitMQ connection.
+   */
   public static function rmq_close_connection($rmq_connection) {
     $rmq_connection['channel']->close();
     $rmq_connection['connection']->close();
   }
 
+  /**
+   * Do a standard internal head call to the $uri.
+   *
+   * @param string $uri
+   * The REST call uri.
+   *
+   * @param array $query_data
+   * Extra data sent with the REST call.
+   */
   public static function mediamosa_messenger_call($uri, array $query_data = array()) {
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
 
@@ -962,33 +963,40 @@ class mediamosa_job {
       $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
 
       mediamosa_http::do_head_internal_call($url);
-
-      mediamosa_debug::log('Did REST call to: ' . $url, array(), 'T - REST');
     } else {
       mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
     }
   }
 
-  public static function set_job_status($job, $job_status, $progress, $error_description = '', $error_description_args = array()) {
-    $job_id = $job['job_id'];
-    $mediafile_id = $job['mediafile_id'];
-    mediamosa_debug::log('set_job_status vars:' , array(), 'T - set_job_status');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - set_job_status');
-    mediamosa_debug::log('$job_status: ' . $job_status  , array(), 'T - set_job_status');
-    mediamosa_debug::log('$progress: ' . $progress, array(), 'T - set_job_status');
-
-
+  /**
+   * Update the status of a job
+   *
+   * Create a job.
+   *
+   * @param string $job_id
+   * @param string $mediafile_id
+   * @param string $job_type
+   * @param array $current_job_status
+   * Contains information from the progression file.
+   * @param string $new_job_status
+   * The new determined job status
+   * @param int $progress
+   * The percentage of the job
+   * @param string $error_description
+   * @param string $error_description_args
+   */
+  public static function mediamosa_messenger_set_job_status($job_id, $mediafile_id, $job_type, $current_job_status, $new_job_status, $progress, $error_description = '', $error_description_args = array()) {
     // Set args in description.
     if (!empty($error_description_args)) {
       $error_description = strtr($error_description, $error_description_args);
     }
 
     $fields = array(
-      mediamosa_job_db::JOB_STATUS => $job_status,
+      mediamosa_job_db::JOB_STATUS => $new_job_status,
       mediamosa_job_db::PROGRESS => is_null($progress) ? '0.000' : $progress,
     );
 
-    switch ($job_status) {
+    switch ($new_job_status) {
       case mediamosa_job_db::JOB_STATUS_FINISHED:
       case mediamosa_job_db::JOB_STATUS_FAILED:
       case mediamosa_job_db::JOB_STATUS_CANCELLED:
@@ -997,13 +1005,13 @@ class mediamosa_job {
     }
 
     // Invalidate technical metadata if analyse fails.
-    if ($job_status == mediamosa_job_server_db::JOB_STATUS_FAILED && $job[mediamosa_job_db::JOB_TYPE] == mediamosa_job_db::JOB_TYPE_ANALYSE) {
+    if ($new_job_status == mediamosa_job_server_db::JOB_STATUS_FAILED && $job_type == mediamosa_job_db::JOB_TYPE_ANALYSE) {
       // Delete metadata, its no longer valid when analyse fails.
       mediamosa_asset_mediafile_metadata::delete_by_mediafileid($mediafile_id);
     }
 
     // Set status.
-    if ($job[mediamosa_job_db::JOB_STATUS] == mediamosa_job_db::JOB_STATUS_WAITING && $job_status == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
+    if ($current_job_status == mediamosa_job_db::JOB_STATUS_WAITING && $new_job_status == mediamosa_job_db::JOB_STATUS_INPROGRESS) {
       $fields[mediamosa_job_db::STARTED] = mediamosa_datetime::utc_current_timestamp_now(TRUE);
     }
 
@@ -1011,13 +1019,23 @@ class mediamosa_job {
       $fields[mediamosa_job_db::ERROR_DESCRIPTION] = $error_description;
     }
 
-    mediamosa_debug::log('Set job ' . $job_id . ' status to ' . $job_status . ' and progress to ' . $fields[mediamosa_job_db::PROGRESS], array(), 'T - SCHEDULER');
-
     // Update.
     mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
       ->fields($fields)
       ->condition(mediamosa_job_db::ID, $job_id)
       ->execute();
+  }
+
+  /**
+   * Use a drush variable to get an unique message ID.
+   *
+   * @return int
+   * Unique message ID.
+   */
+  public static function mediamosa_messenger_get_unique_msg_id() {
+    $unique_id = variable_get('UNIQUE_MSG_ID', 1);
+    variable_set('UNIQUE_MSG_ID', $unique_id++);
+    return $unique_id;
   }
 
   /**
@@ -1032,7 +1050,6 @@ class mediamosa_job {
    * @param string $status
    */
   private static function post_create_job($app_id, $user_id, $mediafile_id, $asset_id, $job_type = mediamosa_job_db::JOB_TYPE_ANALYSE, $error_description = '', $still_parameters = array(), $status = mediamosa_job_db::JOB_STATUS_FINISHED) {
-
     if ($status == mediamosa_job_db::JOB_STATUS_FINISHED) {
       // Get the mediafile.
       $mediafile = mediamosa_asset_mediafile::must_exists($mediafile_id);
@@ -1064,7 +1081,6 @@ class mediamosa_job {
 
     // Add created and changed value.
     $fields = mediamosa_db::db_insert_enrich($fields);
-
 
     // Insert it.
     return mediamosa_db::db_insert(mediamosa_job_db::TABLE_NAME)

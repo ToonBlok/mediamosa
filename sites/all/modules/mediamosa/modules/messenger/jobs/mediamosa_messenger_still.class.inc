@@ -1,14 +1,15 @@
 <?php
 
-class still
+class mediamosa_messenger_helper_still
 {
-
+  /**
+   * Start a STILL job
+   *
+   * @param array $job
+   * The job to start.
+   */
   function start($job) {
-
-    mediamosa_debug::log('Job arrived in still class:', array(), 'T - 999');
-    mediamosa_debug::log_export($job, WATCHDOG_NOTICE, 'T - 999');
     $execution_string = $this->generate_still_exec($job);
-    mediamosa_debug::log('Execution string received: ' . $execution_string, array(), 'T - STILL');
     $exec_output = mediamosa_io::exec($execution_string);
 
     $link_asset = $job['asset_link'];
@@ -24,6 +25,15 @@ class still
 
   }
 
+  /**
+   * Generate the executable string for this job
+   *
+   * @param array $job
+   * We need this job to construct an execution string.
+   *
+   * @return string
+   * Executable string.
+   */
   function generate_still_exec($job) {
     $mediafile_id_source = $job['mediafile_id'];
     $execution_string = '';
@@ -39,7 +49,7 @@ class still
       }
     }
 
-    if ($job['job_id']) {
+    if ($job[mediamosa_job_db::ID]) {
       $frametime = (int) $still_parameters[mediamosa_job_server_still_db::FRAMETIME];
       $size = $still_parameters[mediamosa_job_server_still_db::SIZE];
       $h_padding = $still_parameters[mediamosa_job_server_still_db::H_PADDING];

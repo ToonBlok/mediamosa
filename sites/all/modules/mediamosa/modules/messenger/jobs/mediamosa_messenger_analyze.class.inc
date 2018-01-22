@@ -1,11 +1,10 @@
 <?php
 
-class analyze {
+class mediamosa_messenger_helper_analyze
+{
 
   // modelled after mediamosa_job_server.class.inc line 440
-  function start($job){
-    mediamosa_debug::log('Entered method: ' . __METHOD__, array(), 'T - ANALYZE');
-
+  function start($job) {
     $analyse_result = array();
 
     $mediafile_path = mediamosa_storage::get_realpath_mediafile($job['mediafile_id']);
@@ -18,7 +17,6 @@ class analyze {
 
     // Based on the mime_type there might be a tool that can analyse.
     // Call the mediamosa_tool_can_analyse hook.
-    // Toon: There are 4 modules apparently, and there is one that triggers the if in this statement
     try {
       foreach (module_implements('mediamosa_tool_can_analyse') as $module) {
         if (module_invoke($module, 'mediamosa_tool_can_analyse', $mime_type)) {

@@ -346,24 +346,8 @@ class mediamosa_asset_mediafile_still {
    * @param string $tag
    */
   public static function create($asset_id, $still_id, $app_id, $owner_id, $group_id, $order, $still_default = TRUE, $still_parameters = NULL, $sec = 0, $mediafile_id_source = '', $tag = '') {
-    mediamosa_debug::log('Start create method in ' . __CLASS__, array(), 'T - STILL');
-
-
-
-
-//    $arry =  [];
-//    $arry['parameters_in_create'] = '1';
-//    $arry['asset_id'] = $asset_id;
-//    $arry['still_id'] = $still_id;
-//    $arry['app_id'] = $app_id;
-//    $arry['owner_id'] = $owner_id;
-//    $arry['group_id'] = $group_id;
-//    $arry['order'] = $order;
-//    mediamosa_debug::log_export($arry, WATCHDOG_NOTICE, 'T - STILL' );
-
     //// Get path to still.
     $still_new_uri = mediamosa_storage::create_local_mediafile_uri($app_id, $still_id, TRUE);
-//    mediamosa_debug::log('Path to still: ' . $still_new_uri, array(), 'T - STILL');
     // Check if still exists.
     if (!mediamosa_io::file_exists($still_new_uri)) {
       mediamosa_job::post_create_job_failed($app_id, $owner_id, $still_id, $asset_id, mediamosa_job_db::JOB_TYPE_ANALYSE, 'File does not exists.', $still_parameters);

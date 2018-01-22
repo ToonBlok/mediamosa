@@ -343,7 +343,6 @@ class mediamosa_job_scheduler {
           case mediamosa_job_db::JOB_TYPE_STILL:
             // If the still job is completed, add the still to db.
             // We serialize it, because of the multiple stills.
-            mediamosa_debug::log_export($response_data->items->item[$i]->mediafile_dest, WATCHDOG_NOTICE, 'T - STILL' );
             self::add_still_to_db((string) $response_data->items->item[$i]->job_id, unserialize((string) $response_data->items->item[$i]->mediafile_dest));
             break;
         }
