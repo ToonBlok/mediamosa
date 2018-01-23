@@ -10,7 +10,8 @@ use PhpAmqpLib\Message\AMQPMessage;
  *
  * Start a jobcore.
  */
-class mediamosa_messenger_jobcore extends mediamosa_rest_call {
+class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
+{
 
   const QUEUE = 'queue';
   const QUEUE_KEEPALIVE_SERVER = 'queue_keepalive_server';
@@ -261,21 +262,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
     }
   }
 
-  /**
-   * Let the RabbitMQ server know the message has safely arrived.
-   *
-   * @param AMQPMessage $rmq_msg
-   * The RabbitMQ message.
-   */
-  protected function rmq_ack($rmq_msg) {
-    try {
-      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-    } catch (Exception $e) {
-      // Called ack on empty message, something wrong with the messages being sent.
-      mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
-    }
-  }
-
   /*
    * If this jobcore is busy with a job it cannot respond to a keepalive message from the guardian
    * While the jobcore is busy, this method gets called every 10 second to take a quick peek into
@@ -321,48 +307,6 @@ class mediamosa_messenger_jobcore extends mediamosa_rest_call {
    */
   protected function variable_set($name, $value) {
     variable_set($name, $value);
-  }
-
-  /**
-   * Open a RabbitMQ connection.
-   */
-  protected function rmq_open_connection() {
-    $host = variable_get('mediamosa_scheduler_host', 'localhost');
-    $port = variable_get('mediamosa_scheduler_port', 5672);
-    $username = variable_get('mediamosa_scheduler_username', 'guest');
-    $password = variable_get('mediamosa_scheduler_password', 'guest');
-
-    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
-    $this->channel = $this->connection->channel();
-  }
-
-  /**
-   * Close a currently open RabbitMQ connection.
-   */
-  protected function rmq_close_connection() {
-    $this->channel->close();
-    $this->connection->close();
-  }
-
-  /**
-   * Send a RabbitMQ message.
-   *
-   * @param array $msg
-   * The message we want to send.
-   * @param string $queue
-   * The destination of the $msg.
-   */
-  protected function rmq_send($msg, $queue) {
-    $this->channel->exchange_declare(self::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
-
-    $msg = new AMQPMessage(
-      serialize($msg),
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    $this->channel->basic_publish($msg, self::EXCHANGE_JOBS, $queue);
   }
 
 }
