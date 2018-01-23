@@ -124,7 +124,7 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
    * @param string $drush_time_last_update
    * The new timestamp retrieved from a new server response message.
    */
-  protected function rmq_peek($queue_keepalive_server, $queue_keepalive_server_guardian, $drush_time_last_update) {
+  protected function rmq_peek($queue_keepalive_server_guardian, $drush_time_last_update) {
     $this->rmq_open_connection();
 
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
@@ -144,7 +144,7 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
       }
 
       $msg = unserialize($rmq_msg->body);
-      $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP], $queue_keepalive_server);
+      $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP]);
       // Get next message, if NULL end while, if message exist process the message by going trough the while loop again.
       $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
     }
@@ -152,7 +152,7 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     $this->rmq_close_connection();
   }
 
-  protected function mediamosa_messenger_update_last_response_time($drush_time_last_update, $server_response_time, $queue_keepalive_server) {
+  protected function mediamosa_messenger_update_last_response_time($drush_time_last_update, $server_response_time) {
     $time_last_update = variable_get($drush_time_last_update);
 
     // if The timestamp in the message is more recent, update time_last_update.
