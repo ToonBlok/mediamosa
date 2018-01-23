@@ -14,4 +14,6 @@ files[] = jobs/mediamosa_messenger_download.class.inc
 files[] = jobs/mediamosa_messenger_move.class.inc
 files[] = jobs/mediamosa_messenger_upload.class.inc
 
+files[] = mediamosa_messenger_rmq.class.inc
+
 
