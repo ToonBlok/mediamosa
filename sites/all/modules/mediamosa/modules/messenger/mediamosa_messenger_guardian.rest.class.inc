@@ -11,7 +11,7 @@ use PhpAmqpLib\Message\AMQPMessage;
  * Start guardian activities for the server passed in the REST call. Start servers, check servers
  * availability, restart servers, and update the time they have last responded.
  */
-class mediamosa_messenger_guardian extends mediamosa_rest_call
+class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
 {
   const CORE_TYPE = 'core_type';
   const QUEUE = 'queue';
@@ -59,7 +59,13 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
 
     // Send a keepalive message to each server.
-    $this->rmq_send($queue_keepalive_server);
+    $msg = [
+      mediamosa_messenger_scheduler::MSG_ID => mediamosa_job::mediamosa_messenger_get_unique_msg_id(),
+      mediamosa_messenger_scheduler::MSG_STATUS => mediamosa_messenger_scheduler::SERVER_STATUS_PENDING
+    ];
+    $this->rmq_open_connection();
+    $this->rmq_send($msg, $queue_keepalive_server);
+    $this->rmq_close_connection();
     sleep(3);
     $this->mediamosa_messenger_cycle($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
@@ -70,33 +76,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     );
   }
 
-
-  /**
-   * Send a RabbitMQ message.
-   *
-   * @param string $queue_keepalive_server
-   * The keepalive queue of the server we need to send a keepalive message to.
-   */
-  protected function rmq_send($queue_keepalive_server) {
-    $this->rmq_open_connection();
-
-    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue_keepalive_server, false, true, false, false);
-    $this->channel->queue_bind($queue_keepalive_server, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-
-    $msg = [
-      mediamosa_messenger_scheduler::MSG_ID => mediamosa_job::mediamosa_messenger_get_unique_msg_id(),
-      mediamosa_messenger_scheduler::MSG_STATUS => mediamosa_messenger_scheduler::SERVER_STATUS_PENDING
-    ];
-
-    $rmq_msg = new AMQPMessage(
-      serialize($msg),
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    $this->channel->basic_publish($rmq_msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server);
-    $this->rmq_close_connection();
-  }
 
   /**
    * Determines the right action to take for the server this guardian is watching.
@@ -236,27 +215,6 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
   }
 
   /**
-   * Open a RabbitMQ connection.
-   */
-  protected function rmq_open_connection() {
-    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
-    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
-    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
-    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
-
-    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
-    $this->channel = $this->connection->channel();
-  }
-
-  /**
-   * Close a currently open RabbitMQ connection.
-   */
-  protected function rmq_close_connection() {
-    $this->channel->close();
-    $this->connection->close();
-  }
-
-  /**
    * Wrapper around variable_get().
    */
   protected function variable_get($name, $default = NULL) {
@@ -270,4 +228,5 @@ class mediamosa_messenger_guardian extends mediamosa_rest_call
     variable_set($name, $value);
   }
 
+  protected function rmq_listen($queue) {}
 }
