@@ -4,7 +4,7 @@ require_once DRUPAL_ROOT . '/vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
-abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
+abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
 {
   // The queue to which the scheduler returns keepalive messages.
   protected $queue_keepalive_server_guardian;
@@ -809,64 +809,6 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_rest_call
           ':id' => $job_id
         )
       )->fetch();
-    }
-  }
-
-  /**
-   * Send a RabbitMQ message.
-   *
-   * @param array $msg
-   * The message we want to send.
-   * @param string $queue
-   * The destination of the $msg.
-   */
-  protected function rmq_send($msg, $queue) {
-    $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue, false, true, false, false);
-    $this->channel->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
-
-    $msg = new AMQPMessage(
-      serialize($msg),
-      array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
-    );
-
-    $this->channel->basic_publish($msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
-  }
-
-
-  /**
-   * Open a RabbitMQ connection.
-   */
-  protected function rmq_open_connection() {
-    $host = $this->variable_get('mediamosa_scheduler_host', 'localhost');
-    $port = $this->variable_get('mediamosa_scheduler_port', 5672);
-    $username = $this->variable_get('mediamosa_scheduler_username', 'guest');
-    $password = $this->variable_get('mediamosa_scheduler_password', 'guest');
-
-    $this->connection = new AMQPStreamConnection($host, $port, $username, $password);
-    $this->channel = $this->connection->channel();
-  }
-
-  /**
-   * Close a currently open RabbitMQ connection.
-   */
-  protected function rmq_close_connection() {
-    $this->channel->close();
-    $this->connection->close();
-  }
-
-  /**
-   * Let the RabbitMQ server know the message has safely arrived.
-   *
-   * @param AMQPMessage $rmq_msg
-   * The RabbitMQ message.
-   */
-  protected function rmq_ack($rmq_msg) {
-    try {
-      $rmq_msg->delivery_info['channel']->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-    } catch (Exception $e) {
-      // Called ack on empty message, something wrong with the messages being sent.
-      mediamosa_debug::log($e, array(), 'T - SCHEDULER');
     }
   }
 
