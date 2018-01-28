@@ -99,11 +99,12 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     $time_now = microtime(TRUE);
 
     // If the variable has not been set yet, scheduler has never started before.
-    if (is_null($this->variable_get($drush_time_last_update))){
+    if (is_null($this->variable_get($drush_time_last_update))) {
       $this->variable_set($drush_time_last_update, $time_now);
       $this->mediamosa_messenger_start_core($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
 
-    } else {
+    }
+    else {
       // See if the server for which this instance guardian was started has sent a keepalive response. If so, update time.
 
       do {
@@ -150,7 +151,7 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     if (!is_null($rmq_msg)) {
       // Have to ack in a different way this time.
       $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
     }
 
     $this->rmq_close_connection();
@@ -185,7 +186,8 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
 
     if ((count($core_type) == 1) and ($core_type[0] == self::CORE_SCHEDULER)) {
       $uri = '/scheduler/start?';
-    } else {
+    }
+    else {
       $uri = '/jobcore/start?';
     }
 
@@ -216,7 +218,8 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
       $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
 
       mediamosa_http::do_head_internal_call($url);
-    } else {
+    }
+    else {
       mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
     }
   }

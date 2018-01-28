@@ -200,7 +200,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
     $this->channel->queue_bind($queue, 'jobs', $queue);
 
     $msg = new AMQPMessage(
-      serialize($msg),
+      json_encode( $msg),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
@@ -246,7 +246,7 @@ class MediaMosaTestCaseEgaJob extends MediaMosaTestCaseEga {
 
     $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
     if (!is_null($rmq_msg)) {
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body);
       try {
         $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       } catch (Exception $e) {

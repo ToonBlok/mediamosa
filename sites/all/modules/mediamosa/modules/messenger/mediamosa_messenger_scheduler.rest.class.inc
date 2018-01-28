@@ -66,7 +66,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
 
       // Send the prepared job to a jobcore.
       $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
-    } elseif ($msg[self::MSG_TYPE] == self::MSG_PROGRESSION) {
+    }
+    elseif ($msg[self::MSG_TYPE] == self::MSG_PROGRESSION) {
       $job = $msg[mediamosa_messenger_scheduler::MSG_DATA];
       // Pass along the job of this msg to update it.
       $this->mediamosa_messenger_update_progression($job, $job[mediamosa_job_db::ID], $job[mediamosa_job_db::JOB_TYPE], $job[mediamosa_job_db::ASSET_ID], $job[mediamosa_job_db::MEDIAFILE_ID], $job[mediamosa_job_db::JOB_STATUS], $job['new_job_status'], $job[mediamosa_job_db::APP_ID], $job[mediamosa_job_db::OWNER_ID], $job[mediamosa_job_db::STILL_PARAMETERS]);
@@ -122,11 +123,13 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
 
           if ($new_job_status == mediamosa_job_server_db::JOB_STATUS_INPROGRESS) {
             mediamosa_job_server::log_debug_mediafile($mediafile_id_src, 'Running @job_type job (storing file busy), Job ID @job_id, with status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $new_job_status));
-          } else {
+          }
+          else {
             mediamosa_job_server::log_debug_mediafile($mediafile_id_src, 'End @job_type job, Job ID @job_id, with status: @status', array('@job_type' => $job_type, '@job_id' => $job_id, '@status' => $new_job_status));
           }
 
-        } elseif ($job_progression['Status'] == 'error' && $job_progression['Errors'] != 'none') {
+        }
+        elseif ($job_progression['Status'] == 'error' && $job_progression['Errors'] != 'none') {
           $new_job_status = mediamosa_job_server_db::JOB_STATUS_FAILED;
           $link_asset = $this->mediamosa_messenger_get_asset_link($job_id);
 
@@ -140,7 +143,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
           if (isset($job_progression['Errors'])) {
             $this->mediamosa_messenger_set_job_status($job_id, $asset_id, $mediafile_id_src, $job_type, $current_job_status, $new_job_status, $job_progression['Progress'], $job_progression['Errors']);
           }
-        } else {
+        }
+        else {
           $this->mediamosa_messenger_set_job_status($job_id, $asset_id, $mediafile_id_src, $job_type, $current_job_status, $new_job_status, $job_progression['Progress']);
         }
         break;
@@ -163,7 +167,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
           mediamosa_statistics::insert_job_transcode($mediafile_id_dest, $job[mediamosa_job_db::ID]);
           $this->mediamosa_messenger_parse_finished_transcode($job['job_id'], $job['mediafile_id'], $mediafile_id_dest); // If the transcode job is completed, add it to the mediafile.
 
-        } elseif ($job_progression['Status'] == 'error' && (empty($job_progression['Errors']) || $job_progression['Errors'] != 'none')) {
+        }
+        elseif ($job_progression['Status'] == 'error' && (empty($job_progression['Errors']) || $job_progression['Errors'] != 'none')) {
           $new_job_status = mediamosa_job_server_db::JOB_STATUS_FAILED;
           $link_asset = mediamosa_job_server::get_asset_link($job_id);
 
@@ -175,7 +180,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
 
           // Generate event transcode failed.
           mediamosa::rules_invoke_event('mediamosa_event_transcode_failed', $mediafile_id_src);
-        } else {
+        }
+        else {
           // Set job status.
           $this->mediamosa_messenger_set_job_status($job_id, $asset_id, $mediafile_id_src, $job_type, $current_job_status, $new_job_status, $job_progression['Progress']);
         }
@@ -246,7 +252,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
         // Everything went ok, move the still and remove other files
         mediamosa_io::rename($source_uri, $destination_uri);
         $mediafile_dest[] = $mediafile_id;
-      } else {
+      }
+      else {
         // Reached the maximum, just delete the remain stills.
         mediamosa_io::unlink(mediamosa_storage::get_realpath_temporary_file($base_filename . sprintf(mediamosa_settings::STILL_EXTENSION, $i) . '.jpeg'));
       }
@@ -745,7 +752,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
       // Determine new filename, if a tool has given one, use that.
       if ($job_transcode[mediamosa_job_db::FILENAME] != '') {
         $new_filename = $job_transcode[mediamosa_job_db::FILENAME];
-      } else {
+      }
+      else {
         // Else make one on the basis of the original.
         $new_filename = mediamosa_io::get_base_filename($job_transcode['mf_' . mediamosa_asset_mediafile_db::FILENAME]) . '.' . $job_transcode[mediamosa_asset_mediafile_db::FILE_EXTENSION];
       }
@@ -761,7 +769,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
         'command' => $job_transcode[mediamosa_job_transcode_db::COMMAND],
         'mediafile_id' => $job_transcode[mediamosa_asset_mediafile_db::ID],
       );
-    } else {
+    }
+    else {
       $link = mediamosa_job_server::get_asset_link($job_id);
       mediamosa_job_server::log('Could not find original mediafile for job_id @job_id <br /><br />@link', array('@job_id' => $job_id, '@link' => $link));
     }
@@ -802,7 +811,8 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
         )
       )->fetch();
 
-    } else {
+    }
+    else {
 
       return mediamosa_db::db_query($sql,
         array(
@@ -919,16 +929,17 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
      *
      * @param $rmq_msg
      *   RabbitMQ message received from the server.
-     *
-                                                                                                                                       */
+     */
     $callback = function ($rmq_msg) {
       $this->rmq_ack($rmq_msg);
-      $msg = unserialize($rmq_msg->body);
+
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
 
       if ($msg[self::MSG_TYPE] == self::MSG_KILL) {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
         exit();
-      } else {
+      }
+      else {
         $this->mediamosa_messenger_process_msg($msg);
       }
     };
@@ -942,7 +953,7 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
      */
     $keepalive_callback = function ($rmq_msg) {
       $this->rmq_ack($rmq_msg);
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
 
       $msg[self::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
       $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(true);

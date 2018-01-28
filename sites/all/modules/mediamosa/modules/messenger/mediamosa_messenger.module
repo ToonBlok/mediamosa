@@ -67,7 +67,8 @@ function _mediamosa_messenger_call($uri, array $query_data = array()) {
     $url = mediamosa_http::uri2url($mediamosa_jobscheduler_uri) . $uri;
 
     mediamosa_http::do_head_internal_call($url);
-  } else {
+  }
+  else {
     mediamosa_job_scheduler::log('Jobscheduler URL not set, please setup jobscheduler server in the @link.', array('@link' => l(t('MediaMosa configuration'), 'admin/mediamosa/config/global')), WATCHDOG_ALERT, 'job_cron');
   }
 }

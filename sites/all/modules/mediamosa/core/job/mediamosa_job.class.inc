@@ -906,7 +906,7 @@ class mediamosa_job {
     $rmq_connection['channel']->queue_bind($queue, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
 
     $rmq_msg = new AMQPMessage(
-      serialize($msg),
+      json_encode($msg),
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 

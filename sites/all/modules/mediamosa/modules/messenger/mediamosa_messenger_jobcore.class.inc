@@ -140,12 +140,13 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
 
       $this->rmq_ack($rmq_msg);
 
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
 
       if ($msg[mediamosa_messenger_scheduler::MSG_TYPE] == 'KILL') {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
         exit();
-      } else {
+      }
+      else {
         $job = $msg[mediamosa_messenger_scheduler::MSG_DATA];
         $this->mediamosa_messenger_start_job($job);
       }
@@ -167,7 +168,10 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
         mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
       }
 
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
+
+      mediamosa_debug::log('$msg in jobcore keepalive', array(), 'T - 28');
+      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - 28');
 
 
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
@@ -245,18 +249,25 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
       $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
       $time_now = microtime(TRUE);
 
-      if (($time_loop_started + 172800) < ($time_now)) { // Set job on failed every two days.
+      // Set job on failed every two days.
+      if (($time_loop_started + 172800) < ($time_now)) {
         $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status'] = mediamosa_job_server::get_status_contents($job['job_id']);
         $msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] = 'error';
         $this->rmq_send($msg, $msg[mediamosa_messenger_scheduler::MSG_QUEUE]);
         break;
-      } else if (($time_last_peeked + 10) < ($time_now)) { // Peek every 10 seconds.
+      }
+      // Peek every 10 seconds.
+      else if (($time_last_peeked + 10) < ($time_now)) {
         $this->rmq_peek();
         $time_last_peeked = $time_now;
       }
-      if ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'done') { // If job is done and we have sent the final progression message, break out of the while loop.
+
+      // If job is done and we have sent the final progression message, break out of the while loop.
+      if ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'done') {
         break;
-      } elseif ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'error') { // If job is done and we have sent the final progression message, break out of the while loop.
+      }
+      // If job is done and we have sent the final progression message, break out of the while loop.
+      elseif ($msg[mediamosa_messenger_scheduler::MSG_DATA]['new_job_status']['Status'] == 'error') {
         break;
       }
     }
@@ -284,7 +295,7 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
         mediamosa_debug::log($e, array(), 'T - ' . $this->core_type);
       }
 
-      $msg = unserialize($rmq_msg->body);
+      $msg = (array) json_decode($rmq_msg->body, TRUE);
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
       $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(true);
 
