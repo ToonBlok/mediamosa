@@ -477,7 +477,6 @@ function _mediamosa_maintenance_automatedsimpletest($show_tests = NULL) {
     }
   }
 
-  // theme de arrays naar een tabel
   $content = theme('table', array('header' => $header, 'rows' => $rows, 'empty' => 'No status information found, please check if cron is working properly.'));
 
   return $content;

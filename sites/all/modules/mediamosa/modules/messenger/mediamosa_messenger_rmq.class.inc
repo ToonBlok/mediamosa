@@ -6,10 +6,10 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 abstract class mediamosa_messenger_rmq extends mediamosa_rest_call
 {
-//  // The AMQP connection object.
-//  protected $connection;
-//  // The channel on which to open a connection.
-//  protected $channel;
+// The AMQP connection object.
+  protected $connection;
+// The channel on which to open a connection.
+  protected $channel;
 
   /**
    * Open a RabbitMQ connection.
@@ -56,6 +56,5 @@ abstract class mediamosa_messenger_rmq extends mediamosa_rest_call
   }
 
   abstract protected function rmq_listen($queue);
-
-
+  abstract protected function rmq_peek();
 }

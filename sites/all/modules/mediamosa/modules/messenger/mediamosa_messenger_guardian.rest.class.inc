@@ -20,6 +20,8 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
   // Queue name of the scheduler.
   const CORE_SCHEDULER = 'SCHEDULER';
 
+  protected $queue_to_peek;
+
   /**
    * Implements get_var_setup().
    */
@@ -55,8 +57,10 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     $queue_keepalive_server = $this->get_param_value(self::QUEUE_KEEPALIVE_SERVER);
     $core_type = unserialize($this->get_param_value(self::CORE_TYPE));
 
+
     //The keepalive queue on the guardian side for the specific core type for which this guardian has been triggered. The guardian class checks this queue for keepalive responses from the servers it watches.
     $queue_keepalive_server_guardian = $queue_keepalive_server . '_guardian';
+    $this->queue_to_peek = $queue_keepalive_server_guardian;
 
     // Send a keepalive message to each server.
     $msg = [
@@ -101,13 +105,21 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
 
     } else {
       // See if the server for which this instance guardian was started has sent a keepalive response. If so, update time.
-      $this->rmq_peek($queue_keepalive_server, $queue_keepalive_server_guardian, $drush_time_last_update);
+
+      do {
+        $msg = $this->rmq_peek();
+        if (!empty($msg)) {
+          mediamosa_debug::log('Start update for:' . $queue_keepalive_server, array(), 'T - 23');
+          $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP]);
+        }
+      } while (!empty($msg));
+
       $time_last_update = variable_get($drush_time_last_update);
       $max_wait_time = $this->variable_get('max_wait_time', 300);
 
       // If the last response of the server was longer ago than the max_wait_time, the server is determined to have crashed.
       if (($time_last_update + $max_wait_time) < ($time_now)) { // Scheduler has not responded in the last 5 minutes
-        $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $time_now, $queue_keepalive_server);
+        $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $time_now);
         $this->mediamosa_messenger_start_core($queue, $queue_keepalive_server, $queue_keepalive_server_guardian, $core_type);
       }
     }
@@ -124,32 +136,26 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
    * @param string $drush_time_last_update
    * The new timestamp retrieved from a new server response message.
    */
-  protected function rmq_peek($queue_keepalive_server_guardian, $drush_time_last_update) {
+  protected function rmq_peek() {
     $this->rmq_open_connection();
 
     $this->channel->exchange_declare(mediamosa_messenger_jobcore::EXCHANGE_JOBS, 'direct', false, false, false);
-    $this->channel->queue_declare($queue_keepalive_server_guardian, false, true, false, false);
-    $this->channel->queue_bind($queue_keepalive_server_guardian, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue_keepalive_server_guardian);
+    $this->channel->queue_declare($this->queue_to_peek, false, true, false, false);
+    $this->channel->queue_bind($this->queue_to_peek, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $this->queue_to_peek);
 
+    $msg = array();
     // Get the first message from this guardians queue to jumpstart the while loop.
-    $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
+    $rmq_msg = $this->channel->basic_get($this->queue_to_peek);
 
-    // As long as there are messages in this guardians queue we process them.
-    while (!is_null($rmq_msg)) {
-
-      try {
-        $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
-      } catch (Exception $e) {
-        // Called ack on empty message, something wrong with the messages being sent.
-      }
-
+    if (!is_null($rmq_msg)) {
+      // Have to ack in a different way this time.
+      $this->channel->basic_ack($rmq_msg->delivery_info['delivery_tag']);
       $msg = unserialize($rmq_msg->body);
-      $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP]);
-      // Get next message, if NULL end while, if message exist process the message by going trough the while loop again.
-      $rmq_msg = $this->channel->basic_get($queue_keepalive_server_guardian);
     }
 
     $this->rmq_close_connection();
+
+    return $msg;
   }
 
   protected function mediamosa_messenger_update_last_response_time($drush_time_last_update, $server_response_time) {
@@ -158,6 +164,7 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     // if The timestamp in the message is more recent, update time_last_update.
     if ($time_last_update < $server_response_time) {
       $this->variable_set($drush_time_last_update, $server_response_time);
+      mediamosa_debug::log('Updated time to:' . $server_response_time, array(), 'T - 23');
     }
   }
 

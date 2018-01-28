@@ -43,7 +43,7 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
    *   Unpacked msg received in the listen queue.
    *
    */
-  protected function rmq_process_msg($msg) {
+  protected function mediamosa_messenger_process_msg($msg) {
     if ($msg[self::MSG_TYPE] == self::MSG_START_JOB) {
       $msg[self::MSG_ID] = mediamosa_job::mediamosa_messenger_get_unique_msg_id();
 
@@ -545,7 +545,7 @@ abstract class mediamosa_messenger_scheduler extends mediamosa_messenger_rmq
               mediamosa_messenger_scheduler::MSG_DATA => $next_job
             ];
 
-            $this->rmq_process_msg($msg);
+            $this->mediamosa_messenger_process_msg($msg);
           }
         }
       }
@@ -929,7 +929,7 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
         exit();
       } else {
-        $this->rmq_process_msg($msg);
+        $this->mediamosa_messenger_process_msg($msg);
       }
     };
 
@@ -965,4 +965,5 @@ class mediamosa_scheduler_start extends mediamosa_messenger_scheduler
     $this->rmq_close_connection();
   }
 
+  protected function rmq_peek() {}
 }

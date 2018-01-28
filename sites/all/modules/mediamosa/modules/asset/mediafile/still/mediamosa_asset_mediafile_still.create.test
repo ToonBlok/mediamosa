@@ -84,11 +84,6 @@ class MediaMosaAssetMediafileStillCreateTestCase extends MediaMosaTestCaseEgaJob
     // Actually have 5 stills now
     $this->assertTrue(count($stills) === 1, 'Found 1 still');
 
-
-//    $this->var_export($stills);
-//    $this->var_export($stills[0]['stills'][0]['width']);
-//    $this->var_export($stills[0]['stills'][1]['width']);
-
     // Must be default size.
     list($width, $height) = explode('x', mediamosa_settings::STILL_DEFAULT_SIZE);
     $this->assertTrue($stills[0]['stills'][0]['width'] == $width, 'Width correct size');

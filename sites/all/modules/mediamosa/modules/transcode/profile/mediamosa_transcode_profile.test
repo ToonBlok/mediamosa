@@ -117,27 +117,6 @@ class MediaMosaTranscodeProfileTestCaseEga extends MediaMosaTestCaseEgaJob {
     $job_id = $this->createMediafileTranscode($mediafile_id, array(), array(mediamosa_error::ERRORCODE_JOB_TRANSCODE_PARAMETER_NOT_FLOAT));
     $job_type = mediamosa_job_db::JOB_TYPE_TRANSCODE;
 
-    // ###########################################
-    $this->var_export('$job_id:');
-    $this->var_export($job_id); // /scheduler/job_start
-    // ###########################################
-
-//    $query_data = [
-//      "job_id" => (string)$job_id['job_id'],
-//      "job_type" => $this->unit_test_prefix . '_' . $job_type,
-//      "asset_id" => $asset_id,
-//      "mediafile_id" => $mediafile_id,
-//    ];
-//    //$location = '/scheduler/start_job?' . http_build_query($query_data);
-//    $location = 'scheduler/start_job';
-//    $this->restCallGet($location, $query_data);
-//
-//    $this->cycle($query_data[mediamosa_job_db::ID]);
-
-    // Parse the queue.
-//    $this->doQueueCycleAll();
-//    $this->cycle();
-
     // Get the asset.
     $asset = $this->getAsset($asset_id);
     $this->var_export($asset);

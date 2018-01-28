@@ -104,7 +104,6 @@ class mediamosa_job_scheduler {
    */
   public static function trigger() {
     // Now trigger the jobscheduler.
-    // Toon: Users can have a differnt url than job1.mediamosa.local. This function says I just want the mediamosa_jobscheduler_uri, no matter what it is called.
     $mediamosa_jobscheduler_uri = variable_get('mediamosa_jobscheduler_uri', NULL);
 
     if (isset($mediamosa_jobscheduler_uri)) {
@@ -142,19 +141,15 @@ class mediamosa_job_scheduler {
       return;
     }
 
-    // Toon: The code AFTER this if statement takes a while to run, so it needs a lock.
     if (!lock_acquire('mediamosa_job_scheduler', 59)) {
       self::log_debug('run_parse_queue() unable to acquire lock.');
       return;
     }
 
-    // Toon: Lock achieved, continue.
-    // Toon: 6x per minuut, elke 10sec proberen parse_queue te doen.
     for ($x = 0; $x < 6; $x++) {
       $start_at = microtime(TRUE);
 
       // Acquire a lock for exclusive run.
-      // Toon: If we can get a lock on this, we can run parse queue
       if (lock_acquire('mediamosa_job_scheduler_parse', 120)) {
         try {
           // Parse queue.
@@ -194,12 +189,9 @@ class mediamosa_job_scheduler {
     self::log_debug('Start parse queue job scheduler');
 
     // Get all servers for their status and process the result.
-    // Toon: Die alle job servers langs loopt en de status opvraagt
-    // "Kijk of er iets moet gebeuren afhankelijk van wat de servers met de jobs gedaan hebben"
     self::check_status_all_servers();
 
     // Start new jobs when slots are available.
-    // Kijkt of er een slot vrij is, zo ja, deel een job uit aan de jobserver met de open slot.
     self::start_new_jobs();
 
     // Deze twee gaan alleen om slots
@@ -210,7 +202,6 @@ class mediamosa_job_scheduler {
     self::check_transcode_timeout();
 
     // Put server that are set on close, on off when they have done all jobs.
-    // Kijk of hij op close gezet is, kijkt of de job van deze server klaar zijn dan zet hij hem uit
     self::check_server_on_status_close();
 
     // Log ending.
@@ -221,11 +212,9 @@ class mediamosa_job_scheduler {
    * Get a list of servers and process the job status.
    */
   public static function check_status_all_servers() {
-    // Toon: Get the enabled job servers.
     $job_processor_servers = mediamosa_server::get_enabled_job_processor();
 
     // Updates the mediamosa_job table, where all jobs reside
-    // De scheduler vraagt aan de job server "hoe ver ben je?" De job scheduler kan dan verder gaan met de jobs uitdelen
     foreach ($job_processor_servers as $job_processor_server) {
       self::update_server_job_status($job_processor_server[mediamosa_server_db::SERVER_URI]);
     }
@@ -240,7 +229,6 @@ class mediamosa_job_scheduler {
   public static function update_server_job_status($uri) {
 
     // Get response.
-    // Toon: Returns XML with waiting jobs from mediamosa_server_job
     $response = mediamosa_http::do_internal_call($uri, 'server/joblist');
     if ($response->code != '200') {
       self::log('Call to server/joblist did not return a 200 result (header: @header)', array('@header' => var_export($response, TRUE)));
@@ -248,7 +236,6 @@ class mediamosa_job_scheduler {
     }
 
     try {
-      // Toon: Parse the raw XML in $response to $response_data, a object that contains all values from the XML data in $response.
       $response_data = new mediamosa_connector_response($response->data);
     }
     catch (Exception $e) {
@@ -264,15 +251,10 @@ class mediamosa_job_scheduler {
       return;
     }
 
-    // Toon: The jobs here come from the mediamosa_server_job table
     for ($i = 0; $i < $response_data->header->item_count; $i++) {
       // Get current status.
-      // Toon: Retrieve the actual job
-      // de job in de loop waar hij nu is.
       $job = mediamosa_job::get((string) $response_data->items->item[$i]->job_id);
 
-      // Toon: Get some fields of this job, store them in the $fiels array.
-      // Toon: Is verzameling alle wijzingen
       $fields = array(
         mediamosa_job_db::JOB_STATUS => $response_data->items->item[$i]->status,
         mediamosa_job_db::PROGRESS => $response_data->items->item[$i]->progress,
@@ -292,19 +274,13 @@ class mediamosa_job_scheduler {
       // Add changed.
       $fields = mediamosa_db::db_update_enrich($fields);
 
-      //#############################################
-
       // Update.
-      // Toon: mediamosa_job en mediamosa_server_job both contain the same job, however the row in
-      // mediamosa_server_job table is more up-to-date and the row in mediamosa_job has to be updated.
       mediamosa_db::db_update(mediamosa_job_db::TABLE_NAME)
         ->fields($fields)
         ->condition(mediamosa_job_db::ID, (string) $response_data->items->item[$i]->job_id)
         ->execute();
 
       // Trigger url.
-      // Toon: Deze methode notified the frontend wanneer een transcoding job voltooid is. $job is de oude waarde, $responsedate is net geupdate in de db statement hierboven.
-      // Toon: recording 20170913_004
       mediamosa_job::notify_transcoding($job[mediamosa_job_db::JOB_STATUS], (string) $response_data->items->item[$i]->status, (string) $response_data->items->item[$i]->job_id);
 
       if ($response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_FINISHED ||
@@ -312,8 +288,6 @@ class mediamosa_job_scheduler {
           $response_data->items->item[$i]->status == mediamosa_job_db::JOB_STATUS_CANCELLED) {
 
         // Remove link between server and job.
-        // Toon: Server is klaar met job, dus moet uit server_job tabel weggehaald moeten worden. de server_job tabel is de tabel die aangeeft welke jobs er uit gedeeld zijn aan deze server
-
         mediamosa_server_job::delete_by_jobid((string) $response_data->items->item[$i]->job_id);
 
         // Remove job on jobserver.
@@ -451,9 +425,6 @@ class mediamosa_job_scheduler {
    * @param string $mediafile_id_dest
    *   The mediafile ID of the destination.
    */
-  // Toon: Een transcode heeft plaatsgevonden, er staat nog niets in de database wat er met de file moet gebeuren, er is alleen een transcode gedaan
-  // Zorgt ervoor dat een rij in mediamosa_asset_mediafile tabel terechtkomt, zodat er een verwijzing is naar die file en dat die bij die asset hoort.
-  // Dan is hij bekend binnen MM, als we dat niet doen dan blijft de file staan en dan doen we er niets mee. Zo wordt hij zichtbaar.
   public static function parse_finished_transcode($job_id, $mediafile_id_src, $mediafile_id_dest) {
 
     // Get the original transcode job.
@@ -655,7 +626,6 @@ class mediamosa_job_scheduler {
       )
     )->fetchAll();
 
-    // Toon: Take a look at each server.
     foreach ($server_jobs as $server_job) {
       // Try to start as many jobs as there are free slots.
       for ($i = $server_job['jobcount']; $i < $server_job['slots']; $i++) {
@@ -668,7 +638,6 @@ class mediamosa_job_scheduler {
           break;
         }
 
-        // Toon: Rij aanmaken, niet starten
         if (mediamosa_job::is_valid_job($job_info[mediamosa_job_db::ID], $job_info[mediamosa_job_db::JOB_TYPE], $job_info[mediamosa_job_db::MEDIAFILE_ID])) {
           if (self::start_server_job(
             $job_info[mediamosa_job_db::ID],

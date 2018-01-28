@@ -88,7 +88,7 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
     for ($i = 0; $i < count($core_type); $i++) {
       $this->core_type = $this->core_type . $core_type[$i];
 
-      if ($i + 1 != count($core_type[$i])) {
+      if (($i + 1) != count($core_type[$i])) {
         $this->core_type .= '_';
       }
     }
@@ -144,7 +144,7 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
 
       if ($msg[mediamosa_messenger_scheduler::MSG_TYPE] == 'KILL') {
         $this->channel->basic_cancel($rmq_msg->delivery_info['consumer_tag']);
-        exit(); // Don't know if belongs here
+        exit();
       } else {
         $job = $msg[mediamosa_messenger_scheduler::MSG_DATA];
         $this->mediamosa_messenger_start_job($job);
