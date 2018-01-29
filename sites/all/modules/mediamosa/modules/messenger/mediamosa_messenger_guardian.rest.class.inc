@@ -110,7 +110,6 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
       do {
         $msg = $this->rmq_peek();
         if (!empty($msg)) {
-          mediamosa_debug::log('Start update for:' . $queue_keepalive_server, array(), 'T - 23');
           $this->mediamosa_messenger_update_last_response_time($drush_time_last_update, $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP]);
         }
       } while (!empty($msg));
@@ -165,7 +164,6 @@ class mediamosa_messenger_guardian extends mediamosa_messenger_rmq
     // if The timestamp in the message is more recent, update time_last_update.
     if ($time_last_update < $server_response_time) {
       $this->variable_set($drush_time_last_update, $server_response_time);
-      mediamosa_debug::log('Updated time to:' . $server_response_time, array(), 'T - 23');
     }
   }
 

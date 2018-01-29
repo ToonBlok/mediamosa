@@ -170,10 +170,6 @@ class mediamosa_messenger_jobcore extends mediamosa_messenger_rmq
 
       $msg = (array) json_decode($rmq_msg->body, TRUE);
 
-      mediamosa_debug::log('$msg in jobcore keepalive', array(), 'T - 28');
-      mediamosa_debug::log_export($msg, WATCHDOG_NOTICE, 'T - 28');
-
-
       $msg[mediamosa_messenger_scheduler::MSG_STATUS] = mediamosa_messenger_scheduler::SERVER_STATUS_ONLINE;
       $msg[mediamosa_messenger_scheduler::MSG_TIMESTAMP] = microtime(TRUE);
 

@@ -50,9 +50,6 @@ abstract class mediamosa_messenger_rmq extends mediamosa_rest_call
       array('delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT)
     );
 
-    mediamosa_debug::log('Sent: ', array(), 'T - 28');
-    mediamosa_debug::log_export(json_encode($msg), WATCHDOG_NOTICE, 'T - 28');
-
     $this->channel->basic_publish($rmq_msg, mediamosa_messenger_jobcore::EXCHANGE_JOBS, $queue);
   }
 
